@@ -13,4 +13,5 @@ walk_speed = 2.0
 run_speed = 5.0
 aggro_range = 17.0
 height = 0.38
+max_slope = 22.0
 loot_id = &"rabbit_pelt"

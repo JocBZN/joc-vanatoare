@@ -13,4 +13,5 @@ walk_speed = 1.8
 run_speed = 6.0
 aggro_range = 17.0
 height = 1.2
+max_slope = 32.0
 loot_id = &"boar_pelt"

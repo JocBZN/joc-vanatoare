@@ -54,6 +54,7 @@ func run() -> void:
     check(scene.world_router.active.find_children("Boardwalk*","Node3D",true,false).size()==3,"three solid jeep-width boardwalks link the banks")
     check(session.animals.size()==24,"host populates initial Swamp wildlife")
     var twin=load("res://world/swamp/swamp_map.gd").new();scene.add_child(twin)
+    twin.set_seed(map.current_seed)
     check(is_equal_approx(twin.height_at(135,-216),map.height_at(135,-216)),"same seed produces identical Swamp elevation on another peer")
     twin.queue_free()
     var kinds: Dictionary={}

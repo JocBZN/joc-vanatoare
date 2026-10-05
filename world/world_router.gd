@@ -24,7 +24,7 @@ func restore_lobby() -> void:
     active_id="lobby"
     add_child(active)
 
-func prepare(id: String, epoch: int) -> void:
+func prepare(id: String, epoch: int, map_seed: int = 0) -> void:
     job+=1
     var ticket:=job
     progress.emit(0.0)
@@ -46,6 +46,7 @@ func prepare(id: String, epoch: int) -> void:
     active_id=id
     add_child(active)
     if WorldCatalog.is_hunt(id):
+        if map_seed!=0: map().set_seed(map_seed)
         active.build_progress.connect(func(value: float) -> void:
             if ticket==job: progress.emit(.12+.88*value))
         await active.build()

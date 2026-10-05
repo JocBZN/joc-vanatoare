@@ -35,6 +35,7 @@ var animal_sequences: Dictionary = {}
 var phase: String = "lobby"
 var world_id: String="lobby"
 var world_epoch: int=0
+var active_map_seed: int=0
 var local_loaded_epoch: int=0
 var loading_members: Array=[]
 var ready_players: Dictionary={}
@@ -214,6 +215,7 @@ func _welcome(data: Dictionary, pickups: Array, inventory_data: Dictionary, carg
     mode="client"
     world_id=data.get("world","lobby")
     world_epoch=int(data.get("epoch",0))
+    active_map_seed=int(data.get("seed",0))
     local_loaded_epoch=-1
     _apply_snapshot(data)
     for item in pickups: _make_loot(item.id,item.kind,item.p)
@@ -229,7 +231,7 @@ func _welcome(data: Dictionary, pickups: Array, inventory_data: Dictionary, carg
             _loaded_world.rpc_id(1,world_epoch)
         else:
             jeep.set_simulation(false)
-            world.prepare_world(world_id,world_epoch)
+            world.prepare_world(world_id,world_epoch,active_map_seed)
 
 func _physics_process(delta: float) -> void:
     if not world: return
@@ -309,7 +311,7 @@ func _snapshot() -> Dictionary:
     for p in players.values(): roster.append(p.snapshot())
     var wildlife: Array=[]
     for a in animals.values(): wildlife.append(a.snapshot())
-    return {"players":roster,"animals":wildlife,"jeep":jeep.snapshot(),"phase":phase,"sequence":snapshot_sequence,"world":world_id,"epoch":world_epoch}
+    return {"players":roster,"animals":wildlife,"jeep":jeep.snapshot(),"phase":phase,"sequence":snapshot_sequence,"world":world_id,"epoch":world_epoch,"seed":active_map_seed}
 
 @rpc("authority","call_remote","unreliable_ordered",1)
 func _state(packet: PackedByteArray) -> void:
@@ -404,6 +406,13 @@ func _action(peer: int, kind: String, value: String) -> void:
             if p.seat_index<0: inv.begin_reload()
         "equip":
             if _at_stall(p,"weapons"): inv.equip_weapon(StringName(value))
+        "equip_slot":
+            var slot_parts:=value.split(":")
+            if slot_parts.size()==2 and _at_stall(p,"weapons"): inv.assign_slot(StringName(slot_parts[0]),int(slot_parts[1]))
+        "slot":
+            if p.seat_index<0: inv.switch_slot(int(value))
+        "debug_unlock_all":
+            inv.debug_unlock_all()
         "buy_weapon":
             if _at_stall(p,"weapons"): inv.buy_weapon(StringName(value))
         "upgrade":
@@ -461,13 +470,16 @@ func _begin_loading(id: String) -> void:
     if not is_host(): return
     world_epoch+=1
     var members: Array=players.keys()
-    if mode=="host": _broadcast(&"_prepare_world",[id,world_epoch,members])
-    _prepare_world(id,world_epoch,members)
+    # A fresh random layout every expedition, chosen once by the host and broadcast so every
+    # peer's terrain, lake and mountains end up byte-identical without anyone picking a seed.
+    var map_seed: int=maxi(1,randi()) if WorldCatalog.is_hunt(id) else 0
+    if mode=="host": _broadcast(&"_prepare_world",[id,world_epoch,members,map_seed])
+    _prepare_world(id,world_epoch,members,map_seed)
 
 @rpc("authority","call_remote","reliable",0)
-func _prepare_world(id: String,epoch: int,members: Array) -> void:
+func _prepare_world(id: String,epoch: int,members: Array,map_seed: int=0) -> void:
     if epoch<world_epoch or not WorldRouter.PATHS.has(id): return
-    world_id=id;world_epoch=epoch;local_loaded_epoch=-1
+    world_id=id;world_epoch=epoch;local_loaded_epoch=-1;active_map_seed=map_seed
     loading_members=members.duplicate();ready_players.clear();loading_clock=45
     _clear_entities()
     revive_jobs.clear()
@@ -479,7 +491,7 @@ func _prepare_world(id: String,epoch: int,members: Array) -> void:
     jeep.occupants=[0,0,0,0]
     jeep.set_simulation(false)
     _set_phase("loading")
-    world.prepare_world(id,epoch)
+    world.prepare_world(id,epoch,map_seed)
 
 func local_world_ready(epoch: int) -> void:
     if epoch!=world_epoch: return

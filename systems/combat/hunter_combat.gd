@@ -29,6 +29,11 @@ func _physics_process(delta: float) -> void:
     recoil = move_toward(recoil, 0.0, delta * 0.8)
     if hunter.local_player and hunter.control_enabled and Input.is_action_just_pressed("reload"):
         NetworkSession.request_action("reload")
+    if hunter.local_player and hunter.control_enabled:
+        if Input.is_action_just_pressed("weapon_slot_1") and hunter.inventory.active_slot!=0:
+            NetworkSession.request_action("slot","0")
+        elif Input.is_action_just_pressed("weapon_slot_2") and hunter.inventory.active_slot!=1:
+            NetworkSession.request_action("slot","1")
     var weapon:=EquipmentCatalog.weapon(hunter.inventory.equipped_weapon_id)
     var trigger:=Input.is_action_pressed("fire") if weapon.automatic else Input.is_action_just_pressed("fire")
     if trigger:
@@ -49,14 +54,14 @@ func present_shot(id: String, muzzle: Vector3, endpoints: Array, damage: int) ->
     var definition:=EquipmentCatalog.weapon(StringName(id))
     shots_fired+=1
     for endpoint in endpoints:
-        _tracer(muzzle,endpoint)
-        _impact(endpoint,Vector3.UP)
+        _tracer(muzzle,endpoint,definition.effect_color)
+        _impact(endpoint,Vector3.UP,definition.effect_color)
     _audio.global_position=muzzle
     _audio.stream=_sounds[definition.id]
     _audio.pitch_scale=_rng.randf_range(.96,1.04)
     _audio.play()
-    recoil=.14 if definition.pellets>1 else .08
-    _flash(muzzle)
+    recoil=clampf(.055+float(definition.damage)*.0032+(.05 if definition.pellets>1 else 0.0),.055,.26)
+    _flash(muzzle,(endpoints[0]-muzzle).normalized() if not endpoints.is_empty() else Vector3.FORWARD,definition.effect_color)
     fired.emit()
     if damage>0 and hunter.local_player: hit.emit(damage)
 
@@ -64,7 +69,7 @@ func ray(from: Vector3, to: Vector3) -> Dictionary:
     var query := PhysicsRayQueryParameters3D.create(from, to, 1 | 4, [hunter.get_rid()])
     return hunter.get_world_3d().direct_space_state.intersect_ray(query)
 
-func _tracer(from: Vector3, to: Vector3) -> void:
+func _tracer(from: Vector3, to: Vector3, color: Color) -> void:
     var mesh := ImmediateMesh.new()
     mesh.surface_begin(Mesh.PRIMITIVE_LINES)
     mesh.surface_add_vertex(from)
@@ -72,33 +77,48 @@ func _tracer(from: Vector3, to: Vector3) -> void:
     mesh.surface_end()
     var visual := MeshInstance3D.new()
     visual.mesh = mesh
-    visual.material_override = _effect_material(Color(1.0, 0.75, 0.28, 0.7))
+    visual.material_override = _effect_material(Color(color,0.7))
     hunter.get_parent().add_child(visual)
     _expire(visual, 0.06)
 
-func _flash(position: Vector3) -> void:
+func _flash(position: Vector3, direction: Vector3, color: Color) -> void:
     var sphere := SphereMesh.new()
-    sphere.radius = 0.075
-    sphere.height = 0.16
+    sphere.radius = 0.065
+    sphere.height = 0.14
     var visual := MeshInstance3D.new()
     visual.mesh = sphere
-    visual.material_override = _effect_material(Color(1.0, 0.8, 0.27, 1.0))
+    visual.material_override = _effect_material(color)
     hunter.get_parent().add_child(visual)
     visual.global_position = position
     var light := OmniLight3D.new()
     visual.add_child(light)
-    light.light_color = Color(1.0, 0.74, 0.32)
-    light.light_energy = 1.8
-    light.omni_range = 4.0
-    _expire(visual, 0.055)
+    light.light_color = color
+    light.light_energy = 1.75
+    light.omni_range = 3.6
+    # Subtle muzzle fire: a tight handful of embers, tinted to the weapon's own effect color.
+    var forward: Vector3 = direction if direction.length_squared() > 0.001 else Vector3.FORWARD
+    var right: Vector3 = forward.cross(Vector3.UP).normalized() if absf(forward.dot(Vector3.UP)) < .98 else Vector3.RIGHT
+    var up: Vector3 = right.cross(forward).normalized()
+    for i in 5:
+        var radius: float = _rng.randf_range(.012, .026)
+        var ember := SphereMesh.new()
+        ember.radius = radius
+        ember.height = radius * 2.0
+        var spark := MeshInstance3D.new()
+        spark.mesh = ember
+        spark.material_override = _effect_material(color.lightened(_rng.randf_range(0,.35)))
+        visual.add_child(spark)
+        var spread: Vector3 = right * _rng.randf_range(-.06, .06) + up * _rng.randf_range(-.05, .07)
+        spark.position = forward * _rng.randf_range(.04, .16) + spread
+    _expire(visual, 0.075)
 
-func _impact(position: Vector3, normal: Vector3) -> void:
+func _impact(position: Vector3, normal: Vector3, color: Color) -> void:
     var sphere := SphereMesh.new()
     sphere.radius = 0.035
     sphere.height = 0.07
     var visual := MeshInstance3D.new()
     visual.mesh = sphere
-    visual.material_override = _effect_material(Color("ebba70"))
+    visual.material_override = _effect_material(color.lightened(.2))
     hunter.get_parent().add_child(visual)
     visual.global_position = position + normal * 0.02
     _expire(visual, 0.15)

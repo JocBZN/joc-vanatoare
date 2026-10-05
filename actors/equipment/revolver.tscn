@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/weapons/stylized/revolver.glb" id="1_model"]
+
+[node name="Revolver" type="Node3D"]
+
+[node name="Source" parent="." instance=ExtResource("1_model")]
+position = Vector3(0.0000026, -0.02359, 0.11775)
+rotation_degrees = Vector3(0, 90, 0)
+scale = Vector3(0.1511, 0.1511, 0.1511)
+
+[node name="Muzzle" type="Marker3D" parent="."]
+position = Vector3(0, 0.04, -0.15)

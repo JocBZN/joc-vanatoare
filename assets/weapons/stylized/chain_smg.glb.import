@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://dt3i38k265nff"
-path="res://.godot/imported/thunder_tube.glb-f58ba3ea88f31d9c7c9b553fad69b874.scn"
+uid="uid://c4a1fab6xr27j"
+path="res://.godot/imported/chain_smg.glb-34b3a9aaf8f5fc9e99d8446fb0c5b400.scn"
 
 [deps]
 
-source_file="res://assets/art/props/thunder_tube.glb"
-dest_files=["res://.godot/imported/thunder_tube.glb-f58ba3ea88f31d9c7c9b553fad69b874.scn"]
+source_file="res://assets/weapons/stylized/chain_smg.glb"
+dest_files=["res://.godot/imported/chain_smg.glb-34b3a9aaf8f5fc9e99d8446fb0c5b400.scn"]
 
 [params]
 

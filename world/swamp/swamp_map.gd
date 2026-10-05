@@ -4,20 +4,36 @@ extends ForestMap
 const SWAMP_SEED=28641
 const WATER_LEVEL: float=0.0
 const POIS=[Vector2(110,-155),Vector2(-155,-100),Vector2(170,-330)]
-var water_material: ShaderMaterial
 var plant_meshes: Dictionary={}
 
 func _ready() -> void:
     super._ready()
-    noise.seed=SWAMP_SEED;noise.frequency=.008
+    noise.frequency=.008
+    set_seed(SWAMP_SEED)
 
+## Keeps the distinct noise frequency the wetland height field needs; everything else
+## (which seed value feeds every layer) is handled by the base class.
+func set_seed(value: int) -> void:
+    super.set_seed(value)
+    noise.frequency=.008
+
+## Wetland core and POIs stay exactly as before; low wooded hills rise only well past the
+## marsh's working radius, where the swamp hunt never needed flat ground anyway.
 func height_at(x: float,z: float) -> float:
     var point:=Vector2(x,z)
     var height: float=noise.get_noise_2d(x,z)*1.55+sin(x*.023+cos(z*.016))*.47-.22
     var road: float=1-smoothstep(5.8,11.5,absf(x-sin(z*.008)*28))
     height=lerpf(height,1.05,road)
     for place in POIS.slice(0,2): height=lerpf(height,.9,1-smoothstep(12,30,point.distance_to(place)))
-    return lerpf(1.15,height,smoothstep(28,56,point.length()))
+    var wetland: float=lerpf(1.15,height,smoothstep(28,56,point.length()))
+    var region: float=clampf(region_noise.get_noise_2d(x,z)*0.5+0.5,0.0,1.0)
+    region=smoothstep(0.42,0.8,region)
+    var warp_x: float=x+warp_noise.get_noise_2d(x*0.5,z*0.5)*80.0
+    var warp_z: float=z+warp_noise.get_noise_2d(x*0.5+500.0,z*0.5+500.0)*80.0
+    var ridge: float=1.0-absf(ridge_noise.get_noise_2d(warp_x,warp_z))
+    ridge=pow(clampf(ridge,0.0,1.0),2.2)
+    var margin_fade: float=smoothstep(400.0,560.0,point.length())
+    return wetland+ridge*region*margin_fade*34.0
 
 func water_depth(point: Vector3) -> float: return maxf(0,WATER_LEVEL-height_at(point.x,point.z))
 func route_clear(point: Vector2,margin: float=3.2) -> bool:
@@ -36,10 +52,15 @@ func animal_spawn(entry: AnimalDefinition,point: Vector3) -> Vector3:
         var p:=point+Vector3(sin(i*2.4),0,cos(i*2.4))*i*3
         p.x=clampf(p.x,-580,580);p.z=clampf(p.z,-580,580)
         var h:=height_at(p.x,p.z)
-        if (entry.aquatic and h<.15) or (not entry.aquatic and h>.2): best=p;break
+        if entry.aquatic and h<.15: best=p;break
+        # Dry-land species also need the new hilly margins to stay within their own climbing limit.
+        if not entry.aquatic and h>.2 and slope_at(p.x,p.z)<=entry.max_slope: best=p;break
     best.y=height_at(best.x,best.z)+.12
     if entry.aquatic and best.y<-.1: best.y=-.08
     return best
+
+## Overrides the forest-only lake; the swamp already carries its own full-map water system.
+func _build_lake() -> void: pass
 
 func _terrain() -> void:
     await super._terrain()

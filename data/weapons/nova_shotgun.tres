@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="WeaponDefinition" format=3]
+
+[ext_resource type="Script" path="res://data/definitions/weapon_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"nova_shotgun"
+display_name = "nova_shotgun"
+description = "nova_shotgun_desc"
+damage = 16
+cooldown = 1.0
+model_path = "res://actors/equipment/nova_shotgun.tscn"
+fire_sound = "res://assets/audio/nova_shotgun.wav"
+price = 780
+magazine_size = 6
+reload_seconds = 2.3
+upgrade_price = 165
+pellets = 10
+spread = 0.032
+sight_type = "iron"
+ads_fov = 58.0
+effect_color = Color(1, 0.92, 0.75, 1)

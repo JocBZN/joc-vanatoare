@@ -247,6 +247,18 @@ func _refresh_catalog() -> void:
         action.disabled=equipped or (not owned and inventory.coins<entry.price)
         action.pressed.connect(NetworkSession.request_action.bind("equip" if owned else "buy_weapon",String(entry.id)))
         _details.add_child(action)
+        if owned:
+            var slots:=HBoxContainer.new()
+            slots.add_theme_constant_override("separation",8)
+            _details.add_child(slots)
+            for slot_index in [0,1]:
+                var in_slot: bool=inventory.loadout[slot_index]==entry.id
+                var slot_button:=_button(tr("SLOT_MAIN" if slot_index==0 else "SLOT_SECONDARY"))
+                slot_button.disabled=in_slot
+                slot_button.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+                slot_button.add_theme_font_size_override("font_size",13)
+                slot_button.pressed.connect(NetworkSession.request_action.bind("equip_slot",String(entry.id)+":"+str(slot_index)))
+                slots.add_child(slot_button)
         _details.add_child(_label(tr("UPGRADES_TITLE"),14,Color("ebc782")))
         for attribute in HunterInventory.UPGRADE_TYPES:
             var level:=inventory.upgrade_level(entry.id,attribute)

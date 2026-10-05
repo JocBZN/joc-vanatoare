@@ -4,23 +4,93 @@ extends Node3D
 const SIZE: float = 1200.0
 const STEP: float = 6.0
 const SEED: int = 10337
+const LAKE_CENTER := Vector2(190.0, 160.0)
+const LAKE_RADIUS: float = 72.0
+const LAKE_SHORE: float = 26.0
+const LAKE_LEVEL: float = -3.0
 signal build_progress(value: float)
 var built: bool=false
 var cancelled: bool=false
 var noise := FastNoiseLite.new()
+var region_noise := FastNoiseLite.new()
+var warp_noise := FastNoiseLite.new()
+var ridge_noise := FastNoiseLite.new()
 var trees: Array[Vector3] = []
 var colliders: Dictionary = {}
 var collider_clock: float = 0.0
+var water_material: ShaderMaterial
+var current_seed: int = SEED
+
+## Re-seeds every noise layer from a single value; called by WorldRouter before build() with a
+## fresh random seed chosen by the host and broadcast to every peer, so each expedition gets a
+## different mountain/tree layout that still matches on every machine. _ready() calls this with
+## the fixed default so anything that instantiates a map directly (tests, previews) still behaves
+## exactly as before unless a session explicitly overrides it.
+func set_seed(value: int) -> void:
+    current_seed = value
+    noise.seed = value
+    region_noise.seed = value + 1
+    warp_noise.seed = value + 2
+    ridge_noise.seed = value + 3
+
+## Ridged, domain-warped noise masked to patches far from camp: real climbable peaks out in
+## the wilds, while the terrain near the fire and the first hunt corridor stays exactly as before.
+func mountains_at(x: float, z: float, dist: float) -> float:
+    var region: float = clampf(region_noise.get_noise_2d(x, z) * 0.5 + 0.5, 0.0, 1.0)
+    region = smoothstep(0.4, 0.78, region)
+    var warp_x: float = x + warp_noise.get_noise_2d(x * 0.6, z * 0.6) * 70.0
+    var warp_z: float = z + warp_noise.get_noise_2d(x * 0.6 + 500.0, z * 0.6 + 500.0) * 70.0
+    var ridge: float = 1.0 - absf(ridge_noise.get_noise_2d(warp_x, warp_z))
+    ridge = pow(clampf(ridge, 0.0, 1.0), 2.4)
+    var mountain_fade: float = smoothstep(110.0, 260.0, dist)
+    # The jeep route runs the full length of the map, not just near camp; keep it passable
+    # wherever it winds through the new mountain belt instead of climbing straight up a peak.
+    var road_x: float = sin(z * 0.012) * 28.0
+    var road_clear: float = smoothstep(16.0, 55.0, absf(x - road_x))
+    return ridge * region * mountain_fade * road_clear * 46.0
+
+func lake_basin(height: float, x: float, z: float) -> float:
+    var dist: float = Vector2(x, z).distance_to(LAKE_CENTER)
+    var basin: float = 1.0 - smoothstep(LAKE_RADIUS, LAKE_RADIUS + LAKE_SHORE, dist)
+    return lerpf(height, LAKE_LEVEL, basin)
 
 func height_at(x: float, z: float) -> float:
-    var fade := smoothstep(35.0, 80.0, Vector2(x, z).length())
-    return noise.get_noise_2d(x, z) * 12.0 * fade
+    var dist: float = Vector2(x, z).length()
+    var fade := smoothstep(35.0, 80.0, dist)
+    var height: float = noise.get_noise_2d(x, z) * 12.0 * fade + mountains_at(x, z, dist)
+    return lake_basin(height, x, z)
+
+## Local slope in degrees, estimated from the height field itself (central differences);
+## used to keep animals off cliff faces and trees from rooting on them.
+func slope_at(x: float, z: float) -> float:
+    var eps: float = 2.0
+    var dx: float = height_at(x + eps, z) - height_at(x - eps, z)
+    var dz: float = height_at(x, z + eps) - height_at(x, z - eps)
+    return rad_to_deg(atan(Vector2(dx, dz).length() / (2.0 * eps)))
+
+func in_lake(x: float, z: float) -> bool:
+    return Vector2(x, z).distance_to(LAKE_CENTER) < LAKE_RADIUS + LAKE_SHORE * .7
+
+func animal_spawn(entry: AnimalDefinition, point: Vector3) -> Vector3:
+    var best := point
+    for i in 20:
+        var p: Vector3 = point + Vector3(sin(i * 2.4), 0, cos(i * 2.4)) * i * 4.0
+        p.x = clampf(p.x, -580, 580); p.z = clampf(p.z, -580, 580)
+        if not in_lake(p.x, p.z) and slope_at(p.x, p.z) <= entry.max_slope:
+            best = p; break
+    best.y = height_at(best.x, best.z) + .12
+    return best
 
 func _ready() -> void:
     LocaleSettings.changed.connect(_quality)
-    noise.seed = SEED
     noise.frequency = 0.006
     noise.fractal_octaves = 3
+    region_noise.frequency = 0.0014
+    region_noise.fractal_octaves = 2
+    warp_noise.frequency = 0.003
+    ridge_noise.frequency = 0.0032
+    ridge_noise.fractal_octaves = 4
+    set_seed(SEED)
 
 func build() -> void:
     await _terrain()
@@ -61,6 +131,22 @@ func _terrain() -> void:
     var collision := CollisionShape3D.new()
     collision.shape = mesh.create_trimesh_shape()
     ground.add_child(collision)
+    _build_lake()
+
+## Overridden to a no-op by SwampMap, which already owns a full-map water system.
+func _build_lake() -> void:
+    water_material = ShaderMaterial.new(); water_material.shader = load("res://world/forest/forest_lake.gdshader")
+    water_material.set_shader_parameter("normal_map", GameArt.texture("forest_ground_04", "nor_gl"))
+    water_material.set_shader_parameter("lake_center", LAKE_CENTER)
+    water_material.set_shader_parameter("lake_radius", LAKE_RADIUS)
+    water_material.set_shader_parameter("lake_shore", LAKE_SHORE)
+    var water := MeshInstance3D.new(); water.name = "Lake"
+    var lake_span: float = (LAKE_RADIUS + LAKE_SHORE) * 2.0
+    var plane := PlaneMesh.new(); plane.size = Vector2(lake_span, lake_span); plane.subdivide_width = 24; plane.subdivide_depth = 24
+    water.mesh = plane; water.material_override = water_material
+    water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    water.position = Vector3(LAKE_CENTER.x, LAKE_LEVEL, LAKE_CENTER.y)
+    add_child(water)
 
 func _trees() -> void:
     var rng := RandomNumberGenerator.new()
@@ -74,6 +160,8 @@ func _trees() -> void:
         var x := rng.randf_range(-588,588)
         var z := rng.randf_range(-588,588)
         if Vector2(x,z).length() < 42 or absf(x - sin(z * 0.012) * 28.0 * smoothstep(35,80,absf(z))) < 5.5:
+            continue
+        if in_lake(x,z) or slope_at(x,z) > 48.0:
             continue
         var point := Vector3(x,height_at(x,z),z)
         trees.append(point)
@@ -150,6 +238,7 @@ func _plant_sector(key: Vector2i) -> void:
         var z: float=(key.y+rng.randf())*PLANT_SECTOR
         if Vector2(x,z).length()<17 or absf(x-sin(z*.012)*28*smoothstep(35,80,absf(z)))<4.7: continue
         if noise.get_noise_2d(x*4,z*4)<-.28: continue
+        if in_lake(x,z): continue
         var kind: String="grass_"+str(rng.randi_range(3,6))
         var scale_factor: float=rng.randf_range(2.6,4.6)
         if attempt%60==0: kind="fern_"+str(0 if rng.randf()<.5 else 3);scale_factor=rng.randf_range(1.2,2.4)
@@ -167,6 +256,9 @@ func _plant_sector(key: Vector2i) -> void:
 func _process(delta: float) -> void:
     if not built: return
     _stream_vegetation(delta)
+    if water_material:
+        var hunter=NetworkSession.local_hunter()
+        if is_instance_valid(hunter): water_material.set_shader_parameter("observer",hunter.global_position)
     collider_clock -= delta
     if collider_clock > 0: return
     collider_clock = 1.0

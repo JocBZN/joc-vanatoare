@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://bi7nj0a258lb8"
-path="res://.godot/imported/scrap_blaster.glb-074984bdd8cf6d5db0b33c98cdd7083a.scn"
+uid="uid://b2lwwogj38eal"
+path="res://.godot/imported/thunder_tube.glb-93001e63f72c004dda6bd3b4de110d9a.scn"
 
 [deps]
 
-source_file="res://assets/art/props/scrap_blaster.glb"
-dest_files=["res://.godot/imported/scrap_blaster.glb-074984bdd8cf6d5db0b33c98cdd7083a.scn"]
+source_file="res://assets/weapons/stylized/thunder_tube.glb"
+dest_files=["res://.godot/imported/thunder_tube.glb-93001e63f72c004dda6bd3b4de110d9a.scn"]
 
 [params]
 

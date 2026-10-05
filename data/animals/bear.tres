@@ -13,4 +13,5 @@ walk_speed = 1.7
 run_speed = 7.0
 aggro_range = 38.0
 height = 2.1
+max_slope = 40.0
 loot_id = &"bear_pelt"

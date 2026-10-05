@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://dnxjxo3d8s2s7"
-path="res://.godot/imported/rusty_pistol.glb-e91bbf5f3614767db67d2609a93a6535.scn"
+uid="uid://ckxi6gbl5a721"
+path="res://.godot/imported/revolver.glb-13906cb2442089c2c35aa71a8de4b008.scn"
 
 [deps]
 
-source_file="res://assets/art/props/rusty_pistol.glb"
-dest_files=["res://.godot/imported/rusty_pistol.glb-e91bbf5f3614767db67d2609a93a6535.scn"]
+source_file="res://assets/weapons/stylized/revolver.glb"
+dest_files=["res://.godot/imported/revolver.glb-13906cb2442089c2c35aa71a8de4b008.scn"]
 
 [params]
 

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="WeaponDefinition" format=3]
+
+[ext_resource type="Script" path="res://data/definitions/weapon_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"raygun"
+display_name = "raygun"
+description = "raygun_desc"
+damage = 17
+cooldown = 0.22
+model_path = "res://actors/equipment/raygun.tscn"
+fire_sound = "res://assets/audio/raygun.wav"
+price = 420
+magazine_size = 14
+reload_seconds = 1.4
+upgrade_price = 95
+pellets = 1
+spread = 0.006
+sight_type = "iron"
+ads_fov = 58.0
+effect_color = Color(0.45, 1, 0.4, 1)

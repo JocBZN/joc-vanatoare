@@ -102,7 +102,7 @@ func run() -> void:
     var center: Vector2=Vector2(640,360)
     check(camera.unproject_position(dots[2].global_position).distance_to(center)<3,"front sight aligns with camera aiming ray")
     check(not helper.camera_rig.scope_overlay.visible,"pistol ADS uses irons instead of scope overlay")
-    helper.inventory.coins=1000;helper.inventory.buy_weapon(&"old_rifle")
+    helper.inventory.coins=1000;helper.inventory.buy_weapon(&"sniper_rifle")
     await view(true,true)
     check(helper.camera_rig.scope_overlay.visible and camera.fov<26,"scoped rifle provides zoom and scope reticle")
     await view(false,false)

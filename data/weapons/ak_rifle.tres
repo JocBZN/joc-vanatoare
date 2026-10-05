@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="WeaponDefinition" format=3]
+
+[ext_resource type="Script" path="res://data/definitions/weapon_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"ak_rifle"
+display_name = "ak_rifle"
+description = "ak_rifle_desc"
+damage = 15
+cooldown = 0.11
+model_path = "res://actors/equipment/ak_rifle.tscn"
+fire_sound = "res://assets/audio/ak_rifle.wav"
+price = 950
+magazine_size = 30
+reload_seconds = 2.1
+automatic = true
+upgrade_price = 190
+pellets = 1
+spread = 0.012
+sight_type = "iron"
+ads_fov = 58.0
+effect_color = Color(1, 0.8, 0.27, 1)

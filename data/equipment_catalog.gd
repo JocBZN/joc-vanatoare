@@ -9,6 +9,13 @@ const WEAPONS: Array[Resource] = [
     preload("res://data/weapons/scrap_blaster.tres"),
     preload("res://data/weapons/beehive.tres"),
     preload("res://data/weapons/thunder_tube.tres"),
+    preload("res://data/weapons/sniper_rifle.tres"),
+    preload("res://data/weapons/revolver.tres"),
+    preload("res://data/weapons/ak_rifle.tres"),
+    preload("res://data/weapons/railgun.tres"),
+    preload("res://data/weapons/raygun.tres"),
+    preload("res://data/weapons/chain_smg.tres"),
+    preload("res://data/weapons/nova_shotgun.tres"),
 ]
 const BACKPACKS: Array[Resource] = [
     preload("res://data/backpacks/small.tres"),

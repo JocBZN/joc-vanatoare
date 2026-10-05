@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="WeaponDefinition" format=3]
+
+[ext_resource type="Script" path="res://data/definitions/weapon_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"revolver"
+display_name = "revolver"
+description = "revolver_desc"
+damage = 32
+cooldown = 0.5
+model_path = "res://actors/equipment/revolver.tscn"
+fire_sound = "res://assets/audio/revolver.wav"
+price = 180
+magazine_size = 6
+reload_seconds = 1.7
+upgrade_price = 45
+pellets = 1
+spread = 0.0
+sight_type = "iron"
+ads_fov = 58.0
+effect_color = Color(1, 0.55, 0.2, 1)

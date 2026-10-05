@@ -13,4 +13,5 @@ walk_speed = 2.7
 run_speed = 9.0
 aggro_range = 45.0
 height = 1.35
+max_slope = 44.0
 loot_id = &"wolf_pelt"

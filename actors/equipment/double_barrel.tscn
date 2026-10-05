@@ -1,78 +1,13 @@
-[gd_scene format=3]
+[gd_scene load_steps=2 format=3]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_qr0yt"]
-albedo_color = Color(0.44705883, 0.3254902, 0.21176471, 1)
-roughness = 0.95
+[ext_resource type="PackedScene" path="res://assets/weapons/stylized/double_barrel.glb" id="1_model"]
 
-[sub_resource type="BoxMesh" id="BoxMesh_d247t"]
-size = Vector3(0.09, 0.25, 0.12)
+[node name="DoubleBarrel" type="Node3D"]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1icx4"]
-albedo_color = Color(0.20392157, 0.24313726, 0.23137255, 1)
-roughness = 0.55
+[node name="Source" parent="." instance=ExtResource("1_model")]
+position = Vector3(0.0000003, -0.008153, 0.21492)
+rotation_degrees = Vector3(0, 90, 0)
+scale = Vector3(0.14914, 0.14914, 0.14914)
 
-[sub_resource type="BoxMesh" id="BoxMesh_3deed"]
-size = Vector3(0.13, 0.15, 0.4)
-
-[sub_resource type="BoxMesh" id="BoxMesh_s41wi"]
-size = Vector3(0.11, 0.18, 0.32)
-
-[sub_resource type="BoxMesh" id="BoxMesh_x3wjq"]
-size = Vector3(0.16, 0.11, 0.38)
-
-[sub_resource type="CylinderMesh" id="CylinderMesh_f4wou"]
-top_radius = 0.045
-bottom_radius = 0.045
-height = 0.82
-radial_segments = 12
-rings = 6
-
-[sub_resource type="CylinderMesh" id="CylinderMesh_htaxd"]
-top_radius = 0.045
-bottom_radius = 0.045
-height = 0.82
-radial_segments = 12
-rings = 6
-
-[sub_resource type="BoxMesh" id="BoxMesh_cl3ta"]
-size = Vector3(0.08, 0.08, 0.14)
-
-[node name="DoubleBarrel" type="Node3D" unique_id=308392490]
-
-[node name="Grip" type="MeshInstance3D" parent="." unique_id=1011028632]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0.08)
-material_override = SubResource("StandardMaterial3D_qr0yt")
-mesh = SubResource("BoxMesh_d247t")
-
-[node name="Receiver" type="MeshInstance3D" parent="." unique_id=1892771047]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
-material_override = SubResource("StandardMaterial3D_1icx4")
-mesh = SubResource("BoxMesh_3deed")
-
-[node name="Stock" type="MeshInstance3D" parent="." unique_id=1121919925]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.015, 0.32)
-material_override = SubResource("StandardMaterial3D_qr0yt")
-mesh = SubResource("BoxMesh_s41wi")
-
-[node name="Foregrip" type="MeshInstance3D" parent="." unique_id=1659945791]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.035, -0.29)
-material_override = SubResource("StandardMaterial3D_qr0yt")
-mesh = SubResource("BoxMesh_x3wjq")
-
-[node name="Barrel" type="MeshInstance3D" parent="." unique_id=1481232281]
-transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, -0.046, 0.06, -0.51)
-material_override = SubResource("StandardMaterial3D_1icx4")
-mesh = SubResource("CylinderMesh_f4wou")
-
-[node name="SecondBarrel" type="MeshInstance3D" parent="." unique_id=1291258718]
-transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0.046, 0.06, -0.51)
-material_override = SubResource("StandardMaterial3D_1icx4")
-mesh = SubResource("CylinderMesh_htaxd")
-
-[node name="TriggerGuard" type="MeshInstance3D" parent="." unique_id=1090482595]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, -0.04)
-material_override = SubResource("StandardMaterial3D_1icx4")
-mesh = SubResource("BoxMesh_cl3ta")
-
-[node name="Muzzle" type="Marker3D" parent="." unique_id=479917126]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, -0.97)
+[node name="Muzzle" type="Marker3D" parent="."]
+position = Vector3(0, 0.05, -0.275)

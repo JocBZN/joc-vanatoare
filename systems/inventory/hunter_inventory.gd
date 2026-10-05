@@ -9,6 +9,8 @@ var coins: int = 0
 var backpack_id: StringName = &"small"
 var equipped_weapon_id: StringName = &"rusty_pistol"
 var owned_weapons: Array[StringName] = [&"rusty_pistol"]
+var loadout: Array[StringName] = [&"rusty_pistol",&"rusty_pistol"]
+var active_slot: int = 0
 var weapon_upgrades: Dictionary = {}
 var magazines: Dictionary = {"rusty_pistol":8}
 var reload_remaining: float = 0.0
@@ -61,9 +63,47 @@ func equip_weapon(id: StringName) -> bool:
         return false
     reload_remaining = 0.0
     equipped_weapon_id = id
+    loadout[active_slot] = id
     changed.emit()
     _feedback("WEAPON_EQUIPPED",{"item_key":definition.display_name})
     return true
+
+## Assigns an owned weapon to the main (0) or secondary (1) slot without switching the active hand unless that slot is the active one.
+func assign_slot(id: StringName, slot: int) -> bool:
+    if not NetworkSession.is_host(): return false
+    if slot < 0 or slot > 1 or EquipmentCatalog.weapon(id) == null or not owns_weapon(id): return false
+    loadout[slot] = id
+    if slot == active_slot and equipped_weapon_id != id:
+        reload_remaining = 0.0
+        equipped_weapon_id = id
+    changed.emit()
+    return true
+
+## Switches which loadout slot is in hand (main/secondary), like a weapon-swap key.
+func switch_slot(slot: int) -> bool:
+    if not NetworkSession.is_host():
+        NetworkSession.request_action("slot", str(slot))
+        return false
+    if slot < 0 or slot > 1 or active_slot == slot: return false
+    var id: StringName = loadout[slot]
+    if EquipmentCatalog.weapon(id) == null: return false
+    active_slot = slot
+    if equipped_weapon_id != id:
+        reload_remaining = 0.0
+        equipped_weapon_id = id
+    changed.emit()
+    return true
+
+## DEBUG convenience so every weapon can be test-fired without grinding the shop economy first.
+func debug_unlock_all() -> void:
+    if not NetworkSession.is_host():
+        NetworkSession.request_action("debug_unlock_all")
+        return
+    for weapon: WeaponDefinition in EquipmentCatalog.WEAPONS:
+        if not owns_weapon(weapon.id):
+            owned_weapons.append(weapon.id)
+            magazines[String(weapon.id)] = weapon.magazine_size
+    changed.emit()
 
 func owns_weapon(id: StringName) -> bool:
     return owned_weapons.has(id)
@@ -186,7 +226,7 @@ func sell_all() -> int:
 func export_state() -> Dictionary:
     var ids: Array=[]
     for item in items: ids.append(String(item.id))
-    return {"coins":coins,"bag":String(backpack_id),"weapon":String(equipped_weapon_id),"items":ids,"owned":owned_weapons.duplicate(),"upgrades":weapon_upgrades.duplicate(true),"magazines":magazines.duplicate(),"reload":reload_remaining}
+    return {"coins":coins,"bag":String(backpack_id),"weapon":String(equipped_weapon_id),"items":ids,"owned":owned_weapons.duplicate(),"upgrades":weapon_upgrades.duplicate(true),"magazines":magazines.duplicate(),"reload":reload_remaining,"loadout":[String(loadout[0]),String(loadout[1])],"slot":active_slot}
 
 func _feedback(key: String, values: Dictionary={}) -> void:
     var owner_peer: int=get_parent().peer_id if get_parent() is Hunter else 1
@@ -203,6 +243,9 @@ func apply_state(data: Dictionary) -> void:
     weapon_upgrades=data.get("upgrades",{}).duplicate(true)
     magazines=data.get("magazines",{"rusty_pistol":8}).duplicate()
     reload_remaining=float(data.get("reload",0))
+    var raw_loadout: Array=data.get("loadout",[String(equipped_weapon_id),String(equipped_weapon_id)])
+    loadout=[StringName(raw_loadout[0]) if raw_loadout.size()>0 else equipped_weapon_id,StringName(raw_loadout[1]) if raw_loadout.size()>1 else equipped_weapon_id]
+    active_slot=int(data.get("slot",0))
     items.clear()
     for id in data.items:
         var item=AnimalCatalog.loot(StringName(id))

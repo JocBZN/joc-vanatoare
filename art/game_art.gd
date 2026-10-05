@@ -199,6 +199,15 @@ static func dress_scene(root: Node3D,kind: String="prop") -> void:
                 keep(base)
                 continue
             if not base is StandardMaterial3D or base.emission_enabled or base.transparency!=BaseMaterial3D.TRANSPARENCY_DISABLED: continue
+            if kind=="weapon" and base.albedo_texture!=null:
+                # Sourced weapon art already carries real surface detail; keep it, just match the toon shading everywhere else.
+                var toon: StandardMaterial3D=base.duplicate()
+                toon.diffuse_mode=BaseMaterial3D.DIFFUSE_TOON
+                toon.roughness=maxf(toon.roughness,.55)
+                if mesh.material_override: mesh.material_override=toon
+                else: mesh.set_surface_override_material(surface,toon)
+                keep(toon)
+                continue
             if kind=="prop":
                 var painted: StandardMaterial3D=base.duplicate()
                 painted.albedo_texture=null;painted.normal_enabled=false;painted.roughness_texture=null

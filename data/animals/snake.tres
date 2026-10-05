@@ -13,6 +13,7 @@ walk_speed = 1.5
 run_speed = 4.8
 aggro_range = 16.0
 height = 0.35
+max_slope = 26.0
 length = 2.0
 width = 0.45
 aquatic = false

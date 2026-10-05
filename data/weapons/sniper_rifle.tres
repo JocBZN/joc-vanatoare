@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="WeaponDefinition" format=3]
+
+[ext_resource type="Script" path="res://data/definitions/weapon_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"sniper_rifle"
+display_name = "sniper_rifle"
+description = "sniper_rifle_desc"
+damage = 70
+cooldown = 1.5
+model_path = "res://actors/equipment/sniper_rifle.tscn"
+fire_sound = "res://assets/audio/sniper_rifle.wav"
+price = 650
+magazine_size = 4
+reload_seconds = 2.3
+upgrade_price = 150
+pellets = 1
+spread = 0.0
+sight_type = "scope"
+ads_fov = 21.5

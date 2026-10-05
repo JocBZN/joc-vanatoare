@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://p2udtaup1h7u"
-path="res://.godot/imported/old_rifle.glb-586b18d0871a37cf9cb9618ef9b41fb1.scn"
+uid="uid://c3fx4ydkmjomk"
+path="res://.godot/imported/raygun.glb-d93f5ecbadae922ee2a3db29a9ffbffc.scn"
 
 [deps]
 
-source_file="res://assets/art/props/old_rifle.glb"
-dest_files=["res://.godot/imported/old_rifle.glb-586b18d0871a37cf9cb9618ef9b41fb1.scn"]
+source_file="res://assets/weapons/stylized/raygun.glb"
+dest_files=["res://.godot/imported/raygun.glb-d93f5ecbadae922ee2a3db29a9ffbffc.scn"]
 
 [params]
 

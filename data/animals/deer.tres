@@ -13,4 +13,5 @@ walk_speed = 2.2
 run_speed = 6.8
 aggro_range = 17.0
 height = 1.75
+max_slope = 28.0
 loot_id = &"deer_pelt"

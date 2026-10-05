@@ -15,5 +15,5 @@ price = 90
 magazine_size = 5
 reload_seconds = 1.8
 upgrade_price = 40
-sight_type = "scope"
-ads_fov = 24.0
+sight_type = "iron"
+ads_fov = 58.0

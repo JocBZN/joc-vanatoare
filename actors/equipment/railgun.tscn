@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/weapons/stylized/railgun.glb" id="1_model"]
+
+[node name="Railgun" type="Node3D"]
+
+[node name="Source" parent="." instance=ExtResource("1_model")]
+position = Vector3(0, -0.003349, 0.359323)
+rotation_degrees = Vector3(0, 0, 0)
+scale = Vector3(0.10403, 0.10403, 0.10403)
+
+[node name="Muzzle" type="Marker3D" parent="."]
+position = Vector3(0, 0.06, -0.6)

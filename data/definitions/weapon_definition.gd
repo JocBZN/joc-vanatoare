@@ -17,3 +17,4 @@ extends Resource
 @export var spread: float = 0.0
 @export_enum("iron", "scope") var sight_type: String="iron"
 @export_range(15, 75) var ads_fov: float=62.0
+@export var effect_color: Color=Color(1.0,0.8,0.27,1.0)

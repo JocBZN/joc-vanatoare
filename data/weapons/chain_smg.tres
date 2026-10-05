@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="WeaponDefinition" format=3]
+
+[ext_resource type="Script" path="res://data/definitions/weapon_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"chain_smg"
+display_name = "chain_smg"
+description = "chain_smg_desc"
+damage = 9
+cooldown = 0.06
+model_path = "res://actors/equipment/chain_smg.tscn"
+fire_sound = "res://assets/audio/chain_smg.wav"
+price = 1600
+magazine_size = 60
+reload_seconds = 3.1
+automatic = true
+upgrade_price = 320
+pellets = 1
+spread = 0.02
+sight_type = "iron"
+ads_fov = 60.0
+effect_color = Color(1, 0.85, 0.4, 1)

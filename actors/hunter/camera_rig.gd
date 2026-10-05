@@ -18,6 +18,7 @@ var enabled: bool = true
 var aiming: bool = false
 var view_model
 var scope_overlay
+var recoil_pitch: float = 0.0
 func _ready() -> void:
     view_model=load("res://actors/hunter/first_person_weapon.gd").new();camera.add_child(view_model)
     var layer:=CanvasLayer.new();layer.layer=0;add_child(layer)
@@ -51,8 +52,15 @@ func _process(delta: float) -> void:
     if not enabled:
         view_model.hide();scope_overlay.hide();hunter.visual.show()
         return
+    if is_instance_valid(hunter.combat) and not hunter.combat.fired.is_connected(_on_fired):
+        hunter.combat.fired.connect(_on_fired)
     set_aiming(hunter.health>0 and hunter.revive_target==0 and hunter.control_enabled and Input.mouse_mode==Input.MOUSE_MODE_CAPTURED and Input.is_action_pressed("aim"))
     update_camera(delta)
+
+func _on_fired() -> void:
+    var hunter=get_parent()
+    if not hunter.local_player: return
+    recoil_pitch=minf(recoil_pitch+hunter.combat.recoil*deg_to_rad(42.0),deg_to_rad(11.0))
 
 func update_camera(delta: float) -> void:
     var hunter=get_parent()
@@ -66,6 +74,8 @@ func update_camera(delta: float) -> void:
     var fov: float=definition.ads_fov if first and aiming else aim_fov if aiming else exploration_fov
     camera.fov=lerpf(camera.fov,fov,blend)
     camera.near=.025 if first else .08
+    recoil_pitch=move_toward(recoil_pitch,0.0,delta*deg_to_rad(95.0))
+    camera.rotation.x=recoil_pitch
     scope_overlay.visible=scope_visible()
     if scope_overlay.visible: scope_overlay.queue_redraw()
 

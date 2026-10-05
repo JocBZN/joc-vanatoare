@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://ueyou8lrcooe"
-path="res://.godot/imported/beehive.glb-e436657edd788b12be30a414b64f5dd0.scn"
+uid="uid://bsdwb1kypnbq8"
+path="res://.godot/imported/rusty_pistol.glb-7f3506e004b0a86b4644ef37fe9be0ae.scn"
 
 [deps]
 
-source_file="res://assets/art/props/beehive.glb"
-dest_files=["res://.godot/imported/beehive.glb-e436657edd788b12be30a414b64f5dd0.scn"]
+source_file="res://assets/weapons/stylized/rusty_pistol.glb"
+dest_files=["res://.godot/imported/rusty_pistol.glb-7f3506e004b0a86b4644ef37fe9be0ae.scn"]
 
 [params]
 

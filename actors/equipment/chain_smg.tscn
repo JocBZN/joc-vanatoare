@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/weapons/stylized/chain_smg.glb" id="1_model"]
+
+[node name="ChainSmg" type="Node3D"]
+
+[node name="Source" parent="." instance=ExtResource("1_model")]
+position = Vector3(0, -0.00129, 0.015439)
+rotation_degrees = Vector3(0, 90, 0)
+scale = Vector3(0.1251, 0.1251, 0.1251)
+
+[node name="Muzzle" type="Marker3D" parent="."]
+position = Vector3(0, 0.05, -0.25)

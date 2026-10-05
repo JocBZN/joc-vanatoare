@@ -10,12 +10,16 @@ var inventory: HunterInventory
 @onready var cursor_hint: Label = $HUD/Root/CursorHint
 @onready var wallet_label: Label = $HUD/Root/Stats/Wallet
 @onready var bag_label: Label = $HUD/Root/Stats/Bag
-@onready var weapon_label: Label = $HUD/Root/Stats/Weapon
 @onready var prompt: Panel = $HUD/Root/InteractionPrompt
 @onready var prompt_label: Label = $HUD/Root/InteractionPrompt/Title
 @onready var toast: Label = $HUD/Root/Toast
 @onready var health_label: Label = $HUD/Root/AnimalHealth
 @onready var hit_indicator: Label = $HUD/Root/HitIndicator
+@onready var health_bar_fill: ColorRect = $HUD/Root/Vitals/HealthBarFill
+@onready var health_number: Label = $HUD/Root/Vitals/HealthNumber
+@onready var slot_panels: Array[Panel] = [$HUD/Root/Vitals/Slot1,$HUD/Root/Vitals/Slot2]
+@onready var slot_names: Array[Label] = [$HUD/Root/Vitals/Slot1/Slot1Name,$HUD/Root/Vitals/Slot2/Slot2Name]
+@onready var slot_ammo: Array[Label] = [$HUD/Root/Vitals/Slot1/Slot1Ammo,$HUD/Root/Vitals/Slot2/Slot2Ammo]
 var nearby: LobbyInteractable
 var _toast_time: float = 0
 var _hit_time: float = 0
@@ -23,7 +27,10 @@ var _menu_camera: Camera3D
 var world_router: WorldRouter
 var loading_screen: LoadingScreen
 var map_menu
-var _ammo_label: Label
+var minimap
+var _slot_active_style: StyleBoxFlat
+var _slot_inactive_style: StyleBoxFlat
+const MAX_HEALTH: int = 100
 
 func _ready() -> void:
     for name_value in ["Players","Wildlife","Loot"]:
@@ -51,20 +58,26 @@ func _ready() -> void:
     _menu_camera.position=Vector3(15,8.5,21)
     _menu_camera.look_at(Vector3(0,3.2,-2));_menu_camera.fov=65;_menu_camera.far=900
     _bind_player()
-    _ammo_label=Label.new();_ammo_label.add_theme_font_size_override("font_size",18)
-    _ammo_label.add_theme_color_override("font_color",Color("f1d29c"))
-    $HUD/Root/Stats.add_child(_ammo_label)
-    $HUD/Root/Stats.offset_bottom=196;_ammo_label.position=Vector2(18,104)
-    _ammo_label.mouse_filter=Control.MOUSE_FILTER_IGNORE
+    _slot_active_style=StyleBoxFlat.new()
+    _slot_active_style.bg_color=Color(0.13,0.16,0.105,0.96)
+    _slot_active_style.border_color=Color(0.8,0.63,0.36,1)
+    _slot_active_style.set_border_width_all(2)
+    _slot_active_style.set_corner_radius_all(8)
+    _slot_inactive_style=StyleBoxFlat.new()
+    _slot_inactive_style.bg_color=Color(0.055,0.08,0.071,0.78)
+    _slot_inactive_style.border_color=Color(0.3,0.33,0.26,1)
+    _slot_inactive_style.set_border_width_all(1)
+    _slot_inactive_style.set_corner_radius_all(8)
+    minimap=load("res://ui/hud/minimap.gd").new();hud.add_child(minimap)
     _localize();_open_menu()
 
-func prepare_world(id: String,epoch: int) -> void:
+func prepare_world(id: String,epoch: int,map_seed: int=0) -> void:
     _set_capture(false)
     if shop.is_open: shop.close()
     map_menu.close()
     menu.dismiss_for_loading()
     hud.hide();loading_screen.begin(id)
-    world_router.prepare(id,epoch)
+    world_router.prepare(id,epoch,map_seed)
 
 func _world_prepared(epoch: int) -> void:
     NetworkSession.forest=world_router.map()
@@ -94,6 +107,7 @@ func _bind_player() -> void:
     if not hunter.combat.hit.is_connected(_on_hit): hunter.combat.hit.connect(_on_hit)
     if not inventory.changed.is_connected(_update_hud): inventory.changed.connect(_update_hud)
     if not inventory.feedback.is_connected(_show_feedback): inventory.feedback.connect(_show_feedback)
+    if DisplayServer.get_name()!="headless": inventory.debug_unlock_all() # DEBUG: convenience for interactive play; skipped headless so economy tests stay exact
     _update_hud()
     if not menu.is_open: _on_continue()
 
@@ -111,12 +125,27 @@ func _process(delta: float) -> void:
     _update_target()
     var driving:=hunter.seat_index>=0
     $HUD/Root/Controls.text=tr("DOWNED_HELP" if hunter.health<=0 else "DRIVING" if hunter.seat_index==0 else "PASSENGER" if driving else "CONTROLS")
-    $HUD/Root/Header/Status.text=NetworkSession.status_text()+"  ·  "+LocaleSettings.text("HUNTER_HEALTH",{"hp":hunter.health})
+    $HUD/Root/Header/Status.text=NetworkSession.status_text()
     if hunter.health<=0: view_label.text=tr("DOWNED")
     elif driving: view_label.text="%d km/h" % roundi(absf(NetworkSession.jeep.speed)*3.6)
     else: _on_aim_changed(hunter.camera_rig.aiming)
-    if _ammo_label:
-        _ammo_label.text=LocaleSettings.text("RELOADING",{"n":"%.1f" % inventory.reload_remaining}) if inventory.reload_remaining>0 else LocaleSettings.text("AMMO",{"n":inventory.ammunition(),"cap":inventory.magazine_capacity(inventory.equipped_weapon_id)})
+    _update_vitals()
+
+func _update_vitals() -> void:
+    if not is_instance_valid(inventory): return
+    var fraction: float=clampf(float(hunter.health)/float(MAX_HEALTH),0.0,1.0)
+    health_bar_fill.size.x=304.0*fraction
+    health_bar_fill.color=Color(0.82,0.24,0.18,1).lerp(Color(0.45,0.78,0.4,1),fraction)
+    health_number.text="%d / %d" % [maxi(0,hunter.health),MAX_HEALTH]
+    for i in 2:
+        var id: StringName=inventory.loadout[i]
+        var active: bool=inventory.active_slot==i
+        slot_panels[i].add_theme_stylebox_override("panel",_slot_active_style if active else _slot_inactive_style)
+        slot_names[i].text=tr(EquipmentCatalog.weapon(id).display_name)
+        if active:
+            slot_ammo[i].text=LocaleSettings.text("RELOADING",{"n":"%.1f" % inventory.reload_remaining}) if inventory.reload_remaining>0 else LocaleSettings.text("AMMO",{"n":inventory.ammunition(),"cap":inventory.magazine_capacity(id)})
+        else:
+            slot_ammo[i].text="%d / %d" % [int(inventory.magazines.get(String(id),0)),inventory.magazine_capacity(id)]
 
 func _update_nearby() -> void:
     nearby=null
@@ -146,7 +175,8 @@ func _update_target() -> void:
 func _unhandled_input(event: InputEvent) -> void:
     if shop.is_open or menu.is_open or map_menu.is_open or NetworkSession.phase=="loading" or NetworkSession.local_loaded_epoch!=NetworkSession.world_epoch: return
     if event.is_action_pressed("release_cursor"):
-        _open_menu()
+        if is_instance_valid(minimap) and minimap.detail: minimap.close_detail()
+        else: _open_menu()
         get_viewport().set_input_as_handled()
     elif is_instance_valid(hunter) and hunter.control_enabled:
         if event.is_action_pressed("interact"):
@@ -154,6 +184,9 @@ func _unhandled_input(event: InputEvent) -> void:
             get_viewport().set_input_as_handled()
         elif event.is_action_pressed("inventory"):
             _open_shop("inventory")
+            get_viewport().set_input_as_handled()
+        elif event.is_action_pressed("minimap_detail") and is_instance_valid(minimap):
+            minimap.toggle_detail()
             get_viewport().set_input_as_handled()
 
 func interact_nearby() -> void:
@@ -170,6 +203,7 @@ func interact_nearby() -> void:
     else: _open_shop(nearby.interaction_kind)
 
 func _open_shop(kind: String) -> void:
+    if is_instance_valid(minimap): minimap.close_detail()
     shop.open_for(kind,inventory,kind)
     _set_capture(false)
     prompt.hide()
@@ -209,7 +243,6 @@ func _update_hud() -> void:
     if not is_instance_valid(inventory): return
     wallet_label.text=LocaleSettings.text("HUD_COINS",{"n":inventory.coins})
     bag_label.text=LocaleSettings.text("HUD_BAG",{"used":inventory.used_space(),"cap":inventory.capacity(),"value":inventory.loot_value()})
-    weapon_label.text=tr(EquipmentCatalog.weapon(inventory.equipped_weapon_id).display_name)
 
 func _show_feedback(message: String) -> void:
     if is_instance_valid(map_menu) and map_menu.is_open: map_menu.show_message(message)

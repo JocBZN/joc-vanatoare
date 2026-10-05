@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://bvojf8fhuo5b4"
-path="res://.godot/imported/double_barrel.glb-e072ea2c48783f110beb4cd79b772404.scn"
+uid="uid://cy6gntg85juaa"
+path="res://.godot/imported/beehive.glb-0afccb3f65420916191af5b4e29a7ce2.scn"
 
 [deps]
 
-source_file="res://assets/art/props/double_barrel.glb"
-dest_files=["res://.godot/imported/double_barrel.glb-e072ea2c48783f110beb4cd79b772404.scn"]
+source_file="res://assets/weapons/stylized/beehive.glb"
+dest_files=["res://.godot/imported/beehive.glb-0afccb3f65420916191af5b4e29a7ce2.scn"]
 
 [params]
 

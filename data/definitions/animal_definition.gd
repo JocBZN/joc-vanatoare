@@ -14,6 +14,7 @@ extends Resource
 @export var aggro_memory: float = 30.0
 @export var height: float = 1.0
 @export var aquatic: bool=false
+@export_range(10, 90) var max_slope: float=90.0
 @export var length: float=0
 @export var width: float=0
 @export var loot_id: StringName
