@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"deer"
+display_name = "ANIMAL_DEER"
+model_path = "res://actors/animals/models/deer.tscn"
+max_health = 54
+spawn_weight = 27.0
+aggressive = false
+attack_damage = 0
+walk_speed = 2.2
+run_speed = 6.8
+aggro_range = 17.0
+height = 1.75
+loot_id = &"deer_pelt"

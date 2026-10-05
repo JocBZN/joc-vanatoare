@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="LootDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/loot_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"boar_pelt"
+display_name = "boar_pelt"
+space = 3
+sell_value = 60

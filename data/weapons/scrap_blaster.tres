@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="WeaponDefinition" format=3]
+[ext_resource type="Script" path="res://data/definitions/weapon_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"scrap_blaster"
+display_name = "scrap_blaster"
+description = "scrap_blaster_desc"
+price = 600
+damage = 60
+cooldown = 0.9
+magazine_size = 4
+reload_seconds = 2.0
+upgrade_price = 140
+pellets = 8
+spread = 0.025
+automatic = false
+model_path = "res://actors/equipment/scrap_blaster.tscn"
+fire_sound = "res://assets/audio/scrap_blaster.wav"

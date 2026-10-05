@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"crocodile"
+display_name = "ANIMAL_CROCODILE"
+model_path = "res://actors/animals/models/crocodile.tscn"
+max_health = 430
+spawn_weight = 10.0
+aggressive = true
+attack_damage = 24
+walk_speed = 1.4
+run_speed = 5.8
+aggro_range = 24.0
+height = 0.85
+length = 3.5
+width = 1.1
+aquatic = true
+loot_id = &"crocodile_hide"

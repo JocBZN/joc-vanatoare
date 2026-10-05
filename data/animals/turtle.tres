@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"turtle"
+display_name = "ANIMAL_TURTLE"
+model_path = "res://actors/animals/models/turtle.tscn"
+max_health = 85
+spawn_weight = 28.0
+aggressive = false
+attack_damage = 0
+walk_speed = 0.55
+run_speed = 1.8
+aggro_range = 9.0
+height = 0.55
+length = 0.85
+width = 0.8
+aquatic = true
+loot_id = &"turtle_shell"

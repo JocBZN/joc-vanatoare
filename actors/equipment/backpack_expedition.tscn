@@ -1,0 +1,94 @@
+[gd_scene format=3]
+
+[ext_resource type="Shader" path="res://world/effects/camo.gdshader" id="1_07bdu"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_vyclf"]
+render_priority = 0
+shader = ExtResource("1_07bdu")
+shader_parameter/olive = null
+shader_parameter/moss = null
+shader_parameter/sand = null
+shader_parameter/charcoal = null
+shader_parameter/pattern_scale = 12.0
+
+[sub_resource type="BoxMesh" id="BoxMesh_jvqi7"]
+size = Vector3(0.5, 0.61, 0.32)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_1kx06"]
+render_priority = 0
+shader = ExtResource("1_07bdu")
+shader_parameter/olive = null
+shader_parameter/moss = null
+shader_parameter/sand = null
+shader_parameter/charcoal = null
+shader_parameter/pattern_scale = null
+
+[sub_resource type="BoxMesh" id="BoxMesh_0aqa0"]
+size = Vector3(0.39, 0.2928, 0.065)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lxbf1"]
+albedo_color = Color(0.24313726, 0.19215687, 0.15294118, 1)
+roughness = 0.95
+
+[sub_resource type="BoxMesh" id="BoxMesh_2cqkh"]
+size = Vector3(0.045, 0.6588, 0.338)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5dadc"]
+albedo_color = Color(0.73333335, 0.58431375, 0.3019608, 1)
+roughness = 0.45
+
+[sub_resource type="BoxMesh" id="BoxMesh_tr32e"]
+size = Vector3(0.065, 0.05, 0.025)
+
+[sub_resource type="BoxMesh" id="BoxMesh_41ybc"]
+size = Vector3(0.045, 0.6588, 0.338)
+
+[sub_resource type="BoxMesh" id="BoxMesh_jgrwf"]
+size = Vector3(0.065, 0.05, 0.025)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tcrry"]
+albedo_color = Color(0.3882353, 0.44313726, 0.3529412, 1)
+roughness = 0.95
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_lmir3"]
+top_radius = 0.094
+bottom_radius = 0.094
+height = 0.59
+radial_segments = 12
+rings = 6
+
+[node name="BackpackExpedition" type="Node3D" unique_id=1080714369]
+
+[node name="Body" type="MeshInstance3D" parent="." unique_id=840568326]
+material_override = SubResource("ShaderMaterial_vyclf")
+mesh = SubResource("BoxMesh_jvqi7")
+
+[node name="FrontPocket" type="MeshInstance3D" parent="." unique_id=1053286359]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.0915, 0.185)
+material_override = SubResource("ShaderMaterial_1kx06")
+mesh = SubResource("BoxMesh_0aqa0")
+
+[node name="Strap" type="MeshInstance3D" parent="." unique_id=1423462159]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.14, 0, 0)
+material_override = SubResource("StandardMaterial3D_lxbf1")
+mesh = SubResource("BoxMesh_2cqkh")
+
+[node name="Buckle" type="MeshInstance3D" parent="." unique_id=717145787]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.14, 0.0305, 0.21)
+material_override = SubResource("StandardMaterial3D_5dadc")
+mesh = SubResource("BoxMesh_tr32e")
+
+[node name="Strap2" type="MeshInstance3D" parent="." unique_id=1274762058]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.14, 0, 0)
+material_override = SubResource("StandardMaterial3D_lxbf1")
+mesh = SubResource("BoxMesh_41ybc")
+
+[node name="Buckle2" type="MeshInstance3D" parent="." unique_id=662402220]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.14, 0.0305, 0.21)
+material_override = SubResource("StandardMaterial3D_5dadc")
+mesh = SubResource("BoxMesh_jgrwf")
+
+[node name="Bedroll" type="MeshInstance3D" parent="." unique_id=349390011]
+transform = Transform3D(-4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0, 1, 0, 0.395, 0)
+material_override = SubResource("StandardMaterial3D_tcrry")
+mesh = SubResource("CylinderMesh_lmir3")

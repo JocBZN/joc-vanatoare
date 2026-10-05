@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="WeaponDefinition" format=3]
+[ext_resource type="Script" path="res://data/definitions/weapon_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"beehive"
+display_name = "beehive"
+description = "beehive_desc"
+price = 1200
+damage = 22
+cooldown = 0.12
+magazine_size = 40
+reload_seconds = 2.5
+upgrade_price = 260
+pellets = 1
+spread = 0.009
+automatic = true
+model_path = "res://actors/equipment/beehive.tscn"
+fire_sound = "res://assets/audio/beehive.wav"

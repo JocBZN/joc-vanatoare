@@ -1,0 +1,82 @@
+[
+  {
+    "file": "fir_a.glb",
+    "triangles": 45032
+  },
+  {
+    "file": "fir_b.glb",
+    "triangles": 24772
+  },
+  {
+    "file": "fir_c.glb",
+    "triangles": 10963
+  },
+  {
+    "file": "grass_0.glb",
+    "triangles": 833
+  },
+  {
+    "file": "grass_1.glb",
+    "triangles": 290
+  },
+  {
+    "file": "grass_2.glb",
+    "triangles": 310
+  },
+  {
+    "file": "grass_3.glb",
+    "triangles": 79
+  },
+  {
+    "file": "grass_4.glb",
+    "triangles": 28
+  },
+  {
+    "file": "grass_5.glb",
+    "triangles": 40
+  },
+  {
+    "file": "grass_6.glb",
+    "triangles": 32
+  },
+  {
+    "file": "fern_0.glb",
+    "triangles": 784
+  },
+  {
+    "file": "fern_1.glb",
+    "triangles": 2384
+  },
+  {
+    "file": "fern_2.glb",
+    "triangles": 2248
+  },
+  {
+    "file": "fern_3.glb",
+    "triangles": 816
+  },
+  {
+    "file": "rock_0.glb",
+    "triangles": 1799
+  },
+  {
+    "file": "rock_1.glb",
+    "triangles": 1800
+  },
+  {
+    "file": "rock_2.glb",
+    "triangles": 1799
+  },
+  {
+    "file": "rock_3.glb",
+    "triangles": 1800
+  },
+  {
+    "file": "rock_4.glb",
+    "triangles": 1800
+  },
+  {
+    "file": "rock_5.glb",
+    "triangles": 1800
+  }
+]

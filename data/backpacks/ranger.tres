@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="BackpackDefinition" format=3 uid="uid://c2hfoo3uis567"]
+
+[ext_resource type="Script" uid="uid://ybj2c0kli2xn" path="res://data/definitions/backpack_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"ranger"
+display_name = "ranger"
+capacity = 12
+price = 60
+model_path = "res://actors/equipment/backpack_ranger.tscn"

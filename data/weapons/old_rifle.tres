@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="WeaponDefinition" format=3 uid="uid://bo8svfghnhodw"]
+
+[ext_resource type="Script" uid="uid://p5rdgyknvt4y" path="res://data/definitions/weapon_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"old_rifle"
+display_name = "old_rifle"
+description = "old_rifle_desc"
+damage = 12
+cooldown = 1.2
+model_path = "res://actors/equipment/old_rifle.tscn"
+fire_sound = "res://assets/audio/old_rifle.wav"
+price = 90
+magazine_size = 5
+reload_seconds = 1.8
+upgrade_price = 40
+sight_type = "scope"
+ads_fov = 24.0

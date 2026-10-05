@@ -1,0 +1,6 @@
+[gd_scene format=3]
+[ext_resource type="PackedScene" path="res://assets/animals/forest/bear_smooth.glb" id="1"]
+[node name="Model" type="Node3D"]
+[node name="Bear" parent="." instance=ExtResource("1")]
+scale=Vector3(0.9378069,0.9378069,0.9378069)
+position=Vector3(0,0.0015246,0)

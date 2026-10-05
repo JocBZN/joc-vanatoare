@@ -1,0 +1,101 @@
+[
+  {
+    "asset": "fir_tree_01",
+    "provider": "Poly Haven",
+    "source": "https://polyhaven.com/a/fir_tree_01",
+    "license": "CC0-1.0",
+    "license_url": "https://polyhaven.com/license"
+  },
+  {
+    "asset": "grass_medium_01",
+    "provider": "Poly Haven",
+    "source": "https://polyhaven.com/a/grass_medium_01",
+    "license": "CC0-1.0",
+    "license_url": "https://polyhaven.com/license"
+  },
+  {
+    "asset": "fern_02",
+    "provider": "Poly Haven",
+    "source": "https://polyhaven.com/a/fern_02",
+    "license": "CC0-1.0",
+    "license_url": "https://polyhaven.com/license"
+  },
+  {
+    "asset": "rock_moss_set_01",
+    "provider": "Poly Haven",
+    "source": "https://polyhaven.com/a/rock_moss_set_01",
+    "license": "CC0-1.0",
+    "license_url": "https://polyhaven.com/license"
+  },
+  {
+    "asset": "forest_ground_04",
+    "provider": "Poly Haven",
+    "source": "https://polyhaven.com/a/forest_ground_04",
+    "license": "CC0-1.0",
+    "license_url": "https://polyhaven.com/license"
+  },
+  {
+    "asset": "rocky_trail",
+    "provider": "Poly Haven",
+    "source": "https://polyhaven.com/a/rocky_trail",
+    "license": "CC0-1.0",
+    "license_url": "https://polyhaven.com/license"
+  },
+  {
+    "asset": "pine_bark",
+    "provider": "Poly Haven",
+    "source": "https://polyhaven.com/a/pine_bark",
+    "license": "CC0-1.0",
+    "license_url": "https://polyhaven.com/license"
+  },
+  {
+    "asset": "rough_wood",
+    "provider": "Poly Haven",
+    "source": "https://polyhaven.com/a/rough_wood",
+    "license": "CC0-1.0",
+    "license_url": "https://polyhaven.com/license"
+  },
+  {
+    "asset": "fabric_pattern_07",
+    "provider": "Poly Haven",
+    "source": "https://polyhaven.com/a/fabric_pattern_07",
+    "license": "CC0-1.0",
+    "license_url": "https://polyhaven.com/license"
+  },
+  {
+    "asset": "rust_coarse_01",
+    "provider": "Poly Haven",
+    "source": "https://polyhaven.com/a/rust_coarse_01",
+    "license": "CC0-1.0",
+    "license_url": "https://polyhaven.com/license"
+  },
+  {
+    "asset": "brown_mud_03",
+    "provider": "Poly Haven",
+    "source": "https://polyhaven.com/a/brown_mud_03",
+    "license": "CC0-1.0",
+    "license_url": "https://polyhaven.com/license"
+  },
+  {
+    "asset": "tree_small_02",
+    "provider": "Poly Haven",
+    "source": "https://polyhaven.com/a/tree_small_02",
+    "license": "CC0-1.0",
+    "license_url": "https://polyhaven.com/license"
+  },
+  {
+    "asset": "dead_tree_trunk_02",
+    "provider": "Poly Haven",
+    "source": "https://polyhaven.com/a/dead_tree_trunk_02",
+    "license": "CC0-1.0",
+    "license_url": "https://polyhaven.com/license"
+  },
+  {
+    "asset": "crocodile",
+    "author": "Micket",
+    "source": "https://opengameart.org/content/crocodile",
+    "download": "https://opengameart.org/sites/default/files/croc2.zip",
+    "license": "CC0-1.0",
+    "modifications": "Normalized geometry, subdivision, weighted anatomical rig, five animation clips; original project shader and animated jaw/eyes/teeth."
+  }
+]

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="WeaponDefinition" format=3 uid="uid://df4p834eacinj"]
+
+[ext_resource type="Script" uid="uid://p5rdgyknvt4y" path="res://data/definitions/weapon_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"double_barrel"
+display_name = "double_barrel"
+description = "double_barrel_desc"
+damage = 18
+cooldown = 1.8
+model_path = "res://actors/equipment/double_barrel.tscn"
+fire_sound = "res://assets/audio/double_barrel.wav"
+pellets = 6
+spread = 0.035
+price = 220
+magazine_size = 2
+reload_seconds = 2.2
+upgrade_price = 70

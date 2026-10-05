@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"bear"
+display_name = "ANIMAL_BEAR"
+model_path = "res://actors/animals/models/bear.tscn"
+max_health = 360
+spawn_weight = 3.0
+aggressive = true
+attack_damage = 30
+walk_speed = 1.7
+run_speed = 7.0
+aggro_range = 38.0
+height = 2.1
+loot_id = &"bear_pelt"

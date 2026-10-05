@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"frog"
+display_name = "ANIMAL_FROG"
+model_path = "res://actors/animals/models/frog.tscn"
+max_health = 32
+spawn_weight = 43.0
+aggressive = false
+attack_damage = 0
+walk_speed = 1.1
+run_speed = 4
+aggro_range = 10.0
+height = 0.35
+length = 0.52
+width = 0.5
+aquatic = true
+loot_id = &"frog_hide"

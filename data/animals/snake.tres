@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"snake"
+display_name = "ANIMAL_SNAKE"
+model_path = "res://actors/animals/models/snake.tscn"
+max_health = 165
+spawn_weight = 16.0
+aggressive = true
+attack_damage = 12
+walk_speed = 1.5
+run_speed = 4.8
+aggro_range = 16.0
+height = 0.35
+length = 2.0
+width = 0.45
+aquatic = false
+loot_id = &"snake_skin"

@@ -1,0 +1,22 @@
+[gd_scene load_steps=5 format=3]
+[ext_resource type="Script" path="res://world/pickups/loot_pickup.gd" id="1"]
+[ext_resource type="Resource" path="res://data/loot/deer_pelt.tres" id="2"]
+[sub_resource type="StandardMaterial3D" id="Mat"]
+albedo_color = Color(0.42, 0.27, 0.14, 1)
+roughness = 1.0
+[sub_resource type="BoxMesh" id="Pelt"]
+size = Vector3(0.62, 0.09, 0.78)
+material = SubResource("Mat")
+[node name="DeerLoot" type="Node3D"]
+script = ExtResource("1")
+loot_definition = ExtResource("2")
+[node name="Pelt" type="MeshInstance3D" parent="."]
+position = Vector3(0, 0.3, 0)
+rotation = Vector3(0, 0.3, 0.08)
+mesh = SubResource("Pelt")
+[node name="Glow" type="OmniLight3D" parent="."]
+position = Vector3(0, 0.6, 0)
+light_color = Color(0.65, 0.88, 0.48, 1)
+light_energy = 0.4
+omni_range = 2.0
+[node name="InteractionPoint" type="Marker3D" parent="."]

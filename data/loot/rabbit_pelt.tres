@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="LootDefinition" format=3 uid="uid://dwe1qbt3dvcgf"]
+
+[ext_resource type="Script" uid="uid://bv3beyo4sk6yk" path="res://data/definitions/loot_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"rabbit_pelt"
+display_name = "rabbit_pelt"

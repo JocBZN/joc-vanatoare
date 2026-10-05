@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BackpackDefinition" format=3 uid="uid://dl2kwulugroxs"]
+
+[ext_resource type="Script" uid="uid://ybj2c0kli2xn" path="res://data/definitions/backpack_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"small"
+display_name = "small"
+model_path = "res://actors/equipment/backpack_small.tscn"

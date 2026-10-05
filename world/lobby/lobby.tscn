@@ -1,0 +1,6 @@
+[gd_scene format=3]
+[ext_resource type="PackedScene" path="res://world/camp/camp.tscn" id="1"]
+[ext_resource type="Script" path="res://art/lobby_art.gd" id="2"]
+[node name="Lobby" type="Node3D"]
+script=ExtResource("2")
+[node name="Camp" parent="." instance=ExtResource("1")]
