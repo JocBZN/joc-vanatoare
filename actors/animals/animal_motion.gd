@@ -16,8 +16,11 @@ func configure(owner_animal: WildlifeAnimal) -> void:
         if bone=="head" or bone.ends_with("_head") or bone.ends_with(":head"): head=index
         if ("spine" in bone or "chest" in bone or bone=="body") and chest<0: chest=index
         var parent:=skeleton.get_bone_parent(index)
-        if "ear" in bone and "tip" not in bone and (parent<0 or "ear" not in skeleton.get_bone_name(parent).to_lower()): ears.append(index)
+        if _is_ear_name(bone) and "tip" not in bone and (parent<0 or not _is_ear_name(skeleton.get_bone_name(parent).to_lower())): ears.append(index)
         if "tail" in bone and tails.size()<2: tails.append(index)
+
+func _is_ear_name(bone: String) -> bool:
+    return bone.begins_with("ear") or "_ear" in bone or ":ear" in bone
 
 func _rotate(index: int, axis: Vector3,angle: float) -> void:
     if index<0: return
@@ -30,7 +33,7 @@ func _process_modification_with_delta(delta: float) -> void:
     var local: Vector3=animal.global_basis.inverse()*(animal.look_target-animal.global_position)
     var desired_yaw: float=clampf(atan2(-local.x,-local.z),-.55,.55)
     if local.z>0: desired_yaw=0
-    var grazing: bool=animal.behavior=="Graze"
+    var grazing: bool=animal.behavior=="Graze" and not animal.clips.has("Graze")
     var desired_pitch: float=.48 if grazing else -.08 if animal.behavior=="Alert" else sin(animal.motion_clock*.8)*.045
     smooth_yaw=lerpf(smooth_yaw,desired_yaw,1-exp(-4*delta))
     smooth_pitch=lerpf(smooth_pitch,desired_pitch,1-exp(-3*delta))

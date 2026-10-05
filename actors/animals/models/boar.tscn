@@ -802,7 +802,7 @@ _data = {
 [node name="Model" type="Node3D" unique_id=1867417281]
 
 [node name="boar" type="Node3D" parent="." unique_id=2083887572]
-transform = Transform3D(0.55626446, 0, 0, 0, 0.55626446, 0, 0, 0, 0.55626446, 0, 0.41329917, 0)
+transform = Transform3D(0.55626446, 0, 0, 0, 0.55626446, 0, 0, 0, 0.55626446, 0, 0.58829917, 0)
 
 [node name="boar_armature" type="Node3D" parent="boar" unique_id=863725542]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.28861147, 0.79747903)

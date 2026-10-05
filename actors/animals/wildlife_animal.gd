@@ -32,6 +32,9 @@ var body_pitch: float=0
 var ground_clock: float=0
 var attack_windup: float=-1
 var attack_victim: int=0
+var attack_sequence: int=0
+static var painted_materials: Dictionary={}
+static var painted_coats: Dictionary={}
 var motion: SkeletonModifier3D
 
 
@@ -55,13 +58,11 @@ func _ready() -> void:
         for candidate in animations:
             if candidate.has_animation("Run"): animation=candidate;break
         if definition.id==&"boar": _boar_states()
-        for clip in animation.get_animation_list():
-            var lower := str(clip).to_lower()
-            for key in ["Idle","Walk","Run","Attack","Die"]:
-                if key.to_lower() in lower or (key=="Idle" and ("basic" in lower or "default" in lower)) or (key=="Die" and "dying_000" in lower): clips[key]=clip
-        if not clips.has("Idle") and not animation.get_animation_list().is_empty(): clips.Idle=animation.get_animation_list()[0]
-        for key in ["Idle","Walk","Run"]:
+        _resolve_clips()
+        for key in ["Idle","Walk","Run","Graze","Alert"]:
             if clips.has(key): animation.get_animation(clips[key]).loop_mode=Animation.LOOP_LINEAR
+        for key in ["Attack","Die"]:
+            if clips.has(key): animation.get_animation(clips[key]).loop_mode=Animation.LOOP_NONE
     var c := CollisionShape3D.new()
     var shape := BoxShape3D.new()
     shape.size=Vector3(definition.width if definition.width>0 else definition.height*.5,definition.height,definition.length if definition.length>0 else definition.height*1.25)
@@ -81,34 +82,84 @@ func _ready() -> void:
     _localize()
     _animate("Idle")
     var skeletons:=model.find_children("*","Skeleton3D",true,false)
-    if not skeletons.is_empty() and definition.id not in [&"crocodile",&"ancient_crocodile"]:
+    if not skeletons.is_empty() and definition.id in [&"rabbit",&"deer",&"boar",&"wolf",&"bear"]:
         motion=load("res://actors/animals/animal_motion.gd").new()
         skeletons[0].add_child(motion);motion.configure(self)
 
-    if definition.id==&"deer":
-        for mesh in model.find_children("*","MeshInstance3D",true,false):
-            var mat:=StandardMaterial3D.new()
-            mat.roughness=.92
-            if mesh.name=="Eyes": mat.albedo_color=Color("20170e")
-            else: mat.albedo_texture=load("res://assets/animals/deer/doe-head.png" if mesh.name=="Head2" else "res://assets/animals/deer/doe-body.png")
-            mesh.material_override=mat
+    _dress_model()
+
+func _resolve_clips() -> void:
+    var aliases: Dictionary={
+        "Idle":["idle","basic","default","rest","breathe"],
+        "Walk":["walk","walking","slither","crawl"],
+        "Run":["run","running","gallop","hop","jump"],
+        "Attack":["attack","bite","headbutt","strike"],
+        "Die":["die","death","dying_000","dying.000","dead"],
+        "Graze":["graze","eating"],"Alert":["alert","guard"]}
+    var names:=animation.get_animation_list()
+    # Exact canonical names win over Idle_HitReact and jump transition clips.
+    for key in aliases:
+        for clip in names:
+            if str(clip).get_slice("/",str(clip).get_slice_count("/")-1).to_lower()==str(key).to_lower():
+                clips[key]=clip;break
+        if clips.has(key): continue
+        for alias in aliases[key]:
+            for clip in names:
+                var lower:=str(clip).to_lower()
+                if alias in lower and "reset" not in lower and "hitreact" not in lower and "toidle" not in lower:
+                    clips[key]=clip;break
+            if clips.has(key): break
+    if definition.id==&"rabbit" and not clips.has("Walk"):
+        for clip in names:
+            if "jump" in str(clip).to_lower(): clips.Walk=clip;break
+
+func _dress_model() -> void:
     for mesh in model.find_children("*","MeshInstance3D",true,false):
+        if not mesh.mesh: continue
+        # The source rabbit's alpha fur cards are photographic; the skinned body remains.
+        if definition.id==&"rabbit" and str(mesh.name).to_lower()=="fur": mesh.hide();continue
         for surface in mesh.mesh.get_surface_count():
             var base: Material=mesh.get_active_material(surface)
-            if base is StandardMaterial3D:
-                var material: StandardMaterial3D=base.duplicate()
-                material.roughness=.9
-                if definition.id==&"rabbit" and "fur" not in str(mesh.name).to_lower():
-                    material.normal_enabled=true;material.normal_texture=load("res://assets/animals/forest/rabbit_rabbit-NORM.png");material.normal_scale=.6
-                elif definition.id==&"bear": material.albedo_color=Color(.42,.28,.16)
-                if material.albedo_texture and definition.id in [&"wolf",&"bear",&"boar"]:
-                    var coat:=ShaderMaterial.new();coat.shader=load("res://art/animal_surface.gdshader")
-                    coat.set_shader_parameter("coat",material.albedo_texture)
-                    coat.set_shader_parameter("detail",GameArt.texture("fabric_pattern_07","nor_gl"))
-                    coat.set_shader_parameter("tint",Color(.64,.68,.64) if definition.id==&"wolf" else material.albedo_color)
-                    coat.set_shader_parameter("back_darkening",.35 if definition.id==&"wolf" else .15)
-                    mesh.set_surface_override_material(surface,coat);GameArt.keep(coat)
-                else: mesh.set_surface_override_material(surface,material);GameArt.keep(material)
+            if not base is StandardMaterial3D: continue
+            var key: String=str(definition.id)+":"+str(mesh.name)+":"+str(surface)+":"+base.resource_name
+            if not painted_materials.has(key):
+                var material:=ShaderMaterial.new();material.shader=load("res://art/animal_surface.gdshader")
+                material.set_shader_parameter("has_coat",base.albedo_texture!=null)
+                if base.albedo_texture: material.set_shader_parameter("coat",_painted_coat(base.albedo_texture))
+                var tint: Color=base.albedo_color
+                if definition.id==&"bear" and base.albedo_texture: tint=Color("98623c")
+                elif definition.id==&"turtle": tint=Color("a2b18e")
+                elif definition.id in [&"crocodile",&"ancient_crocodile"]: tint=Color("768c65") if definition.id==&"crocodile" else Color("657952")
+                material.set_shader_parameter("tint",tint)
+                material.set_shader_parameter("back_darkening",.06)
+                painted_materials[key]=material
+            mesh.material_override=null
+            mesh.set_surface_override_material(surface,painted_materials[key])
+
+func _painted_coat(source: Texture2D) -> Texture2D:
+    if definition.id not in [&"rabbit",&"boar"]: return source
+    var key: String=str(definition.id)+":"+str(source.get_instance_id())
+    if painted_coats.has(key): return painted_coats[key]
+    var image: Image=source.get_image()
+    if image.is_compressed(): image.decompress()
+    image.convert(Image.FORMAT_RGBA8)
+    image.generate_mipmaps()
+    image.resize(96,96,Image.INTERPOLATE_TRILINEAR)
+    for y in image.get_height():
+        for x in image.get_width():
+            var original: Color=image.get_pixel(x,y)
+            var value: float=original.r*.30+original.g*.59+original.b*.11
+            var color: Color
+            if definition.id==&"rabbit":
+                color=Color("c8b99d") if value>.65 else Color("a8987c") if value>.40 else Color("766e60") if value>.18 else Color("36352f")
+            else:
+                color=Color("ddd6c0") if value>.65 else Color("896349") if value>.28 else Color("75523b") if value>.12 else Color("604632")
+            color.a=original.a
+            image.set_pixel(x,y,color)
+    image.generate_mipmaps()
+    var texture:=ImageTexture.create_from_image(image)
+    painted_coats[key]=texture
+    return texture
 
 func _localize() -> void:
     label.text=tr(definition.display_name)
@@ -160,7 +211,8 @@ func _physics_process(delta: float) -> void:
             if attack_clock<=0 and attack_windup<0:
                 attack_clock=1.5;attack_windup=.38 if definition.id!=&"bear" else .55
                 attack_victim=prey.peer_id
-                if animation and clips.has("Attack"): animation.play(clips.Attack,.12)
+                attack_sequence+=1
+                if animation and clips.has("Attack"): _animate("Attack",true)
     elif not definition.aggressive and nearest and (flee_until>0 or distance<9):
         behavior="Flee";look_target=nearest.global_position+Vector3.UP
         heading=(global_position-nearest.global_position).normalized()
@@ -226,15 +278,19 @@ func _avoid_obstacle(direction: Vector3) -> Vector3:
             return candidate
     return direction
 
-func _animate(next: String) -> void:
-    if next==state and animation and animation.is_playing(): return
+func _animate(next: String, restart: bool=false) -> void:
+    var previous: String=state
     state=next
     if not animation: return
+    var presentation: String=next
+    if next=="Idle" and behavior=="Graze" and clips.has("Graze"): presentation="Graze"
+    elif next=="Idle" and behavior=="Alert" and clips.has("Alert"): presentation="Alert"
     var fallback: String="Run" if next=="Walk" else "Walk" if next=="Run" else "Idle"
-    var chosen: String=str(clips.get(next,clips.get(fallback,clips.get("Idle",""))))
+    var chosen: String=str(clips.get(presentation,clips.get(fallback,clips.get("Idle",""))))
     if chosen.is_empty(): return
+    if not restart and animation.assigned_animation==chosen and (animation.is_playing() or (previous==next and next in ["Die","Attack"])): return
     animation.speed_scale=.5 if next=="Walk" and not clips.has("Walk") else 2.2 if next=="Run" and not clips.has("Run") else 1.0
-    animation.play(chosen,.15)
+    animation.play(chosen,.2)
 
 func _boar_states() -> void:
     var skeleton: Skeleton3D=model.find_children("*","Skeleton3D",true,false)[0]
@@ -281,7 +337,7 @@ func take_damage(amount: int, source: Vector3, source_peer: int=0) -> bool:
     return true
 
 func snapshot() -> Dictionary:
-    return {"look":look_target,"behavior":behavior,"pace":movement_speed,"pitch":body_pitch,"clock":motion_clock,"id":animal_id,"kind":String(definition.id),"p":global_position,"r":rotation.y,"hp":health,"dead":dead,"state":state}
+    return {"attack_sequence":attack_sequence,"look":look_target,"behavior":behavior,"pace":movement_speed,"pitch":body_pitch,"clock":motion_clock,"id":animal_id,"kind":String(definition.id),"p":global_position,"r":rotation.y,"hp":health,"dead":dead,"state":state}
 
 func apply_snapshot(data: Dictionary) -> void:
     look_target=data.get("look",data.p+Vector3.FORWARD*10)
@@ -291,7 +347,10 @@ func apply_snapshot(data: Dictionary) -> void:
     health=data.hp
     dead=data.dead
     collision_layer=0 if dead else 4
-    _animate(data.state)
+    var sequence: int=int(data.get("attack_sequence",attack_sequence))
+    var attack_changed: bool=sequence!=attack_sequence and str(data.state)=="Attack"
+    attack_sequence=sequence
+    _animate(data.state,attack_changed)
 
 func _can_see(hunter) -> bool:
     if not _eligible(hunter): return false

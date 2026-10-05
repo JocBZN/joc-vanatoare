@@ -1,0 +1,46 @@
+{
+  "source_mesh": {
+    "path": "assets\\animals\\forest\\bear.glb",
+    "sha256": "7367562ef2bf84e8937b743b5d45c6882d287415f212e917b211a6eecc900599",
+    "author": "STKRudy85",
+    "license": "CC0"
+  },
+  "derived_asset": {
+    "path": "assets\\animals\\stylized\\bear.glb",
+    "sha256": "e295082addad9c4d7ae0f99860239c7174ff88abdf82155b7e0f05c48171db81",
+    "size_bytes": 262056
+  },
+  "authorship": "Source mesh reused; articulated 26-bone rig, anatomical skinning, clean painted palette, eye meshes and all five animations authored for this game.",
+  "export_validation": {
+    "skins": 1,
+    "joint_counts": [
+      26
+    ],
+    "animations": [
+      {
+        "name": "Idle",
+        "channels": 78
+      },
+      {
+        "name": "Walk",
+        "channels": 78
+      },
+      {
+        "name": "Run",
+        "channels": 78
+      },
+      {
+        "name": "Attack",
+        "channels": 78
+      },
+      {
+        "name": "Die",
+        "channels": 78
+      }
+    ],
+    "mesh_primitives": [
+      7
+    ]
+  },
+  "blender_validation": "Blender 4.5.1 background export exit 0. Idle, Walk, Run, Attack and Die rendered and visually inspected with clean continuous geometry. Godot import/runtime validation is performed separately."
+}

@@ -116,7 +116,7 @@ func run() -> void:
         animal.set_physics_process(false);session.remove_animal(animal.animal_id)
     hunter.inventory.items.clear();hunter.inventory.coins=0
     var frog=session.spawn_animal(&"frog",Vector3(60,0,-80));frog.set_physics_process(false)
-    check(frog.model.limbs.size()==4,"frog has independent articulated limbs")
+    check(not frog.model.find_children("*","Skeleton3D",true,false).is_empty() and frog.animation!=null,"frog has imported articulated skeleton and animation")
     frog.take_damage(999,hunter.global_position,1)
     var loot_id=session.loot.keys().back();hunter.global_position=session.loot[loot_id].global_position
     session.request_action("pickup",str(loot_id));check(hunter.inventory.items.size()==1,"Swamp loot can be picked up")

@@ -7,16 +7,16 @@ var labels: Dictionary={}
 var atmosphere: Environment
 
 func _ready() -> void:
-    wood=GameArt.pbr("rough_wood",2).duplicate() as StandardMaterial3D;wood.albedo_color=Color("777f64")
-    var sky_mat:=ProceduralSkyMaterial.new();sky_mat.sky_top_color=Color("243b43");sky_mat.sky_horizon_color=Color("849b88")
-    sky_mat.ground_horizon_color=Color("849b88");sky_mat.ground_bottom_color=Color("162a28")
+    wood=GameArt.pbr("rough_wood",2).duplicate() as StandardMaterial3D;wood.albedo_color=Color.WHITE
+    var sky_mat:=ProceduralSkyMaterial.new();sky_mat.sky_top_color=Color("628a9e");sky_mat.sky_horizon_color=Color("c6d7cc")
+    sky_mat.ground_horizon_color=Color("afc9bd");sky_mat.ground_bottom_color=Color("243b3d")
     var sky:=Sky.new();sky.sky_material=sky_mat
     atmosphere=Environment.new();atmosphere.background_mode=Environment.BG_SKY;atmosphere.sky=sky
-    atmosphere.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR;atmosphere.ambient_light_color=Color("b1c9b8");atmosphere.ambient_light_energy=.5
-    atmosphere.fog_enabled=true;atmosphere.fog_light_color=Color("476456");atmosphere.fog_density=.0032;atmosphere.fog_height=-1;atmosphere.fog_height_density=.13
+    atmosphere.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR;atmosphere.ambient_light_color=Color("b6cccf");atmosphere.ambient_light_energy=.62
+    atmosphere.fog_enabled=true;atmosphere.fog_light_color=Color("a2c3b9");atmosphere.fog_density=.002;atmosphere.fog_height=-1;atmosphere.fog_height_density=.13
     GameArt.cinematic(atmosphere)
     var env:=WorldEnvironment.new();env.environment=atmosphere;add_child(env)
-    var sun:=DirectionalLight3D.new();sun.rotation_degrees=Vector3(-28,-48,0);sun.light_color=Color("bed7bd");sun.light_energy=.9;sun.shadow_enabled=true;sun.directional_shadow_max_distance=120;add_child(sun)
+    var sun:=DirectionalLight3D.new();sun.rotation_degrees=Vector3(-28,-48,0);sun.light_color=Color("f4dfbc");sun.light_energy=1.05;sun.shadow_enabled=true;sun.directional_shadow_max_distance=120;add_child(sun)
     LocaleSettings.changed.connect(_localize)
     var ambient:=AudioStreamPlayer.new()
     var ambience: AudioStreamWAV=load("res://assets/audio/swamp_ambience.wav").duplicate()
@@ -79,7 +79,7 @@ func _landmarks() -> void:
     var shelter:=Node3D.new();shelter.name="LandingShelter";shelter.position=Vector3(8,1.15,4);add_child(shelter)
     for x in [-2,2]:
         for z in [-1.5,1.5]: _box(shelter,Vector3(x,1.6,z),Vector3(.18,3.2,.18),wood,true)
-    var tarp:=GameArt.pbr("fabric_pattern_07",3).duplicate() as StandardMaterial3D;tarp.albedo_color=Color("314438");_box(shelter,Vector3(0,3.2,0),Vector3(4.7,.15,3.8),tarp)
+    var tarp:=GameArt.pbr("fabric_pattern_07",3).duplicate() as StandardMaterial3D;tarp.albedo_color=Color("78934e");_box(shelter,Vector3(0,3.2,0),Vector3(4.7,.15,3.8),tarp)
     _lamp(shelter,Vector3(-1.8,2.6,0))
     _box(shelter,Vector3(0,.5,-.8),Vector3(2,.95,.7),wood,true)
     _boardwalk(Vector3(20,1.36,24),Vector3(20,1.36,-165))

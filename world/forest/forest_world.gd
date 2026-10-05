@@ -5,9 +5,9 @@ var retained_assets: Array[Resource]=[]
 
 func _ready() -> void:
     var sky_material:=ProceduralSkyMaterial.new()
-    sky_material.sky_top_color=Color("59859d")
-    sky_material.sky_horizon_color=Color("c9d6cf")
-    sky_material.ground_horizon_color=Color("bac7b2")
+    sky_material.sky_top_color=Color("609bc3")
+    sky_material.sky_horizon_color=Color("d6e4df")
+    sky_material.ground_horizon_color=Color("aebbaf")
     sky_material.ground_bottom_color=Color("3b4841")
     var sky:=Sky.new();sky.sky_material=sky_material
     var environment:=WorldEnvironment.new()
@@ -15,18 +15,18 @@ func _ready() -> void:
     environment.environment.background_mode=Environment.BG_SKY
     environment.environment.sky=sky
     environment.environment.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR
-    environment.environment.ambient_light_color=Color("c4d1da")
-    environment.environment.ambient_light_energy=.5
+    environment.environment.ambient_light_color=Color("b8ccd9")
+    environment.environment.ambient_light_energy=.62
     environment.environment.tonemap_mode=Environment.TONE_MAPPER_FILMIC
     environment.environment.fog_enabled=true
-    environment.environment.fog_light_color=Color("c1cabe")
-    environment.environment.fog_density=.0014
+    environment.environment.fog_light_color=Color("bbcfd0")
+    environment.environment.fog_density=.0016
     GameArt.cinematic(environment.environment)
     add_child(environment)
     var sunlight:=DirectionalLight3D.new()
     sunlight.rotation_degrees=Vector3(-38,-28,0)
-    sunlight.light_color=Color("fff1d0")
-    sunlight.light_energy=1.35
+    sunlight.light_color=Color("ffe4bd")
+    sunlight.light_energy=1.15
     sunlight.shadow_enabled=true
     sunlight.directional_shadow_max_distance=130
     add_child(sunlight)

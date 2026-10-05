@@ -1,6 +1,6 @@
 # Art sources — stages 08–09
 
-All external art added in these stages is from the authors below under CC0. No paid pack was purchased, and no Quaternius or WildMesh pack was used.
+This file records the original stage 08–09 sources, all CC0. No paid pack was purchased. The October 2026 stylized update adds free Quaternius deer/wolf and OpenGameArt frog/snake/turtle; current models and animation credits are in [stylized wildlife attribution](../animals/stylized/ATTRIBUTION.md).
 
 ## Scanned scenery and PBR materials
 
@@ -19,7 +19,7 @@ Poly Haven: [license and redistribution terms](https://polyhaven.com/license).
 - [tree_small_02](https://polyhaven.com/a/tree_small_02) — CC0.
 - [dead_tree_trunk_02](https://polyhaven.com/a/dead_tree_trunk_02) — CC0.
 
-Fir trees and wetland trees are derived from source Blender models with separate foliage/trunk simplification. Far tree images are renders of the actual source geometry. Grass, fern and moss-covered rocks use the original scans. Textures are genuine downloaded maps, not AI-generated images. Source API metadata is recorded in sources.json; shipped files have SHA-256 hashes in file_manifest.json.
+Fir trees and wetland trees are derived from source Blender models with separate foliage/trunk simplification. Far tree images are renders of the actual source geometry. Originally grass and fern used the scans. The October 2026 update replaces their runtime geometry with chunky stylized blades and fronds; rocks retain source geometry with a painted palette. Textures are genuine downloaded maps, not AI-generated images. Source API metadata is recorded in sources.json; shipped files have SHA-256 hashes in file_manifest.json.
 
 ## Crocodile
 
@@ -27,6 +27,10 @@ Fir trees and wetland trees are derived from source Blender models with separate
 
 ## Original project work
 
-Frog, turtle and snake: native anatomical geometry and species-specific procedural motion, authored for this project. Wetland terrain, water/shore/reed/reptile shaders, huts, tower, walkways, fireflies and synthesized ambience are original project work. They are a playable art foundation, not purchased realistic production animal models. Firearm/backpack/jeep meshes were refined from the project's original geometry; hunter anatomy remains a procedural character.
+The original procedural frog, turtle and snake are superseded by free imported skinned models; see [current animal sources](../animals/stylized/ATTRIBUTION.md). Wetland terrain, water/shore/reed/reptile shaders, huts, tower, walkways, fireflies and synthesized ambience are original project work. They are a playable art foundation, not purchased realistic production animal models. Firearm/backpack/jeep meshes were refined from the project's original geometry; hunter anatomy remains a procedural character.
 
 The pre-existing forest animals keep their separate credits in assets/animals/forest/ATTRIBUTION.md. Source archives used for builds remain in the local work/art_sources directory; only runtime assets are shipped here.
+
+## Stylized update — October 2026
+
+Environment textures are now original procedural painted maps. Source normal maps are disabled for the stylized surfaces. Hunters, equipment, vehicles and wildlife share a simplified palette and rough materials. Source archives stay in ignored work folders; shipped asset attribution and conversion tools are versionable.

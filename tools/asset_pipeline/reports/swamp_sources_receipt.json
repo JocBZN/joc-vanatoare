@@ -1,0 +1,39 @@
+{
+  "frog": {
+    "author": "methodical pixel",
+    "page": "https://opengameart.org/content/frog-low-poly-animated-3d-model",
+    "download": "https://opengameart.org/sites/default/files/frog.tar_0.gz",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "retrieved_date": "2026-10-05",
+    "package_sha256": "4b72b3f4eceb0b15fa8d4f464007a059fc0c2ab6f22b5965230762db614655e8",
+    "blend_sha256": "4bfe5c678529558db3acade949160fe912f2ca4a49d3427fc9c4ece27a307a39",
+    "glb_sha256": "15bfb90b72b3984aaaf67b45eaba80d470f1a6f143aa6ebad386d07e7cd23e98",
+    "local_asset": "assets/animals/stylized/frog.glb"
+  },
+  "snake": {
+    "author": "methodical pixel",
+    "page": "https://opengameart.org/content/snake-low-poly-animated-3d-model",
+    "download": "https://opengameart.org/sites/default/files/snake.tar.gz",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "retrieved_date": "2026-10-05",
+    "package_sha256": "fcadd98c732e39d44af150034d7ba02f9ffe26680ec7e879331f103fa8d279f9",
+    "blend_sha256": "fdfabd55ad7796266d720f21d7fb975f8b2133ca0a629d3dd54faeef06ea3eac",
+    "glb_sha256": "7cc699d392279a7b969d4db7133a939b21d50135fb537636900c61086107a2e0",
+    "local_asset": "assets/animals/stylized/snake.glb"
+  },
+  "turtle": {
+    "author": "Heathal",
+    "page": "https://opengameart.org/content/turtle-0",
+    "download": "https://opengameart.org/sites/default/files/Turtle.blend",
+    "texture_download": "https://opengameart.org/sites/default/files/turtle%20texture.png",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "retrieved_date": "2026-10-05",
+    "package_sha256": "fd0b423698c141a42170fef5172a8c4e695562b7ebb1c6364604904e4d8c94e7",
+    "blend_sha256": "fd0b423698c141a42170fef5172a8c4e695562b7ebb1c6364604904e4d8c94e7",
+    "glb_sha256": "4a04afd694c0323e265647d8a154d6a992ee473a5dec4be9516e689c4748646a",
+    "local_asset": "assets/animals/stylized/turtle.glb"
+  }
+}

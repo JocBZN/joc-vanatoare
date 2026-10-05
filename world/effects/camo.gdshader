@@ -1,11 +1,11 @@
 shader_type spatial;
-render_mode diffuse_lambert;
+render_mode diffuse_toon;
 
-uniform vec4 olive : source_color = vec4(0.24, 0.29, 0.14, 1.0);
-uniform vec4 moss : source_color = vec4(0.14, 0.19, 0.11, 1.0);
-uniform vec4 sand : source_color = vec4(0.42, 0.37, 0.22, 1.0);
+uniform vec4 olive : source_color = vec4(0.39, 0.49, 0.20, 1.0);
+uniform vec4 moss : source_color = vec4(0.23, 0.35, 0.16, 1.0);
+uniform vec4 sand : source_color = vec4(0.70, 0.59, 0.33, 1.0);
 uniform vec4 charcoal : source_color = vec4(0.08, 0.11, 0.075, 1.0);
-uniform float pattern_scale = 2.2;
+uniform float pattern_scale = 1.3;
 uniform sampler2D weave_normal:hint_normal,filter_linear_mipmap,repeat_enable;
 uniform sampler2D weave_rough:filter_linear_mipmap,repeat_enable;
 varying vec3 object_position;
@@ -33,7 +33,5 @@ void fragment() {
 	else if (n < 0.48) { c = moss.rgb; }
 	else if (n > 0.64) { c = sand.rgb; }
 	ALBEDO = c;
-	NORMAL_MAP=texture(weave_normal,UV*3.0).rgb;
-	NORMAL_MAP_DEPTH=.5;
-	ROUGHNESS=clamp(texture(weave_rough,UV*3.0).r,.6,1.0);
+	ROUGHNESS=1.0;SPECULAR=.1;
 }

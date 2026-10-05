@@ -1,0 +1,85 @@
+[
+  {
+    "species": "deer",
+    "author": "Quaternius",
+    "license": "CC0 1.0",
+    "page": "https://poly.pizza/m/T6Cs7tmMHJ",
+    "download": "https://static.poly.pizza/4b6c2a41-43c7-404c-ae37-e8c4645ff93b.glb",
+    "source_sha256": "fabf360b22eaccccd056ee99d698a9562d15aa245821f96e4fbad6db3751604e",
+    "runtime_sha256": "feb1af120055f7d60dec1936970198cfc580cdd67add13d0005187f06e7d24f7",
+    "runtime": "assets/animals/stylized/deer.glb",
+    "scale": 0.3041586443548075,
+    "bounds": [
+      [
+        -0.22188047753081605,
+        0.0,
+        -0.6687399938498869
+      ],
+      [
+        0.22188047753081605,
+        1.2999999999999998,
+        0.6687399938498869
+      ]
+    ],
+    "clips": [
+      "Attack",
+      "Die",
+      "Graze",
+      "HeadLow",
+      "HitLeft",
+      "HitRight",
+      "Jump",
+      "Kick",
+      "Rest",
+      "Run",
+      "RunJump",
+      "Walk",
+      "Idle"
+    ],
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "source_listing_date": "2021-09-07",
+    "retrieved_on": "2026-10-05",
+    "pipeline": "tools/asset_pipeline/normalize_deer_wolf.py"
+  },
+  {
+    "species": "wolf",
+    "author": "Quaternius",
+    "license": "CC0 1.0",
+    "page": "https://poly.pizza/m/P1gU3Qkr9r",
+    "download": "https://static.poly.pizza/f1d12388-e39b-4157-b32a-646a1d089fc4.glb",
+    "source_sha256": "16ac96339d06f7def9af20d5d9b27622d61e53580dab43970c9edb1bffbe8f84",
+    "runtime_sha256": "09811f33d8d33bb2f3ce09e0e21c5663fa96afb67c2b93fda6e8c31f44149c2f",
+    "runtime": "assets/animals/stylized/wolf.glb",
+    "scale": 0.37299339511154306,
+    "bounds": [
+      [
+        -0.19865624907494958,
+        4.336808689942018E-19,
+        -1.0356326016990909
+      ],
+      [
+        0.19865624907494958,
+        1.0,
+        1.0356326016990909
+      ]
+    ],
+    "clips": [
+      "Attack",
+      "Die",
+      "Graze",
+      "HeadLow",
+      "HitLeft",
+      "HitRight",
+      "Jump",
+      "Rest",
+      "Run",
+      "RunJump",
+      "Walk",
+      "Idle"
+    ],
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "source_listing_date": "2021-09-07",
+    "retrieved_on": "2026-10-05",
+    "pipeline": "tools/asset_pipeline/normalize_deer_wolf.py"
+  }
+]

@@ -36,7 +36,7 @@ func run() -> void:
         deterministic=deterministic and before[node.multimesh.mesh.get_instance_id()].is_equal_approx(node.multimesh.get_instance_transform(0))
     check(deterministic,"regenerated vegetation is deterministic")
     check(hunter.visual.get_node("LeftLeg/Knee")!=null,"hunter has articulated knees")
-    check(hunter.visual.get_node("Torso").material_override.normal_enabled,"hunter woven cloth normal map")
+    check(not hunter.visual.get_node("Torso").material_override.normal_enabled,"hunter uses painted cloth without photographic normals")
     for kind in ["rabbit","deer","boar","wolf","bear"]:
         var animal=session.spawn_animal(StringName(kind),Vector3(0,0,-120))
         animal.global_position=Vector3(0,30,-120);animal.set_physics_process(false)
@@ -57,16 +57,24 @@ func run() -> void:
     check(wolf.noise_position==hunter.global_position,"out of range noise ignored")
     wall.queue_free();await frames(3);wolf.global_position=Vector3(0,30,-101.5);wolf.velocity=Vector3.ZERO
     hunter.health=100;wolf.target_peer=0;wolf.attack_clock=0
+    wolf.animation.speed_scale=2.2
     wolf._physics_process(.016)
     check(hunter.health==100 and wolf.attack_windup>0,"melee has visible windup")
+    check(is_equal_approx(wolf.animation.speed_scale,1.0),"host attack resets locomotion playback speed")
     wolf._finish_attack(.5)
     check(hunter.health==100-wolf.definition.attack_damage,"melee damage lands after windup")
     var hp: int=hunter.health;wolf._finish_attack(.5)
     check(hunter.health==hp,"one hit per melee swing")
     var data: Dictionary=wolf.snapshot()
-    check(data.has("look") and data.has("clock") and data.has("behavior") and data.has("pace"),"replicated animal motion metadata")
+    check(data.has("look") and data.has("clock") and data.has("behavior") and data.has("pace") and data.has("attack_sequence"),"replicated animal motion metadata")
     var clone=session.spawn_animal(&"wolf",Vector3(60,0,-100));clone.set_physics_process(false);clone.apply_snapshot(data)
     check(clone.look_target==wolf.look_target and clone.behavior==wolf.behavior,"replica receives focus and behavior")
+    clone.animation.advance(clone.animation.get_animation(clone.clips.Attack).length+1.0)
+    clone.apply_snapshot(data)
+    check(not clone.animation.is_playing(),"same attack snapshot holds the completed swing")
+    data.attack_sequence+=1
+    clone.apply_snapshot(data)
+    check(clone.animation.is_playing() and clone.animation.assigned_animation==clone.clips.Attack,"new attack sequence starts the next swing on clients")
     session.mode="client";clone.hear_noise(Vector3.ZERO,1000)
     check(clone.noise_clock==0,"client cannot author hearing state")
     session.mode="solo"

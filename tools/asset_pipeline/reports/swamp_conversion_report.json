@@ -1,0 +1,163 @@
+{
+  "frog": {
+    "source": "work\\animal_sources\\frog\\frog\\frog.blend",
+    "source_texture": "work\\animal_sources\\frog\\frog\\frog.png",
+    "license": "CC0",
+    "bones": 15,
+    "mesh_vertices": 330,
+    "source_bounds": {
+      "min": [
+        -0.29543814063072205,
+        -0.28237172961235046,
+        -0.012188076972961426
+      ],
+      "max": [
+        0.2954384982585907,
+        0.33818838000297546,
+        0.5397206544876099
+      ]
+    },
+    "normalized_size": {
+      "width": 0.5,
+      "length": 0.52,
+      "height": 0.35
+    },
+    "clips": {
+      "Idle": {
+        "origin": "source",
+        "source_action": "idle",
+        "source_frames": [
+          1.0,
+          24.0
+        ]
+      },
+      "Walk": {
+        "origin": "source",
+        "source_action": "walk",
+        "source_frames": [
+          1.0,
+          24.0
+        ]
+      },
+      "Jump": {
+        "origin": "source",
+        "source_action": "jump",
+        "source_frames": [
+          1.0,
+          12.0
+        ]
+      },
+      "Land": {
+        "origin": "source",
+        "source_action": "land",
+        "source_frames": [
+          1.0,
+          12.0
+        ]
+      },
+      "Run": {
+        "origin": "source_concatenation",
+        "source_actions": [
+          "jump",
+          "land"
+        ]
+      },
+      "Die": {
+        "origin": "authored",
+        "description": "Body settles, rear/front limbs relax, eyes narrow; source skin and rig."
+      }
+    }
+  },
+  "snake": {
+    "source": "work\\animal_sources\\snake\\snake\\snake.blend",
+    "source_texture": "work\\animal_sources\\snake\\snake\\snake.png",
+    "license": "CC0",
+    "bones": 18,
+    "mesh_vertices": 105,
+    "source_bounds": {
+      "min": [
+        -0.05571082979440689,
+        -0.562833309173584,
+        0.011560369282960892
+      ],
+      "max": [
+        0.232542484998703,
+        0.26724326610565186,
+        0.1957017183303833
+      ]
+    },
+    "normalized_size": {
+      "width": 0.45,
+      "length": 2.0,
+      "height": 0.16
+    },
+    "clips": {
+      "Idle": {
+        "origin": "source",
+        "source_action": "idle",
+        "source_frames": [
+          1.0,
+          24.0
+        ]
+      },
+      "Walk": {
+        "origin": "source",
+        "source_action": "walk",
+        "source_frames": [
+          1.0,
+          80.0
+        ]
+      },
+      "Attack": {
+        "origin": "authored",
+        "description": "Short head lift/lunge with counter-motion through anterior vertebrae."
+      },
+      "Die": {
+        "origin": "authored",
+        "description": "Vertebral chain settles into a motionless shallow coil."
+      }
+    }
+  },
+  "turtle": {
+    "source": "work\\animal_sources\\Turtle.blend",
+    "source_texture": "work\\animal_sources\\turtle_texture.png",
+    "license": "CC0",
+    "bones": 19,
+    "mesh_vertices": 188,
+    "source_bounds": {
+      "min": [
+        -0.9672019481658936,
+        -2.360300302505493,
+        -0.06267845630645752
+      ],
+      "max": [
+        0.9952970743179321,
+        1.7222235202789307,
+        1.7480517625808716
+      ]
+    },
+    "normalized_size": {
+      "width": 0.6,
+      "length": 0.85,
+      "height": 0.42
+    },
+    "clips": {
+      "Walk": {
+        "origin": "source",
+        "source_action": "Walking-loop",
+        "source_frames": [
+          0.0,
+          19.0
+        ]
+      },
+      "Idle": {
+        "origin": "authored",
+        "description": "Subtle breathing and small neck/head look motion, legs planted."
+      },
+      "Die": {
+        "origin": "authored",
+        "description": "Cervical joints fold the head toward shell; limbs tuck as motion stops."
+      }
+    }
+  }
+}

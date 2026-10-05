@@ -6,3 +6,6 @@ export_credentials.cfg
 tests/results/
 Thumbs.db
 .DS_Store
+
+# Local source archives, conversion scratch files and visual QA output
+/work/

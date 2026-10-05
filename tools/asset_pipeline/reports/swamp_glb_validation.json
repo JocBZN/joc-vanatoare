@@ -1,0 +1,873 @@
+{
+  "frog": {
+    "bytes": 122212,
+    "skin_joint_count": 15,
+    "skinned_meshes": 1,
+    "clips": {
+      "Die": {
+        "changing_joint_channels": 11,
+        "details": [
+          {
+            "bone": "body",
+            "path": "translation",
+            "variation": 0.065
+          },
+          {
+            "bone": "eye.l",
+            "path": "scale",
+            "variation": 0.15
+          },
+          {
+            "bone": "leg_top_rear.l",
+            "path": "rotation",
+            "variation": 0.09015
+          },
+          {
+            "bone": "leg_bottom_rear.l",
+            "path": "rotation",
+            "variation": 0.08218
+          },
+          {
+            "bone": "leg_top_front.l",
+            "path": "rotation",
+            "variation": 0.092
+          },
+          {
+            "bone": "leg_bottom_front.l",
+            "path": "rotation",
+            "variation": 0.09757
+          },
+          {
+            "bone": "eye.r",
+            "path": "scale",
+            "variation": 0.15
+          },
+          {
+            "bone": "leg_top_rear.r",
+            "path": "rotation",
+            "variation": 0.09015
+          },
+          {
+            "bone": "leg_bottom_rear.r",
+            "path": "rotation",
+            "variation": 0.08218
+          },
+          {
+            "bone": "leg_top_front.r",
+            "path": "rotation",
+            "variation": 1.84193
+          },
+          {
+            "bone": "leg_bottom_front.r",
+            "path": "rotation",
+            "variation": 0.09757
+          }
+        ]
+      },
+      "Idle": {
+        "changing_joint_channels": 15,
+        "details": [
+          {
+            "bone": "body",
+            "path": "rotation",
+            "variation": 0.02784
+          },
+          {
+            "bone": "eye.l",
+            "path": "rotation",
+            "variation": 0.03758
+          },
+          {
+            "bone": "leg_top_rear.l",
+            "path": "rotation",
+            "variation": 0.04095
+          },
+          {
+            "bone": "leg_bottom_rear.l",
+            "path": "rotation",
+            "variation": 0.03111
+          },
+          {
+            "bone": "foot_rear.l",
+            "path": "rotation",
+            "variation": 0.04858
+          },
+          {
+            "bone": "leg_top_front.l",
+            "path": "rotation",
+            "variation": 0.06401
+          },
+          {
+            "bone": "leg_bottom_front.l",
+            "path": "rotation",
+            "variation": 0.20599
+          },
+          {
+            "bone": "foot_front.l",
+            "path": "rotation",
+            "variation": 0.09697
+          },
+          {
+            "bone": "eye.r",
+            "path": "rotation",
+            "variation": 1.61828
+          },
+          {
+            "bone": "leg_top_rear.r",
+            "path": "rotation",
+            "variation": 0.04095
+          },
+          {
+            "bone": "leg_bottom_rear.r",
+            "path": "rotation",
+            "variation": 0.03111
+          },
+          {
+            "bone": "foot_rear.r",
+            "path": "rotation",
+            "variation": 0.04858
+          },
+          {
+            "bone": "leg_top_front.r",
+            "path": "rotation",
+            "variation": 0.06401
+          },
+          {
+            "bone": "leg_bottom_front.r",
+            "path": "rotation",
+            "variation": 0.20599
+          },
+          {
+            "bone": "foot_front.r",
+            "path": "rotation",
+            "variation": 0.09697
+          }
+        ]
+      },
+      "Jump": {
+        "changing_joint_channels": 12,
+        "details": [
+          {
+            "bone": "leg_top_rear.l",
+            "path": "rotation",
+            "variation": 0.79297
+          },
+          {
+            "bone": "leg_bottom_rear.l",
+            "path": "rotation",
+            "variation": 0.77875
+          },
+          {
+            "bone": "foot_rear.l",
+            "path": "rotation",
+            "variation": 1.06984
+          },
+          {
+            "bone": "leg_top_front.l",
+            "path": "rotation",
+            "variation": 0.58638
+          },
+          {
+            "bone": "leg_bottom_front.l",
+            "path": "rotation",
+            "variation": 0.42316
+          },
+          {
+            "bone": "foot_front.l",
+            "path": "rotation",
+            "variation": 0.32244
+          },
+          {
+            "bone": "leg_top_rear.r",
+            "path": "rotation",
+            "variation": 1.6184
+          },
+          {
+            "bone": "leg_bottom_rear.r",
+            "path": "rotation",
+            "variation": 0.77875
+          },
+          {
+            "bone": "foot_rear.r",
+            "path": "rotation",
+            "variation": 1.06984
+          },
+          {
+            "bone": "leg_top_front.r",
+            "path": "rotation",
+            "variation": 0.58638
+          },
+          {
+            "bone": "leg_bottom_front.r",
+            "path": "rotation",
+            "variation": 0.42316
+          },
+          {
+            "bone": "foot_front.r",
+            "path": "rotation",
+            "variation": 0.32244
+          }
+        ]
+      },
+      "Land": {
+        "changing_joint_channels": 12,
+        "details": [
+          {
+            "bone": "leg_top_rear.l",
+            "path": "rotation",
+            "variation": 0.79297
+          },
+          {
+            "bone": "leg_bottom_rear.l",
+            "path": "rotation",
+            "variation": 0.77875
+          },
+          {
+            "bone": "foot_rear.l",
+            "path": "rotation",
+            "variation": 1.06984
+          },
+          {
+            "bone": "leg_top_front.l",
+            "path": "rotation",
+            "variation": 0.58638
+          },
+          {
+            "bone": "leg_bottom_front.l",
+            "path": "rotation",
+            "variation": 0.42316
+          },
+          {
+            "bone": "foot_front.l",
+            "path": "rotation",
+            "variation": 0.32244
+          },
+          {
+            "bone": "leg_top_rear.r",
+            "path": "rotation",
+            "variation": 1.6184
+          },
+          {
+            "bone": "leg_bottom_rear.r",
+            "path": "rotation",
+            "variation": 0.77875
+          },
+          {
+            "bone": "foot_rear.r",
+            "path": "rotation",
+            "variation": 1.06984
+          },
+          {
+            "bone": "leg_top_front.r",
+            "path": "rotation",
+            "variation": 0.58638
+          },
+          {
+            "bone": "leg_bottom_front.r",
+            "path": "rotation",
+            "variation": 0.42316
+          },
+          {
+            "bone": "foot_front.r",
+            "path": "rotation",
+            "variation": 0.32244
+          }
+        ]
+      },
+      "Run": {
+        "changing_joint_channels": 12,
+        "details": [
+          {
+            "bone": "leg_top_rear.l",
+            "path": "rotation",
+            "variation": 0.79297
+          },
+          {
+            "bone": "leg_bottom_rear.l",
+            "path": "rotation",
+            "variation": 0.77875
+          },
+          {
+            "bone": "foot_rear.l",
+            "path": "rotation",
+            "variation": 1.06984
+          },
+          {
+            "bone": "leg_top_front.l",
+            "path": "rotation",
+            "variation": 0.58638
+          },
+          {
+            "bone": "leg_bottom_front.l",
+            "path": "rotation",
+            "variation": 0.42316
+          },
+          {
+            "bone": "foot_front.l",
+            "path": "rotation",
+            "variation": 0.32244
+          },
+          {
+            "bone": "leg_top_rear.r",
+            "path": "rotation",
+            "variation": 1.6184
+          },
+          {
+            "bone": "leg_bottom_rear.r",
+            "path": "rotation",
+            "variation": 0.77875
+          },
+          {
+            "bone": "foot_rear.r",
+            "path": "rotation",
+            "variation": 1.06984
+          },
+          {
+            "bone": "leg_top_front.r",
+            "path": "rotation",
+            "variation": 0.58638
+          },
+          {
+            "bone": "leg_bottom_front.r",
+            "path": "rotation",
+            "variation": 0.42316
+          },
+          {
+            "bone": "foot_front.r",
+            "path": "rotation",
+            "variation": 0.32244
+          }
+        ]
+      },
+      "Walk": {
+        "changing_joint_channels": 15,
+        "details": [
+          {
+            "bone": "body",
+            "path": "rotation",
+            "variation": 0.01297
+          },
+          {
+            "bone": "eye.l",
+            "path": "rotation",
+            "variation": 0.03163
+          },
+          {
+            "bone": "leg_top_rear.l",
+            "path": "rotation",
+            "variation": 0.40593
+          },
+          {
+            "bone": "leg_bottom_rear.l",
+            "path": "rotation",
+            "variation": 0.50962
+          },
+          {
+            "bone": "foot_rear.l",
+            "path": "rotation",
+            "variation": 0.28258
+          },
+          {
+            "bone": "leg_top_front.l",
+            "path": "rotation",
+            "variation": 0.56444
+          },
+          {
+            "bone": "leg_bottom_front.l",
+            "path": "rotation",
+            "variation": 0.32598
+          },
+          {
+            "bone": "foot_front.l",
+            "path": "rotation",
+            "variation": 0.33949
+          },
+          {
+            "bone": "eye.r",
+            "path": "rotation",
+            "variation": 1.61828
+          },
+          {
+            "bone": "leg_top_rear.r",
+            "path": "rotation",
+            "variation": 0.40593
+          },
+          {
+            "bone": "leg_bottom_rear.r",
+            "path": "rotation",
+            "variation": 0.50946
+          },
+          {
+            "bone": "foot_rear.r",
+            "path": "rotation",
+            "variation": 0.29062
+          },
+          {
+            "bone": "leg_top_front.r",
+            "path": "rotation",
+            "variation": 1.59448
+          },
+          {
+            "bone": "leg_bottom_front.r",
+            "path": "rotation",
+            "variation": 0.33996
+          },
+          {
+            "bone": "foot_front.r",
+            "path": "rotation",
+            "variation": 0.31559
+          }
+        ]
+      }
+    }
+  },
+  "snake": {
+    "bytes": 103712,
+    "skin_joint_count": 18,
+    "skinned_meshes": 1,
+    "clips": {
+      "Attack": {
+        "changing_joint_channels": 8,
+        "details": [
+          {
+            "bone": "head",
+            "path": "translation",
+            "variation": 0.11934
+          },
+          {
+            "bone": "head",
+            "path": "rotation",
+            "variation": 0.07138
+          },
+          {
+            "bone": "body",
+            "path": "translation",
+            "variation": 0.03978
+          },
+          {
+            "bone": "body",
+            "path": "rotation",
+            "variation": 0.07208
+          },
+          {
+            "bone": "body1",
+            "path": "rotation",
+            "variation": 0.03634
+          },
+          {
+            "bone": "body2",
+            "path": "rotation",
+            "variation": 0.03276
+          },
+          {
+            "bone": "body3",
+            "path": "rotation",
+            "variation": 0.034
+          },
+          {
+            "bone": "body4",
+            "path": "rotation",
+            "variation": 0.03768
+          }
+        ]
+      },
+      "Die": {
+        "changing_joint_channels": 16,
+        "details": [
+          {
+            "bone": "head",
+            "path": "rotation",
+            "variation": 0.02884
+          },
+          {
+            "bone": "body1",
+            "path": "rotation",
+            "variation": 0.01424
+          },
+          {
+            "bone": "body2",
+            "path": "rotation",
+            "variation": 0.02515
+          },
+          {
+            "bone": "body3",
+            "path": "rotation",
+            "variation": 0.02938
+          },
+          {
+            "bone": "body4",
+            "path": "rotation",
+            "variation": 0.02707
+          },
+          {
+            "bone": "body5",
+            "path": "rotation",
+            "variation": 0.01742
+          },
+          {
+            "bone": "body6",
+            "path": "rotation",
+            "variation": 0.0042
+          },
+          {
+            "bone": "body7",
+            "path": "rotation",
+            "variation": 0.01051
+          },
+          {
+            "bone": "body8",
+            "path": "rotation",
+            "variation": 0.02266
+          },
+          {
+            "bone": "body9",
+            "path": "rotation",
+            "variation": 0.02931
+          },
+          {
+            "bone": "body10",
+            "path": "rotation",
+            "variation": 0.02865
+          },
+          {
+            "bone": "body11",
+            "path": "rotation",
+            "variation": 0.02082
+          },
+          {
+            "bone": "body12",
+            "path": "rotation",
+            "variation": 0.00827
+          },
+          {
+            "bone": "body13",
+            "path": "rotation",
+            "variation": 0.00631
+          },
+          {
+            "bone": "body14",
+            "path": "rotation",
+            "variation": 0.01917
+          },
+          {
+            "bone": "body15",
+            "path": "rotation",
+            "variation": 0.02653
+          }
+        ]
+      },
+      "Idle": {
+        "changing_joint_channels": 13,
+        "details": [
+          {
+            "bone": "head",
+            "path": "translation",
+            "variation": 0.09242
+          },
+          {
+            "bone": "head",
+            "path": "rotation",
+            "variation": 0.01593
+          },
+          {
+            "bone": "body",
+            "path": "rotation",
+            "variation": 0.04519
+          },
+          {
+            "bone": "body2",
+            "path": "rotation",
+            "variation": 0.25308
+          },
+          {
+            "bone": "body3",
+            "path": "rotation",
+            "variation": 0.18588
+          },
+          {
+            "bone": "body5",
+            "path": "rotation",
+            "variation": 0.14882
+          },
+          {
+            "bone": "body8",
+            "path": "rotation",
+            "variation": 0.11041
+          },
+          {
+            "bone": "body10",
+            "path": "rotation",
+            "variation": 0.19077
+          },
+          {
+            "bone": "body11",
+            "path": "rotation",
+            "variation": 0.44066
+          },
+          {
+            "bone": "body12",
+            "path": "rotation",
+            "variation": 0.26351
+          },
+          {
+            "bone": "body13",
+            "path": "rotation",
+            "variation": 0.32932
+          },
+          {
+            "bone": "body14",
+            "path": "rotation",
+            "variation": 0.52871
+          },
+          {
+            "bone": "body15",
+            "path": "rotation",
+            "variation": 0.67321
+          }
+        ]
+      },
+      "Walk": {
+        "changing_joint_channels": 15,
+        "details": [
+          {
+            "bone": "head",
+            "path": "rotation",
+            "variation": 1.41414
+          },
+          {
+            "bone": "body",
+            "path": "rotation",
+            "variation": 1.4142
+          },
+          {
+            "bone": "body1",
+            "path": "rotation",
+            "variation": 0.42453
+          },
+          {
+            "bone": "body2",
+            "path": "rotation",
+            "variation": 0.34199
+          },
+          {
+            "bone": "body3",
+            "path": "rotation",
+            "variation": 0.08768
+          },
+          {
+            "bone": "body5",
+            "path": "rotation",
+            "variation": 0.09159
+          },
+          {
+            "bone": "body6",
+            "path": "rotation",
+            "variation": 0.23057
+          },
+          {
+            "bone": "body7",
+            "path": "rotation",
+            "variation": 0.26285
+          },
+          {
+            "bone": "body8",
+            "path": "rotation",
+            "variation": 0.13655
+          },
+          {
+            "bone": "body10",
+            "path": "rotation",
+            "variation": 0.09837
+          },
+          {
+            "bone": "body11",
+            "path": "rotation",
+            "variation": 0.29266
+          },
+          {
+            "bone": "body12",
+            "path": "rotation",
+            "variation": 0.43704
+          },
+          {
+            "bone": "body13",
+            "path": "rotation",
+            "variation": 0.41952
+          },
+          {
+            "bone": "body14",
+            "path": "rotation",
+            "variation": 0.41148
+          },
+          {
+            "bone": "body15",
+            "path": "rotation",
+            "variation": 0.57448
+          }
+        ]
+      }
+    }
+  },
+  "turtle": {
+    "bytes": 549716,
+    "skin_joint_count": 19,
+    "skinned_meshes": 1,
+    "clips": {
+      "Die": {
+        "changing_joint_channels": 8,
+        "details": [
+          {
+            "bone": "Bone.001",
+            "path": "rotation",
+            "variation": 0.04778
+          },
+          {
+            "bone": "Bone.002",
+            "path": "rotation",
+            "variation": 0.0515
+          },
+          {
+            "bone": "Bone.015",
+            "path": "rotation",
+            "variation": 0.12292
+          },
+          {
+            "bone": "Bone.016",
+            "path": "rotation",
+            "variation": 0.14851
+          },
+          {
+            "bone": "Bone.017",
+            "path": "rotation",
+            "variation": 0.1247
+          },
+          {
+            "bone": "Bone.018",
+            "path": "rotation",
+            "variation": 0.24342
+          },
+          {
+            "bone": "Bone.003",
+            "path": "rotation",
+            "variation": 0.06105
+          },
+          {
+            "bone": "Bone.004",
+            "path": "rotation",
+            "variation": 0.06098
+          }
+        ]
+      },
+      "Idle": {
+        "changing_joint_channels": 3,
+        "details": [
+          {
+            "bone": "Bone",
+            "path": "scale",
+            "variation": 0.018
+          },
+          {
+            "bone": "Bone.016",
+            "path": "rotation",
+            "variation": 0.02445
+          },
+          {
+            "bone": "Bone.018",
+            "path": "rotation",
+            "variation": 0.03295
+          }
+        ]
+      },
+      "Walk": {
+        "changing_joint_channels": 17,
+        "details": [
+          {
+            "bone": "Bone.001",
+            "path": "rotation",
+            "variation": 0.11762
+          },
+          {
+            "bone": "Bone.013",
+            "path": "rotation",
+            "variation": 0.15818
+          },
+          {
+            "bone": "Bone.002",
+            "path": "rotation",
+            "variation": 0.28421
+          },
+          {
+            "bone": "Bone.011",
+            "path": "rotation",
+            "variation": 0.23932
+          },
+          {
+            "bone": "Bone.012",
+            "path": "rotation",
+            "variation": 0.04139
+          },
+          {
+            "bone": "Bone.015",
+            "path": "rotation",
+            "variation": 0.06702
+          },
+          {
+            "bone": "Bone.016",
+            "path": "rotation",
+            "variation": 0.01372
+          },
+          {
+            "bone": "Bone.017",
+            "path": "rotation",
+            "variation": 0.06055
+          },
+          {
+            "bone": "Bone.018",
+            "path": "rotation",
+            "variation": 0.13927
+          },
+          {
+            "bone": "Bone.003",
+            "path": "rotation",
+            "variation": 1.76399
+          },
+          {
+            "bone": "Bone.007",
+            "path": "rotation",
+            "variation": 0.21283
+          },
+          {
+            "bone": "Bone.008",
+            "path": "rotation",
+            "variation": 0.10271
+          },
+          {
+            "bone": "Bone.004",
+            "path": "rotation",
+            "variation": 0.37469
+          },
+          {
+            "bone": "Bone.009",
+            "path": "rotation",
+            "variation": 0.17161
+          },
+          {
+            "bone": "Bone.010",
+            "path": "rotation",
+            "variation": 0.03211
+          },
+          {
+            "bone": "Bone.005",
+            "path": "rotation",
+            "variation": 0.00955
+          },
+          {
+            "bone": "Bone.006",
+            "path": "rotation",
+            "variation": 0.10363
+          }
+        ]
+      }
+    }
+  }
+}
