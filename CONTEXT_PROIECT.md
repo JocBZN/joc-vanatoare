@@ -652,7 +652,7 @@ Verificări rulate local (Linux, Godot 4.7.2; echivalente bash ale scripturilor 
   - în cod: încărcarea de ~500 s cu randare software (3D-ul se randa în timpul construcției); fumul care umplea vederea de pe terasă; punctul de aterizare după scară care redeschidea promptul scării; etichetele suprapuse, numele tăiate și trofeele supraexpuse văzute în capturi. Toate sunt corectate mai sus;
   - în teste: săritura la balustradă se verifica înainte de apex; verificările de tăietură din `verify_harvest` depindeau de ID-ul corpului (boss-ul schimbă ID-urile); numărătorile din `verify_swamp` nu includeau boss-ul; în `verify_bosses`, montajul arenei (pe drum), pragul marginii și un peer fals care bloca startul în mlaștină. Testele au fost corectate și verifică același comportament.
 - Capturi reale cu Xvfb + OpenGL3/llvmpipe (Compatibility), inspectate și salvate în `docs/`:
-  - `tests/preview_hud.gd`: `hud_forest_{foot,map,drive,ride}.png`, `hud_swamp_{foot,map,drive,ride}.png`;
+  - `tests/preview_hud.gd`: `hud_forest_{foot,map,drive,ride}.png` și `hud_swamp_map.png` (celelalte trei capturi din mlaștină au fost inspectate, dar nu salvate);
   - `tests/preview_bosses.gd`: `boss_ancient_bear(_back).png`, `boss_albino_crocodile(_back).png`, `boss_trophies.png`;
   - `tests/preview_base.gd`: `base_*.png`, inclusiv `base_rider.png` (vânător pe terasă în mers).
 

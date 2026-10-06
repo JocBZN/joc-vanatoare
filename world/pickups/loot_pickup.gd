@@ -45,8 +45,8 @@ func _dress_trophy() -> void:
             t.rod(Vector3(0, -.04, 0), Vector3(.02, .26, 0), .055, Color("f6e4dc"), 6, .004)
             t.sphere(Vector3(0, -.04, 0), .06, Color("e8b9b0"), Vector3(1, .5, 1))
         "croc_gastrolith":
-            t.sphere(Vector3(-.06, .04, 0), .085, Color("8aa2b2"), Vector3(1.2, .8, 1), 0.0, 8)
-            t.sphere(Vector3(.07, .03, .04), .065, Color("b7c3c9"), Vector3(1, .75, 1.2), 0.0, 8)
+            t.sphere(Vector3(-.06, .04, 0), .085, Color("4f6170"), Vector3(1.2, .8, 1), 0.0, 8)
+            t.sphere(Vector3(.07, .03, .04), .065, Color("7d6a5a"), Vector3(1, .75, 1.2), 0.0, 8)
         "ancient_harpoon":
             t.rod(Vector3(-.5, .05, 0), Vector3(.45, .05, 0), .022, Color("7a5232"), 6)
             t.rod(Vector3(.45, .05, 0), Vector3(.62, .05, 0), .035, Color("8a4b2a"), 6, .002)
