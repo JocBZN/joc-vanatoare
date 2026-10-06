@@ -18,3 +18,7 @@ length = 2.0
 width = 0.45
 aquatic = false
 loot_id = &"snake_skin"
+harvest_strokes = 6
+harvest_period = 2.3
+harvest_window = 0.25
+harvest_quirks = PackedStringArray("wiggle")

@@ -1,12 +1,26 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="PackedScene" path="res://assets/weapons/stylized/rusty_pistol.glb" id="1_model"]
+[ext_resource type="PackedScene" path="res://assets/weapons/obur/baretta_93r.glb" id="1_model"]
 
 [node name="RustyPistol" type="Node3D"]
+metadata/source_author = "OBUR Games"
+metadata/source_model = "Baretta_93_R"
+metadata/sight_spacing = 0.0038012
 
 [node name="Source" parent="." instance=ExtResource("1_model")]
-rotation_degrees = Vector3(0, 90, 0)
-scale = Vector3(0.045, 0.045, 0.045)
+transform = Transform3D(0.0000000, -0.0217211, 0.0000000, -0.0000000, 0.0000000, 0.0217211, -0.0217211, 0.0000000, -0.0000000, 0.0000000, 0.0025612, -0.0651632)
 
 [node name="Muzzle" type="Marker3D" parent="."]
-position = Vector3(0, 0.03, -0.19)
+position = Vector3(0.0000000, 0.0500000, -0.2135372)
+
+[node name="Grip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, -0.0495694, 0.0000000)
+
+[node name="SupportGrip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, -0.0452252, -0.0477864)
+
+[node name="FrontSight" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0639896, -0.1710969)
+
+[node name="RearSight" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0646195, -0.0124462)

@@ -1,0 +1,37 @@
+{
+  "source": "source/weapon_pack_of_10100_part_1.glb",
+  "source_sha256": "cc515bc1b940ae0106b3a1b817f5b102d0cb0a226cbb4190c6f3652ce641c4cc",
+  "attribution": {
+    "author": "OBUR Games (https://sketchfab.com/OburGames)",
+    "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+    "source": "https://sketchfab.com/3d-models/weapon-pack-of-10100-part-1-79f1c9b1d9d146a6adc7837b01bc22e3",
+    "title": "Weapon Pack of 10/100 Part 1"
+  },
+  "modifications": "Individual groups extracted; presentation transforms removed; meshes and palette unchanged.",
+  "outputs": {
+    "assets/weapons/obur/baretta_93r.glb": "08c3a5ad0af58d7024a232f1d7b89925092e00cf62b9239d19e3c3101c63f9c5",
+    "assets/weapons/obur/fn_scar_l.glb": "e21cdede92a2a7c09d08a9b9cec8722cb3e67c82a57e617092ad14cb8d648c96",
+    "assets/weapons/obur/g36_k.glb": "165eb47b952b673c1270df3714b4ea196182e91ea98e0f4a10d2ab467ddebd40",
+    "assets/weapons/obur/gerber_lmf.glb": "24feb69d2d9521496dfa1bc6617bb3804080da4d9ac614aa3e09340fd32a21ee",
+    "assets/weapons/obur/m24_grenade.glb": "e8344b888a6be572799f450ea44f54bbf0baac8b409b68bdebcc4eaaa8a62d1d",
+    "assets/weapons/obur/rocket.glb": "accf3b768e896f3e8bb7c6cc44a6cd6a43ba43cda6a3c09c74023b10c54bdaa1",
+    "assets/weapons/obur/m72_law.glb": "209b630a7d56a8d99a7921ef5d58b264c2ebf6b4e9c7a8f22ee76143b469d82e",
+    "assets/weapons/obur/mg42.glb": "85fd193d1e87f01fed87fd1e9b5f3c6369b6075a7a4a2c51e5937210cfca68c1",
+    "assets/weapons/obur/maverick_88.glb": "d764f18dea5a48d0104d1b4a50dd587b16bfd5ee377522cb8da249b0e43351f0",
+    "assets/weapons/obur/tarran_tactical.glb": "09b7430afa59e385ecb509dabb2fdfef31bf3b086ad79de366a6d9e74fa0adcc",
+    "assets/weapons/obur/uzi.glb": "b65dd38e7f5d434f71b7695626f96072f415a1eca7c32b8cd4657fb1479282ce",
+    "actors/equipment/rusty_pistol.tscn": "e657eb662d809171d91b8b9ea3c0e3234c2b8b4169daf32263cab9cb9d915112",
+    "actors/equipment/old_rifle.tscn": "57ef9501dfaf20ecd67c29f8d6923d53be8ee2f4e15bcd12a2faf69aba57f9a4",
+    "actors/equipment/double_barrel.tscn": "08f002cd1b72790c5dae5f808aa5682311ec6e19f5d97ec324227ce63214f8d2",
+    "actors/equipment/scrap_blaster.tscn": "100ba8f3479472bf1a1a0548ddec33997b881d68c142a72c22f1c21f57257264",
+    "actors/equipment/beehive.tscn": "c40ea41d33f4d25c9cec969352cf07756880cc9430ceb84f05ad4824ec4df892",
+    "actors/equipment/sniper_rifle.tscn": "5112f30060fb7546f54986f9ee69e36037a41bfcfd5ea938264c07f7005b3ee9",
+    "actors/equipment/thunder_tube.tscn": "519b641aeccf08e6968bc67a1dacd8a5bb035e436666123db3eb4db66fb20181",
+    "actors/equipment/revolver.tscn": "1b567cd8890b25c0c996ae6d46f587f084a4613d2904a8fe19a6ddee6d5ac58d",
+    "actors/equipment/ak_rifle.tscn": "1258ac7679a4e421bb9eed230fff02e782386bad261475e66f4c21216ab951bb",
+    "actors/equipment/railgun.tscn": "54d9625264de3df80b8483eebbf0d82a93b511847795ed48a6914541256f58db",
+    "actors/equipment/raygun.tscn": "6fbaaec46e6c5045b30fd2b92c017b8fd8a0e7bfcdca1dcd2cca94438b8d3873",
+    "actors/equipment/chain_smg.tscn": "81bdb152f35452700eb2ce10a08ef1e9108f071c0cc2e7b5e705951efd56e7db",
+    "actors/equipment/nova_shotgun.tscn": "c9293c9e3024a1ef3bfed91b1df3a331d9ceb3987e536d6e833cd3337b9cd8b6"
+  }
+}

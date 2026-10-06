@@ -1,13 +1,27 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="PackedScene" path="res://assets/weapons/stylized/old_rifle.glb" id="1_model"]
+[ext_resource type="PackedScene" path="res://assets/weapons/obur/fn_scar_l.glb" id="1_model"]
 
 [node name="OldRifle" type="Node3D"]
+metadata/source_author = "OBUR Games"
+metadata/source_model = "FN_SCAR_L"
+metadata/weapon_tint = Color(0.7800000, 0.8400000, 0.7600000, 1.0000000)
+metadata/sight_spacing = 0.0020000
 
 [node name="Source" parent="." instance=ExtResource("1_model")]
-position = Vector3(-0.00029, -0.03078, 0.17846)
-rotation_degrees = Vector3(0, 90, 0)
-scale = Vector3(0.17415, 0.17415, 0.17415)
+transform = Transform3D(0.0000000, -0.0219521, 0.0000000, -0.0000000, 0.0000000, 0.0219521, -0.0219521, 0.0000000, -0.0000000, 0.0000000, 0.0441827, -0.1317125)
 
 [node name="Muzzle" type="Marker3D" parent="."]
-position = Vector3(0, 0.05, -0.45)
+position = Vector3(0.0000000, 0.0500000, -0.5308388)
+
+[node name="Grip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, -0.0436256, 0.0000000)
+
+[node name="SupportGrip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0222306, -0.2195208)
+
+[node name="FrontSight" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.1369836, -0.3331667)
+
+[node name="RearSight" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.1341057, 0.0390967)

@@ -20,6 +20,8 @@ var player_name: String = "Hunter"
 var health: int = 100
 var seat_index: int = -1
 var respawn_clock: float = 0.0
+var harvest_target: int=0
+var harvest_input_guard: bool=false
 var revive_target: int=0
 var revive_progress: float=0
 var revive_helper: int=0
@@ -73,14 +75,19 @@ func _ready() -> void:
 
 func sample_input() -> Dictionary:
     input_sequence+=1
-    var active:=local_player and control_enabled and Input.mouse_mode==Input.MOUSE_MODE_CAPTURED and health>0
+    var active:=local_player and control_enabled and Input.mouse_mode==Input.MOUSE_MODE_CAPTURED and health>0 and harvest_target==0
     var stick:=Input.get_vector("move_left","move_right","move_forward","move_backward") if active else Vector2.ZERO
     var result={"direction":camera_rig.movement_direction(stick),"drive":stick,"sprint":active and Input.is_action_pressed("sprint"),"jump":jump_pending,"aim":camera_rig.aiming,"yaw":camera_rig.rotation.y,"pitch":camera_rig.rotation.x,"brake":active and Input.is_action_pressed("jump"),"seq":input_sequence,"first":camera_rig.is_first_person()}
     revive_target=0
     if active and Input.is_action_pressed("interact") and NetworkSession.world.nearby and NetworkSession.world.nearby.interaction_kind=="revive":
         revive_target=NetworkSession.world.nearby.target_peer()
+    result["harvest"]=harvest_target>0
+    if harvest_target>0:
+        result["blade"]=NetworkSession.local_blade
+        result["bt"]=Time.get_ticks_msec()
+    if harvest_input_guard: result.jump=false
     result["revive"]=revive_target
-    if revive_target>0:
+    if revive_target>0 or harvest_target>0:
         result.direction=Vector3.ZERO;result.drive=Vector2.ZERO;result.jump=false;result.aim=false
     jump_pending=false
     return result
@@ -89,8 +96,10 @@ func _physics_process(delta: float) -> void:
     if NetworkSession.phase=="loading" or not world_ready or (local_player and NetworkSession.local_loaded_epoch!=NetworkSession.world_epoch):
         velocity=Vector3.ZERO
         return
-    if local_player and control_enabled and Input.is_action_just_pressed("reset_player"): NetworkSession.request_action("reset")
-    if local_player and control_enabled and Input.is_action_just_pressed("jump"): jump_pending=true
+    if local_player and harvest_target==0 and not Input.is_action_pressed("fire") and not Input.is_action_pressed("jump"):
+        harvest_input_guard=false
+    if local_player and control_enabled and harvest_target==0 and Input.is_action_just_pressed("reset_player"): NetworkSession.request_action("reset")
+    if local_player and control_enabled and harvest_target==0 and not harvest_input_guard and Input.is_action_just_pressed("jump"): jump_pending=true
     if seat_index>=0:
         _update_visual(delta,0)
         $Visual/LeftLeg.rotation.x=-1.2
@@ -109,20 +118,33 @@ func _physics_process(delta: float) -> void:
         visual.rotation.y=lerp_angle(visual.rotation.y,target_yaw,1-exp(-12*delta))
         _update_visual(delta,minf(velocity.length()/walk_speed,1))
         return
+    if harvest_target>0:
+        velocity.x=0;velocity.z=0;jump_pending=false;revive_target=0
+        command["jump"]=false
+        velocity.y=0 if is_on_floor() else velocity.y-_gravity*delta
+        move_and_slide()
+        _update_visual(delta,0)
+        return
     var data: Dictionary=command
     if local_player:
         var active:=control_enabled and Input.mouse_mode==Input.MOUSE_MODE_CAPTURED and revive_target==0
         var stick:=Input.get_vector("move_left","move_right","move_forward","move_backward") if active and revive_target==0 else Vector2.ZERO
-        data={"direction":camera_rig.movement_direction(stick),"sprint":active and Input.is_action_pressed("sprint"),"jump":active and Input.is_action_just_pressed("jump"),"aim":camera_rig.aiming,"yaw":camera_rig.rotation.y,"first":camera_rig.is_first_person()}
+        data={"direction":camera_rig.movement_direction(stick),"sprint":active and Input.is_action_pressed("sprint"),"jump":active and not harvest_input_guard and Input.is_action_just_pressed("jump"),"aim":camera_rig.aiming,"yaw":camera_rig.rotation.y,"first":camera_rig.is_first_person()}
     var direction: Vector3=data.get("direction",Vector3.ZERO)
     var aiming: bool=bool(data.get("aim",false))
     var speed:=aim_speed if aiming else sprint_speed if data.get("sprint",false) else walk_speed
+    var contact_depth: float=0.0
+    if NetworkSession.phase=="hunt" and is_instance_valid(NetworkSession.forest):
+        contact_depth=NetworkSession.forest.water_submersion(global_position)
+    var pace_factor: float=WaterInteraction.wading_factor(contact_depth)
     if NetworkSession.world_id=="swamp" and is_instance_valid(NetworkSession.forest):
-        speed*=lerpf(1,.52,NetworkSession.forest.mud_factor(global_position))
-    velocity.x=move_toward(velocity.x,direction.x*speed,acceleration*delta)
-    velocity.z=move_toward(velocity.z,direction.z*speed,acceleration*delta)
+        pace_factor=minf(pace_factor,lerpf(1,.52,NetworkSession.forest.mud_factor(global_position)))
+    speed*=pace_factor
+    var water_acceleration: float=acceleration*lerpf(1.0,.62,smoothstep(.08,1.15,contact_depth))
+    velocity.x=move_toward(velocity.x,direction.x*speed,water_acceleration*delta)
+    velocity.z=move_toward(velocity.z,direction.z*speed,water_acceleration*delta)
     if not is_on_floor(): velocity.y-=_gravity*delta
-    elif data.get("jump",false): velocity.y=jump_speed
+    elif data.get("jump",false): velocity.y=jump_speed*lerpf(1.0,.85,smoothstep(.15,1.15,contact_depth))
     command["jump"]=false
     move_and_slide()
     NetworkSession.constrain_to_lobby(self)
@@ -136,7 +158,7 @@ func _physics_process(delta: float) -> void:
     if NetworkSession.is_host() and global_position.y < -20: respawn()
 
 func snapshot() -> Dictionary:
-    return {"id":peer_id,"name":player_name,"p":global_position,"v":velocity,"yaw":visual.rotation.y,"hp":health,"down":respawn_clock,"seat":seat_index,"weapon":String(inventory.equipped_weapon_id),"bag":String(inventory.backpack_id),"levels":inventory.weapon_upgrades.get(String(inventory.equipped_weapon_id),{}),"ammo":inventory.ammunition(),"reload":inventory.reload_remaining,"ready":world_ready,"spawn":spawn_position,"revive":revive_progress,"helper":revive_helper,"pitch":camera_rig.rotation.x,"aim":camera_rig.aiming}
+    return {"id":peer_id,"name":player_name,"p":global_position,"v":velocity,"yaw":visual.rotation.y,"hp":health,"down":respawn_clock,"seat":seat_index,"weapon":String(inventory.equipped_weapon_id),"bag":String(inventory.backpack_id),"levels":inventory.weapon_upgrades.get(String(inventory.equipped_weapon_id),{}),"ammo":inventory.ammunition(),"reload":inventory.reload_remaining,"ready":world_ready,"spawn":spawn_position,"revive":revive_progress,"helper":revive_helper,"harvest_target":harvest_target,"pitch":camera_rig.rotation.x,"aim":camera_rig.aiming}
 
 func apply_snapshot(data: Dictionary) -> void:
     health=data.hp
@@ -144,6 +166,7 @@ func apply_snapshot(data: Dictionary) -> void:
     spawn_position=data.get("spawn",spawn_position)
     respawn_clock=0
     revive_progress=float(data.get("revive",0));revive_helper=int(data.get("helper",0))
+    harvest_target=int(data.get("harvest_target",0))
     velocity=data.v
     target_position=data.p
     target_yaw=data.yaw
@@ -172,7 +195,7 @@ func set_seat(index: int) -> void:
     if index<0 and health>0:
         visual.rotation.x=0
         visual.rotation.z=0
-    camera_rig.enabled=local_player and index<0
+    camera_rig.enabled=local_player and index<0 and harvest_target==0
     if local_player and was_seated and index<0 and not NetworkSession.world.menu.is_open: camera_rig.camera.current=true
 
 func take_damage(amount: int) -> void:

@@ -1,13 +1,26 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="PackedScene" path="res://assets/weapons/stylized/nova_shotgun.glb" id="1_model"]
+[ext_resource type="PackedScene" path="res://assets/weapons/obur/maverick_88.glb" id="1_model"]
 
 [node name="NovaShotgun" type="Node3D"]
+metadata/source_author = "OBUR Games"
+metadata/source_model = "Maverick_88"
+metadata/sight_spacing = 0.0100000
 
 [node name="Source" parent="." instance=ExtResource("1_model")]
-position = Vector3(0.000497, -0.025819, -0.203105)
-rotation_degrees = Vector3(0, 0, 0)
-scale = Vector3(0.4942, 0.4942, 0.4942)
+transform = Transform3D(0.0000000, -0.0235331, 0.0000000, -0.0000000, 0.0000000, 0.0235331, -0.0235331, 0.0000000, -0.0000000, 0.0000000, 0.0179244, -0.2353305)
 
 [node name="Muzzle" type="Marker3D" parent="."]
-position = Vector3(0, 0.05, -0.275)
+position = Vector3(0.0000000, 0.0500000, -0.7989939)
+
+[node name="Grip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, -0.0456148, 0.0000000)
+
+[node name="SupportGrip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0014513, -0.4000619)
+
+[node name="FrontSight" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0735034, -0.7806619)
+
+[node name="RearSight" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0753154, -0.0707168)

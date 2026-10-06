@@ -28,6 +28,7 @@ var _perspective: OptionButton
 var _perspective_label: Label
 var _graphics: OptionButton
 var _graphics_label: Label
+var _weapon_credits: RichTextLabel
 
 func _ready() -> void:
     layer = 20
@@ -90,6 +91,7 @@ func refresh() -> void:
     _graphics.select(["low","medium","high"].find(LocaleSettings.graphics))
     _cinematic.text = tr("CINEMATIC")
     _cinematic.set_pressed_no_signal(LocaleSettings.cinematic)
+    _weapon_credits.text="[center][url=https://sketchfab.com/3d-models/weapon-pack-of-10100-part-1-79f1c9b1d9d146a6adc7837b01bc22e3]Weapon Pack of 10/100 Part 1[/url] · [url=https://sketchfab.com/OburGames]OBUR Games[/url] · [url=https://creativecommons.org/licenses/by/4.0/]CC BY 4.0[/url] · "+tr("WEAPON_MODELS_ADAPTED")+"[/center]"
 
 func _build() -> void:
     _root = Control.new()
@@ -171,6 +173,15 @@ func _build() -> void:
     _quit = _button(Color("29372d"))
     column.add_child(_quit)
     _quit.pressed.connect(func() -> void: get_tree().quit())
+    _weapon_credits=RichTextLabel.new();_root.add_child(_weapon_credits)
+    _weapon_credits.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+    _weapon_credits.offset_left=58;_weapon_credits.offset_right=-58
+    _weapon_credits.offset_top=-30;_weapon_credits.offset_bottom=-7
+    _weapon_credits.bbcode_enabled=true;_weapon_credits.scroll_active=false
+    _weapon_credits.auto_translate_mode=Node.AUTO_TRANSLATE_MODE_DISABLED
+    _weapon_credits.add_theme_font_size_override("normal_font_size",11)
+    _weapon_credits.add_theme_color_override("default_color",Color("b7c4b4"))
+    _weapon_credits.meta_clicked.connect(func(url: Variant) -> void: OS.shell_open(String(url)))
 
 func _label(size: int, color: Color) -> Label:
     var label := Label.new()

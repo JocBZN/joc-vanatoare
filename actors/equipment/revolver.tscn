@@ -1,13 +1,26 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="PackedScene" path="res://assets/weapons/stylized/revolver.glb" id="1_model"]
+[ext_resource type="PackedScene" path="res://assets/weapons/obur/tarran_tactical.glb" id="1_model"]
 
 [node name="Revolver" type="Node3D"]
+metadata/source_author = "OBUR Games"
+metadata/source_model = "Tarran_Tactical"
+metadata/sight_spacing = 0.0061061
 
 [node name="Source" parent="." instance=ExtResource("1_model")]
-position = Vector3(0.0000026, -0.02359, 0.11775)
-rotation_degrees = Vector3(0, 90, 0)
-scale = Vector3(0.1511, 0.1511, 0.1511)
+transform = Transform3D(0.0000000, -0.0203537, 0.0000000, -0.0000000, 0.0000000, 0.0203537, -0.0203537, 0.0000000, -0.0000000, 0.0000000, 0.0219120, -0.0814146)
 
 [node name="Muzzle" type="Marker3D" parent="."]
-position = Vector3(0, 0.04, -0.15)
+position = Vector3(0.0000000, 0.0500000, -0.2357271)
+
+[node name="Grip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, -0.0391490, 0.0000000)
+
+[node name="SupportGrip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, -0.0289722, -0.0488488)
+
+[node name="FrontSight" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0715280, -0.2090931)
+
+[node name="RearSight" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0740315, -0.0062689)

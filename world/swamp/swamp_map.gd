@@ -35,7 +35,10 @@ func height_at(x: float,z: float) -> float:
     var margin_fade: float=smoothstep(400.0,560.0,point.length())
     return wetland+ridge*region*margin_fade*34.0
 
-func water_depth(point: Vector3) -> float: return maxf(0,WATER_LEVEL-height_at(point.x,point.z))
+func water_level_at(_point: Vector3) -> float: return WATER_LEVEL
+func water_depth(point: Vector3) -> float:
+    if absf(point.x) > SIZE * .5 or absf(point.z) > SIZE * .5: return 0.0
+    return maxf(0.0, WATER_LEVEL - height_at(point.x, point.z))
 func route_clear(point: Vector2,margin: float=3.2) -> bool:
     for segment in [[Vector2(20,24),Vector2(20,-165)],[Vector2(20,-155),Vector2(112,-155)],[Vector2(-5,-95),Vector2(-155,-100)]]:
         var a: Vector2=segment[0];var b: Vector2=segment[1]
@@ -67,6 +70,7 @@ func _terrain() -> void:
     if cancelled or not is_inside_tree(): return
     var ground: MeshInstance3D=get_child(0)
     var mat:=ShaderMaterial.new();mat.shader=load("res://world/swamp/swamp_ground.gdshader")
+    mat.set_shader_parameter("water_level", WATER_LEVEL)
     mat.set_shader_parameter("mud_color",GameArt.texture("brown_mud_03","diff"))
     mat.set_shader_parameter("mud_normal",GameArt.texture("brown_mud_03","nor_gl"))
     mat.set_shader_parameter("mud_rough",GameArt.texture("brown_mud_03","arm"))
@@ -74,9 +78,9 @@ func _terrain() -> void:
     mat.set_shader_parameter("bank_normal",GameArt.texture("forest_ground_04","nor_gl"))
     ground.material_override=mat
     water_material=ShaderMaterial.new();water_material.shader=load("res://world/swamp/swamp_water.gdshader")
-    water_material.set_shader_parameter("normal_map",GameArt.texture("brown_mud_03","nor_gl"))
+    _configure_water_material(.55, .22)
     var water:=MeshInstance3D.new();water.name="Water"
-    var plane:=PlaneMesh.new();plane.size=Vector2(SIZE,SIZE);plane.subdivide_width=100;plane.subdivide_depth=100
+    var plane:=PlaneMesh.new();plane.size=Vector2(SIZE,SIZE);plane.subdivide_width=256;plane.subdivide_depth=256
     water.mesh=plane;water.material_override=water_material;water.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;add_child(water)
 
 func _trees() -> void:
@@ -148,9 +152,3 @@ func _plant_sector(key: Vector2i) -> void:
 func _group(groups: Dictionary,id: String,transform: Transform3D) -> void:
     if not groups.has(id): groups[id]=[]
     groups[id].append(transform)
-
-func _process(delta: float) -> void:
-    super._process(delta)
-    if water_material:
-        var hunter=NetworkSession.local_hunter()
-        if is_instance_valid(hunter): water_material.set_shader_parameter("observer",hunter.global_position)

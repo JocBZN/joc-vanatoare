@@ -160,6 +160,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
         state.apply_force(side*tire_force.x+wheel_forward*tire_force.y,offset-up*.28)
     var horizontal:=state.linear_velocity.slide(Vector3.UP)
     state.apply_central_force(-horizontal*(35+2*horizontal.length()+mud*95))
+    _apply_water_forces(state,basis_value)
     if NetworkSession.phase=="lobby":
         var p:=state.transform.origin
         if absf(p.x)>18 or absf(p.z)>17:
@@ -169,6 +170,24 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
     if state.transform.origin.y < -30 or absf(state.transform.origin.x)>595 or absf(state.transform.origin.z)>595:
         state.transform=NetworkSession.world.world_router.jeep_spawn()
         state.linear_velocity=Vector3.ZERO;state.angular_velocity=Vector3.ZERO
+
+func _apply_water_forces(state: PhysicsDirectBodyState3D, basis_value: Basis) -> void:
+    if not NetworkSession.is_host() or NetworkSession.phase!="hunt" or not is_instance_valid(NetworkSession.forest): return
+    var immersion: float=0.0
+    for corner in [Vector3(-.85,.65,-1.35),Vector3(.85,.65,-1.35),Vector3(-.85,.65,1.35),Vector3(.85,.65,1.35)]:
+        var offset: Vector3=basis_value*corner
+        var point: Vector3=state.transform.origin+offset
+        var depth: float=NetworkSession.forest.water_submersion(point)
+        if depth<=0.0: continue
+        var local_velocity: Vector3=state.linear_velocity+state.angular_velocity.cross(offset-basis_value*center_of_mass)
+        var lift: float=WaterInteraction.hull_force(depth,local_velocity.y,mass,state.total_gravity.length())
+        state.apply_force(Vector3.UP*lift,offset)
+        immersion+=clampf(depth/.8,0.0,1.0)*.25
+    if immersion<=0.0: return
+    var horizontal: Vector3=state.linear_velocity.slide(Vector3.UP)
+    # Opposes movement continuously and scales with submerged hull volume.
+    state.apply_central_force(-horizontal*mass*immersion*(.35+.055*horizontal.length()))
+    state.apply_torque(-state.angular_velocity*mass*immersion*.6)
 
 func _unhandled_input(event: InputEvent) -> void:
     var local=NetworkSession.local_hunter()

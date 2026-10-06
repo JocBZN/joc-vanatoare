@@ -150,7 +150,7 @@ func _build_loot_rows() -> void:
     for id: StringName in counts:
         var definition: LootDefinition = definitions[id]
         var quantity: int = counts[id]
-        var button := _row("%s × %d" % [tr(definition.display_name), quantity], LocaleSettings.text("LOOT_DETAIL", {"space": definition.space * quantity, "value": definition.sell_value * quantity}), tr("IN_BAG"))
+        var button := _row("%s × %d" % [definition.localized_name(), quantity], LocaleSettings.text("LOOT_DETAIL", {"space": definition.space * quantity, "value": definition.sell_value * quantity}), tr("IN_BAG"))
         button.disabled = true
     if kind == "sell":
         var sell_button := _button(LocaleSettings.text("SELL_ALL", {"n": inventory.loot_value()}))
@@ -369,5 +369,5 @@ func _build_trunk_rows() -> void:
     for group in counts.values():
         var item: Dictionary=group.data
         var definition:=AnimalCatalog.loot(StringName(item.kind))
-        var button:=_row("%s × %d" % [tr(definition.display_name),group.n],LocaleSettings.text("OWNER",{"name":item.owner})+"  ·  "+str(definition.sell_value*group.n),tr("MY_BAG") if item.mine else item.owner)
+        var button:=_row("%s × %d" % [definition.localized_name(),group.n],LocaleSettings.text("OWNER",{"name":item.owner})+"  ·  "+str(definition.sell_value*group.n),tr("MY_BAG") if item.mine else item.owner)
         button.disabled=true

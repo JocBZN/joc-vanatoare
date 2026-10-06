@@ -44,6 +44,16 @@ var required_players: int=1
 const REVIVE_SECONDS: float=3.0
 var revive_jobs: Dictionary={}
 var health_profiles: Dictionary={}
+const MAX_CORPSES: int=80
+var harvest_jobs: Dictionary={}
+var harvest_views: Dictionary={}
+var local_harvest_state: Dictionary={}
+## Virtual blade driven by the local harvest panel. It is an intention only:
+## the host re-derives every seam and flap and scores it, never trusting a result.
+var local_blade: Vector2=Vector2(.5,.5)
+var harvest_token: int=0
+var harvest_sequence: int=0
+var harvest_received_sequence: int=-1
 
 func _ready() -> void:
     rng.seed=10337
@@ -138,6 +148,7 @@ func leave_game() -> void:
 
 func _clear_world() -> void:
     if OS.get_environment("HUNT_NET_TRACE")=="1": print("TRACE clear world ",mode)
+    _clear_harvests()
     for collection in [players,animals,loot]:
         for node in collection.values():
             node.get_parent().remove_child(node)
@@ -165,6 +176,8 @@ func _peer_connected(peer: int) -> void:
 func _peer_disconnected(peer: int) -> void:
     if OS.get_environment("HUNT_NET_TRACE")=="1": print("TRACE disconnected ",peer," mode ",mode)
     pending_peers.erase(peer)
+    _cancel_harvest(peer,"cancelled",false)
+    harvest_views.erase(peer)
     if players.has(peer):
         if is_host():
             profiles[identities.get(peer,"")]=players[peer].inventory.export_state()
@@ -248,6 +261,7 @@ func _physics_process(delta: float) -> void:
             var p=players[peer]
             if peer!=1 and Time.get_ticks_msec()-int(p.command.get("time",0))>500: p.command={}
             if phase!="loading" and p.inventory.tick_reload(delta): _send_inventory(peer)
+        _tick_harvests(delta)
         _tick_revives(delta)
         if phase=="loading":
             loading_clock-=delta
@@ -272,6 +286,11 @@ func _physics_process(delta: float) -> void:
             for offset in range(0,state.animals.size(),6):
                 var batch: Array=state.animals.slice(offset,offset+6)
                 _broadcast(&"_wildlife_state",[var_to_bytes(batch).compress(FileAccess.COMPRESSION_DEFLATE),animals.keys(),snapshot_sequence,world_epoch])
+            if state.animals.is_empty():
+                # Removing the last harvested corpse still needs a roster update.
+                _broadcast(&"_wildlife_state",[var_to_bytes([]).compress(FileAccess.COMPRESSION_DEFLATE),[],snapshot_sequence,world_epoch])
+            for peer in harvest_jobs.keys()+harvest_views.keys():
+                _send_harvest_state(peer,false)
     if tick>=.05:
         var p=local_hunter()
         if p: send_input(p.sample_input())
@@ -301,9 +320,17 @@ func _accept_input(peer: int, data: Dictionary) -> void:
     var validated={"direction":direction.limit_length(),"drive":drive.limit_length(),"yaw":wrapf(yaw,-PI,PI),"pitch":clampf(pitch,-1,.5),"sprint":bool(data.get("sprint",false)),"aim":bool(data.get("aim",false)),"jump":bool(data.get("jump",false)),"brake":bool(data.get("brake",false)),"time":Time.get_ticks_msec(),"first":bool(data.get("first",false))}
     var target: int=data.get("revive",0) if data.get("revive",0) is int else 0
     validated["revive"]=target
+    validated["harvest"]=bool(data.get("harvest",false))
+    var blade=data.get("blade",null)
+    if blade is Vector2 and blade.is_finite():
+        validated["blade"]=Vector2(clampf(blade.x,-.5,1.5),clampf(blade.y,-.5,1.5))
+        validated["bt"]=int(data.get("bt",0)) if data.get("bt",0) is int else 0
     if target>0:
         validated.direction=Vector3.ZERO;validated.drive=Vector2.ZERO;validated.jump=false;validated.aim=false
+    if is_harvesting(peer):
+        validated.direction=Vector3.ZERO;validated.drive=Vector2.ZERO;validated.jump=false;validated.aim=false;validated.revive=0
     players[peer].command=validated
+    if validated.has("blade") and harvest_jobs.has(peer): _harvest_blade(peer,validated.blade,int(validated.bt))
     if jeep.occupants[0]==peer: jeep.command=validated
 
 func _snapshot() -> Dictionary:
@@ -379,7 +406,8 @@ func _at_stall(p, kind: String) -> bool:
     return false
 
 func _action(peer: int, kind: String, value: String) -> void:
-    if not players.has(peer): return
+    if not is_host() or not players.has(peer): return
+    if kind.length()>40 or value.length()>160: return
     if kind in ["start_hunt","return_lobby","cancel_loading"]:
         if peer!=1 or not is_host(): return
         if kind=="start_hunt" and phase=="lobby":
@@ -393,9 +421,21 @@ func _action(peer: int, kind: String, value: String) -> void:
         elif kind=="return_lobby" and phase=="hunt": _begin_loading("lobby")
         elif kind=="cancel_loading" and phase=="loading" and WorldCatalog.is_hunt(world_id): _begin_loading("lobby")
         return
+    if kind=="harvest_cancel":
+        _cancel_harvest(peer)
+        return
     if phase=="loading" or not players[peer].world_ready or players[peer].health<=0: return
     var p=players[peer]
     var inv=p.inventory
+    if kind=="harvest_start":
+        if value.is_valid_int(): _start_harvest(peer,int(value))
+        return
+    if kind=="harvest_click":
+        _harvest_click(peer,value)
+        return
+    if is_harvesting(peer):
+        if kind in ["reset","enter"]: _cancel_harvest(peer)
+        else: return
     match kind:
         "recover_vehicle":
             if jeep.recover(peer): tell(peer,"JEEP_RECOVERED")
@@ -459,6 +499,7 @@ func _phase_changed(value: String) -> void:
     _set_phase(value)
 
 func _clear_entities() -> void:
+    _clear_harvests()
     for collection in [animals,loot]:
         for node in collection.values():
             node.get_parent().remove_child(node)
@@ -668,6 +709,9 @@ func _notice(key: String, args: Dictionary) -> void:
 func _message(key: String, args: Dictionary) -> String:
     var values:=args.duplicate()
     if values.has("item_key"): values["item"]=tr(values.item_key)
+    if values.has("loot_id"):
+        var item: LootDefinition=AnimalCatalog.loot(StringName(values.loot_id))
+        if item: values["item"]=item.localized_name()
     return LocaleSettings.text(key,values)
 
 func request_shot(origin: Vector3, direction: Vector3) -> void:
@@ -681,7 +725,7 @@ func _shot_command(origin: Vector3, direction: Vector3) -> void:
 func _shoot(peer: int, origin: Vector3, direction: Vector3) -> void:
     if not players.has(peer) or not origin.is_finite() or not direction.is_finite() or direction.length_squared()<.8: return
     var p=players[peer]
-    if phase=="loading" or not p.world_ready: return
+    if phase=="loading" or not p.world_ready or is_harvesting(peer): return
     if p.seat_index>=0 or p.health<=0 or int(p.command.get("revive",0))>0 or origin.distance_to(p.global_position)>8: return
     var now:=Time.get_ticks_msec()
     if now<int(cooldowns.get(peer,0)): return
@@ -746,7 +790,10 @@ func _spawn_near_player() -> void:
         for hunter in players.values():
             if a.global_position.distance_to(hunter.global_position)<280: nearby=true;break
         if not nearby and not a.dead and not a.get_meta("lair_guard",false): remove_animal(id)
-    if animals.size()<40: spawn_animal(AnimalCatalog.roll(rng,world_id).id,point)
+    var living: int=0
+    for animal in animals.values():
+        if not animal.dead: living+=1
+    if living<40: spawn_animal(AnimalCatalog.roll(rng,world_id).id,point)
 
 func spawn_animal(kind: StringName, point: Vector3):
     if not is_instance_valid(forest): return null
@@ -769,6 +816,10 @@ func _make_animal(id: int, kind: String, point: Vector3):
 
 func remove_animal(id: int) -> void:
     if not animals.has(id): return
+    for peer in harvest_jobs.keys():
+        if int(harvest_jobs[peer].id)==id: _cancel_harvest(peer)
+    var interaction=animals[id].get_node_or_null("HarvestInteraction")
+    if interaction: interaction.remove_from_group("lobby_interactables")
     animals[id].queue_free()
     animals.erase(id)
 
@@ -825,9 +876,457 @@ func _broadcast(method: StringName, args: Array) -> void:
 func status_text() -> String:
     return LocaleSettings.text(status_key,status_args)
 
+## Harvest jobs are authoritative and private. Corpse progress stays on the animal,
+## so cancelling, switching players or reconnecting never repairs a damaged hide.
+func is_harvesting(peer: int) -> bool:
+    return harvest_jobs.has(peer) if is_host() else peer==local_id() and bool(local_harvest_state.get("active",false))
+
+func harvest_state(peer: int) -> Dictionary:
+    if not is_host(): return local_harvest_state.duplicate(true) if peer==local_id() else {}
+    if not harvest_jobs.has(peer): return harvest_views.get(peer,{}).duplicate(true)
+    var job: Dictionary=harvest_jobs[peer]
+    var animal=animals.get(int(job.id))
+    if not is_instance_valid(animal): return {}
+    var item: LootDefinition=AnimalCatalog.harvested_loot_wear(animal.definition.loot_id,animal.harvest_wear)
+    var base: LootDefinition=AnimalCatalog.loot(animal.definition.loot_id)
+    # Streamed unreliably at 20 Hz, so it must stay under one MTU: only the live
+    # counters and tuning the current move actually needs travel with it.
+    var move: int=int(job.move)
+    var quirks: PackedStringArray=job.quirks
+    var state: Dictionary={"id":int(job.id),"token":int(job.token),"round":int(job.round),"completed":animal.harvest_completed,"required":int(job.required),
+        "stars":item.stars,"base_value":base.sell_value,"sell_value":item.sell_value,"value_percent":AnimalCatalog.star_percent(item.stars),
+        "animal_kind":String(animal.definition.id),"feedback":String(job.feedback),"fx":int(job.fx),"fx_pos":Vector2(job.fx_pos),"combo":int(job.combo),
+        "active":true,"wear":animal.harvest_wear,"move":move,"step":int(job.step),"move_time":float(job.move_time),"quirks":quirks,"clicks":int(job.clicks),"blade":Vector2(job.blade)}
+    var keys: Array=["difficulty","pressure"]
+    match move:
+        HarvestPattern.MOVE_SLASH:
+            state["hp"]=Array(job.hp).duplicate()
+            keys.append_array(["seams","seam_length","perfect_band","min_speed","directional","seam_hp"])
+        HarvestPattern.MOVE_SCRAPE:
+            state["fat"]=Array(job.fat).duplicate();state["scrape_left"]=float(job.scrape_left)
+            keys.append_array(["fat_count","fat_radius","scrape_time"])
+        HarvestPattern.MOVE_YANK:
+            state["grabbed"]=bool(job.grabbed)
+            keys.append_array(["sweet_width","wobble"])
+    if quirks.has("twitch"): keys.append("twitch_period")
+    if quirks.has("chomp"): keys.append("jaw_period")
+    if quirks.has("ticks") or quirks.has("bees"):
+        keys.append("hazards");state["dead"]=int(job.dead)
+    for key in keys: state[key]=job.tuning[key]
+    return state
+
+## Lays out the next move on the corpse: a slash wave, a fat scrape or a yank.
+## Geometry is regenerated from the body id and step on every peer, so only
+## the live counters (seam health, fat left, grab) ever travel over the network.
+func _prepare_harvest_move(job: Dictionary, animal) -> void:
+    var tuning: Dictionary=animal.definition.harvest_tuning(animal.harvest_completed,int(job.required))
+    job.tuning=tuning
+    job.move=HarvestPattern.move_of(animal.harvest_completed,int(job.strokes),job.quirks)
+    job.step=animal.harvest_completed
+    job.move_time=0.0;job.dead=0;job.grabbed=false;job.scrape_left=0.0
+    job.hp=[];job.fat=[];job.seams=[];job.fat_pos=PackedVector2Array()
+    job.ring=Vector2(.5,.5);job.pull=Vector2.RIGHT
+    var id: int=int(job.id)
+    match int(job.move):
+        HarvestPattern.MOVE_SLASH:
+            var jaw: int=HarvestPattern.jaw_side(id) if job.quirks.has("chomp") else 0
+            job.seams=HarvestPattern.seams(id,int(job.step),int(tuning.seams),float(tuning.seam_length),jaw)
+            for seam in job.seams: job.hp.append(int(tuning.seam_hp))
+        HarvestPattern.MOVE_SCRAPE:
+            job.fat_pos=HarvestPattern.fat(id,int(job.step),int(tuning.fat_count),float(tuning.fat_radius))
+            for blob in job.fat_pos: job.fat.append(1.0)
+            job.scrape_left=float(tuning.scrape_time)
+        HarvestPattern.MOVE_YANK:
+            var flap: Dictionary=HarvestPattern.yank(id,int(job.step))
+            job.ring=flap.ring;job.pull=flap.dir
+
+func _harvest_point(animal) -> Vector3:
+    var interaction=animal.get_node_or_null("HarvestInteraction")
+    return interaction.interaction_position() if interaction else animal.global_position+Vector3.UP*minf(.45,animal.definition.height*.35)
+
+func _can_harvest(peer: int, animal) -> bool:
+    if not is_host() or phase!="hunt" or not players.has(peer) or not is_instance_valid(animal): return false
+    var hunter=players[peer]
+    if not animal.dead or animal.harvested or (animal.harvest_owner!=0 and animal.harvest_owner!=peer): return false
+    if not hunter.world_ready or hunter.health<=0 or hunter.seat_index>=0: return false
+    var point: Vector3=_harvest_point(animal)
+    if hunter.global_position.distance_to(point)>2.8: return false
+    var ray:=PhysicsRayQueryParameters3D.create(hunter.global_position+Vector3.UP*.9,point+Vector3.UP*.1,1|16,[hunter.get_rid(),animal.get_rid()])
+    return hunter.get_world_3d().direct_space_state.intersect_ray(ray).is_empty()
+
+func _start_harvest(peer: int, id: int) -> void:
+    if harvest_jobs.has(peer): return
+    var animal=animals.get(id)
+    if not _can_harvest(peer,animal):
+        tell(peer,"HARVEST_UNAVAILABLE")
+        return
+    var strokes: int=clampi(animal.definition.harvest_strokes,2,16)
+    var required: int=HarvestPattern.total_steps(strokes)
+    var item: LootDefinition=AnimalCatalog.harvested_loot_wear(animal.definition.loot_id,animal.harvest_wear)
+    var hunter=players[peer]
+    if not hunter.inventory.can_collect(item): tell(peer,"FULL_BAG");return
+    harvest_token+=1
+    harvest_jobs[peer]={"id":id,"token":harvest_token,"round":0,"required":required,"strokes":strokes,"epoch":world_epoch,"damage":hunter.damage_version,
+        "feedback":"","feedback_time":0.0,"focus_grace":.75,"fx":0,"fx_pos":Vector2(.5,.5),"combo":0,"best_combo":0,"combo_clock":9.0,
+        "blade":Vector2(.5,.5),"bt":0,"speed":0.0,"clicks":0,"chomp_cycle":-1,"quirks":PackedStringArray(animal.definition.harvest_quirks)}
+    _prepare_harvest_move(harvest_jobs[peer],animal)
+    harvest_views.erase(peer)
+    animal.harvest_owner=peer
+    hunter.harvest_target=id
+    hunter.command["harvest"]=true
+    hunter.command["direction"]=Vector3.ZERO;hunter.command["drive"]=Vector2.ZERO
+    hunter.command["jump"]=false;hunter.command["revive"]=0;hunter.revive_target=0
+    hunter.velocity.x=0;hunter.velocity.z=0
+    _send_harvest_state(peer,true)
+    if animal.harvest_completed>=int(harvest_jobs[peer].required): _complete_harvest(peer)
+
+## Clicks only matter for the yank: one to grab the flap, one to let it fly.
+## The value is "id:token:click:x:y"; the click number only ever increases, so
+## a duplicated or replayed packet can never release the same flap twice.
+func _harvest_click(peer: int, value: String) -> void:
+    if not harvest_jobs.has(peer) or value.length()>80: return
+    var parts: PackedStringArray=value.split(":")
+    if parts.size()!=5: return
+    for i in 3:
+        if not parts[i].is_valid_int(): return
+    if not parts[3].is_valid_float() or not parts[4].is_valid_float(): return
+    var job: Dictionary=harvest_jobs[peer]
+    if int(parts[0])!=int(job.id) or int(parts[1])!=int(job.token) or int(parts[2])<=int(job.clicks) or int(job.epoch)!=world_epoch: return
+    var animal=animals.get(int(job.id))
+    if not _can_harvest(peer,animal) or players[peer].damage_version!=int(job.damage): _cancel_harvest(peer);return
+    if float(job.focus_grace)<=0.0 and not _harvest_focus_valid(peer,job): _cancel_harvest(peer);return
+    var point:=Vector2(float(parts[3]),float(parts[4]))
+    if not point.is_finite(): return
+    point=Vector2(clampf(point.x,-.1,1.1),clampf(point.y,-.1,1.1))
+    # A click lands where the blade already is; it cannot teleport across the hide.
+    if HarvestPattern.metric(point).distance_to(HarvestPattern.metric(job.blade))>.5: return
+    job.clicks=int(parts[2]);job.blade=point
+    if int(job.move)!=HarvestPattern.MOVE_YANK: return
+    var tuning: Dictionary=job.tuning
+    if not bool(job.grabbed):
+        if HarvestPattern.metric(point).distance_to(HarvestPattern.metric(job.ring))<=HarvestPattern.GRAB_RADIUS:
+            job.grabbed=true;_harvest_fx(job,"grab",job.ring)
+        else: _harvest_fx(job,"fumble",point)
+        _send_harvest_state(peer,true)
+        return
+    var tension: float=_yank_tension(job,point)
+    var low: float=HarvestPattern.YANK_SWEET-float(tuning.sweet_width)*.5
+    var high: float=HarvestPattern.YANK_SWEET+float(tuning.sweet_width)*.5
+    if tension<low:
+        # Not enough pull: the flap snaps back into place and must be regrabbed.
+        job.grabbed=false
+        _harvest_penalty(animal,job,15,"boing",point)
+        _send_harvest_state(peer,true)
+        return
+    if tension<=high:
+        _harvest_combo(job)
+        if absf(tension-HarvestPattern.YANK_SWEET)<=float(tuning.sweet_width)*.18: _harvest_fx(job,"flop_perfect",point)
+        else:
+            _harvest_tear(animal,job,10)
+            _harvest_fx(job,"flop",point)
+    else: _harvest_penalty(animal,job,55,"overpull",point)
+    _finish_harvest_step(peer,job,animal)
+
+## Tension the host reads off the flap right now, including the hide fighting
+## back and, on twitchy bodies, the extra kick of a spasm.
+func _yank_tension(job: Dictionary, point: Vector2) -> float:
+    var tuning: Dictionary=job.tuning
+    var wobble: float=float(tuning.wobble)
+    if job.quirks.has("twitch") and HarvestPattern.spasm(int(job.id),float(job.move_time),float(tuning.twitch_period))==2: wobble+=.22
+    return HarvestPattern.yank_tension(job.ring,point,job.pull)+HarvestPattern.yank_wobble(int(job.id),float(job.move_time),wobble)
+
+## Clients stream only the raw blade position and their own sample clock; the
+## host owns every seam, bug, blob and flap and decides each cut itself.
+func _harvest_blade(peer: int, point: Vector2, stamp: int=0) -> void:
+    if not harvest_jobs.has(peer): return
+    var job: Dictionary=harvest_jobs[peer]
+    if int(job.epoch)!=world_epoch: return
+    var animal=animals.get(int(job.id))
+    if not _can_harvest(peer,animal) or players[peer].damage_version!=int(job.damage): _cancel_harvest(peer);return
+    # Blade speed uses the sender's own sample clock, so network jitter cannot
+    # turn a clean flick into a snag. Intervals are clamped to sane values.
+    var delta: float=.05
+    if stamp>0:
+        if stamp<=int(job.bt): return
+        if int(job.bt)>0: delta=clampf(float(stamp-int(job.bt))/1000.0,.01,.35)
+        job.bt=stamp
+    var previous: Vector2=job.blade
+    job.blade=point
+    var a: Vector2=HarvestPattern.metric(previous)
+    var b: Vector2=HarvestPattern.metric(point)
+    job.speed=a.distance_to(b)/delta
+    match int(job.move):
+        HarvestPattern.MOVE_SLASH:
+            var bitten: bool=_harvest_hazards(job,animal,a,b)
+            if not _harvest_slash(peer,job,animal,a,b) and bitten: _send_harvest_state(peer,true)
+        HarvestPattern.MOVE_SCRAPE:
+            var stung: bool=_harvest_hazards(job,animal,a,b)
+            if not _harvest_scrape(peer,job,animal,a,b) and stung: _send_harvest_state(peer,true)
+        HarvestPattern.MOVE_YANK:
+            if bool(job.grabbed) and _yank_tension(job,point)>HarvestPattern.YANK_RIP:
+                # Overstretched past breaking: the hide comes off, in tatters.
+                _harvest_penalty(animal,job,110,"rip",point)
+                _finish_harvest_step(peer,job,animal)
+
+## Ticks and bees are only hurt by a moving knife; a hovering blade passes over.
+func _harvest_hazards(job: Dictionary, animal, a: Vector2, b: Vector2) -> bool:
+    if float(job.speed)<HarvestPattern.HOVER_SPEED: return false
+    var ticks: bool=job.quirks.has("ticks")
+    if not ticks and not job.quirks.has("bees"): return false
+    var count: int=int(job.tuning.hazards)
+    var bugs: PackedVector2Array=HarvestPattern.ticks(int(job.id),int(job.step),float(job.move_time),count) if ticks else HarvestPattern.bees(int(job.id),int(job.step),float(job.move_time),count)
+    var hit: bool=false
+    for i in bugs.size():
+        if int(job.dead)&(1<<i): continue
+        if HarvestPattern.segment_distance(a,b,HarvestPattern.metric(bugs[i]))>HarvestPattern.HAZARD_RADIUS: continue
+        job.dead=int(job.dead)|(1<<i)
+        _harvest_penalty(animal,job,35 if ticks else 45,"splat" if ticks else "sting",bugs[i])
+        hit=true
+    return hit
+
+## A flick through a seam cuts it. Too slow snags, the wrong way tears, and a
+## kicking corpse throws the blade. Returns whether anything was decided.
+func _harvest_slash(peer: int, job: Dictionary, animal, a: Vector2, b: Vector2) -> bool:
+    var speed: float=float(job.speed)
+    if speed<HarvestPattern.HOVER_SPEED: return false
+    var tuning: Dictionary=job.tuning
+    var id: int=int(job.id)
+    var time: float=float(job.move_time)
+    var kicking: bool=job.quirks.has("twitch") and HarvestPattern.spasm(id,time,float(tuning.twitch_period))==2
+    var changed: bool=false
+    for i in job.seams.size():
+        if int(job.hp[i])<=0: continue
+        var seam: Dictionary=job.seams[i]
+        var offset: Vector2=HarvestPattern.drift(job.quirks,id,time,seam.c)
+        var hit: Array=HarvestPattern.crossing(a,b,HarvestPattern.seam_ends(seam,float(tuning.seam_length),offset))
+        if hit.is_empty(): continue
+        var at: Vector2=Vector2(seam.c)+offset
+        changed=true
+        if kicking:
+            # Cutting into a kicking corpse: the blade skids right across the hide.
+            _harvest_penalty(animal,job,40,"spasm",at)
+            break
+        if speed<float(tuning.min_speed):
+            _harvest_penalty(animal,job,10,"snag",at)
+            continue
+        if bool(tuning.directional) and (b-a).dot(HarvestPattern.seam_normal(seam))<0.0:
+            _harvest_penalty(animal,job,20,"wrong_way",at)
+            continue
+        job.hp[i]=int(job.hp[i])-1
+        _harvest_combo(job)
+        if int(job.hp[i])>0:
+            _harvest_fx(job,"crack",at)
+            continue
+        var edge: float=absf(float(hit[0]))
+        var band: float=float(tuning.perfect_band)
+        if edge<=band: _harvest_fx(job,"perfect",at)
+        else:
+            _harvest_tear(animal,job,int(round(lerpf(4.0,20.0,(edge-band)/maxf(.01,1.0-band)))))
+            _harvest_fx(job,"cut",at)
+    if not changed: return false
+    for value in job.hp:
+        if int(value)>0:
+            _send_harvest_state(peer,true)
+            return true
+    _finish_harvest_step(peer,job,animal)
+    return true
+
+## Scrubbing: every bit of blade travel over a blob wears the fat down.
+func _harvest_scrape(peer: int, job: Dictionary, animal, a: Vector2, b: Vector2) -> bool:
+    var radius: float=float(job.tuning.fat_radius)*1.15
+    var travel: float=a.distance_to(b)
+    if travel<=0.0: return false
+    var worked: bool=false
+    var cleared: bool=false
+    for i in job.fat.size():
+        if float(job.fat[i])<=0.0: continue
+        var centre: Vector2=HarvestPattern.metric(job.fat_pos[i])
+        var inside: float=0.0
+        for k in 8:
+            if a.lerp(b,(float(k)+.5)/8.0).distance_to(centre)<=radius: inside+=travel/8.0
+        if inside<=0.0: continue
+        worked=true
+        job.fat[i]=float(job.fat[i])-inside*HarvestPattern.SCRAPE_RATE
+        if float(job.fat[i])<=0.0:
+            job.fat[i]=0.0;cleared=true
+            _harvest_combo(job)
+            _harvest_fx(job,"scraped",job.fat_pos[i])
+    if not worked: return false
+    for value in job.fat:
+        if float(value)>0.0:
+            _send_harvest_state(peer,cleared)
+            return true
+    _harvest_fx(job,"clean",Vector2(.5,.5))
+    _finish_harvest_step(peer,job,animal)
+    return true
+
+func _harvest_combo(job: Dictionary) -> void:
+    job.combo=int(job.combo)+1 if float(job.combo_clock)<=HarvestPattern.COMBO_WINDOW else 1
+    job.combo_clock=0.0
+    job.best_combo=maxi(int(job.best_combo),int(job.combo))
+
+## Every visible event gets a fresh counter so the panel pops it exactly once.
+func _harvest_fx(job: Dictionary, feedback: String, at: Vector2) -> void:
+    job.feedback=feedback;job.feedback_time=.8
+    job.fx=int(job.fx)+1;job.fx_pos=at
+
+func _harvest_penalty(animal, job: Dictionary, amount: int, feedback: String, at: Vector2) -> void:
+    _harvest_tear(animal,job,amount)
+    animal.harvest_mistakes+=1
+    job.combo=0
+    _harvest_fx(job,feedback,at)
+
+func _harvest_tear(animal, job: Dictionary, amount: int) -> void:
+    if amount<=0: return
+    animal.harvest_wear=clampi(animal.harvest_wear+amount,0,1000)
+
+## One slash wave, scrape or yank finished. Progress lives on the corpse so
+## handing the body over never rewinds or repairs the work.
+func _finish_harvest_step(peer: int, job: Dictionary, animal) -> void:
+    animal.harvest_completed+=1
+    job.round=int(job.round)+1
+    if animal.harvest_completed>=int(job.required):
+        _complete_harvest(peer)
+        return
+    _prepare_harvest_move(job,animal)
+    _send_harvest_state(peer,true)
+
+func _complete_harvest(peer: int) -> void:
+    if not harvest_jobs.has(peer): return
+    var job: Dictionary=harvest_jobs[peer]
+    var animal=animals.get(int(job.id))
+    if not _can_harvest(peer,animal) or players[peer].damage_version!=int(job.damage): _cancel_harvest(peer);return
+    if animal.harvest_completed<int(job.required): return
+    var item: LootDefinition=AnimalCatalog.harvested_loot_wear(animal.definition.loot_id,animal.harvest_wear)
+    if not players[peer].inventory.can_collect(item):
+        tell(peer,"FULL_BAG");_cancel_harvest(peer,"full_bag");return
+    var finished: Dictionary=harvest_state(peer)
+    # Commit corpse consumption before the inventory signal, so repeated requests
+    # can never award the same hide twice. Existing cargo uses the same quality ID.
+    animal.harvested=true;animal.harvest_owner=0
+    harvest_jobs.erase(peer)
+    players[peer].harvest_target=0;players[peer].command["harvest"]=false
+    players[peer].inventory.collect(item)
+    _send_inventory(peer)
+    finished["active"]=false;finished["feedback"]="complete";finished["feedback_time"]=1.2
+    finished["remaining"]=1.2;finished["fx"]=int(finished.get("fx",0))+1;finished["fx_pos"]=Vector2(.5,.5)
+    harvest_views[peer]=finished
+    _send_harvest_state(peer,true)
+    remove_animal(animal.animal_id)
+
+func _cancel_harvest(peer: int, feedback: String="cancelled", publish: bool=true) -> void:
+    if not harvest_jobs.has(peer):
+        if players.has(peer): players[peer].harvest_target=0
+        return
+    var finished: Dictionary=harvest_state(peer)
+    var animal=animals.get(int(harvest_jobs[peer].id))
+    if is_instance_valid(animal) and animal.harvest_owner==peer: animal.harvest_owner=0
+    harvest_jobs.erase(peer)
+    if players.has(peer):
+        players[peer].harvest_target=0;players[peer].command["harvest"]=false
+    if publish:
+        finished["active"]=false;finished["feedback"]=feedback;finished["feedback_time"]=1.2;finished["remaining"]=1.2
+        harvest_views[peer]=finished
+        _send_harvest_state(peer,true)
+
+func _clear_harvests() -> void:
+    for peer in harvest_jobs.keys(): _cancel_harvest(peer,"cancelled",false)
+    harvest_jobs.clear();harvest_views.clear();local_harvest_state.clear()
+    harvest_received_sequence=-1
+    local_blade=Vector2(.5,.5)
+    for hunter in players.values(): hunter.harvest_target=0
+
+func _tick_harvests(delta: float) -> void:
+    if not is_host(): return
+    for peer in harvest_views.keys():
+        harvest_views[peer].remaining=float(harvest_views[peer].remaining)-delta
+        if float(harvest_views[peer].remaining)<=0:
+            harvest_views.erase(peer);_send_harvest_state(peer,true)
+    for peer in harvest_jobs.keys():
+        var job: Dictionary=harvest_jobs[peer]
+        var hunter=players.get(peer)
+        var animal=animals.get(int(job.id))
+        if int(job.epoch)!=world_epoch or not _can_harvest(peer,animal) or hunter.damage_version!=int(job.damage):
+            _cancel_harvest(peer);continue
+        job.focus_grace=maxf(0.0,float(job.focus_grace)-delta)
+        if not _harvest_focus_valid(peer,job) and float(job.focus_grace)<=0.0:
+            _cancel_harvest(peer);continue
+        job.move_time=float(job.move_time)+delta
+        job.combo_clock=float(job.combo_clock)+delta
+        job.feedback_time=maxf(0.0,float(job.feedback_time)-delta)
+        if float(job.feedback_time)<=0.0: job.feedback=""
+        _tick_harvest_move(peer,job,animal,delta)
+
+## Clock-driven parts of a move: setting fat and the crocodile's reflex bite.
+## Both judge the blade where the host last saw it, so standing still in the
+## jaw zone is exactly as dangerous as swiping through it.
+func _tick_harvest_move(peer: int, job: Dictionary, animal, delta: float) -> void:
+    var id: int=int(job.id)
+    if int(job.move)==HarvestPattern.MOVE_SCRAPE:
+        job.scrape_left=float(job.scrape_left)-delta
+        if float(job.scrape_left)<=0.0:
+            var left: float=0.0
+            for value in job.fat: left+=maxf(0.0,float(value))
+            if left>0.0: _harvest_penalty(animal,job,int(round(left*35.0)),"fat_left",Vector2(.5,.5))
+            _finish_harvest_step(peer,job,animal)
+            return
+    if job.quirks.has("chomp") and int(job.move)!=HarvestPattern.MOVE_YANK:
+        var period: float=float(job.tuning.jaw_period)
+        var time: float=float(job.move_time)
+        if HarvestPattern.jaw_state(id,time,period)==2 and HarvestPattern.in_jaw(job.blade,HarvestPattern.jaw_side(id)):
+            var cycle: int=HarvestPattern.jaw_cycle(id,time,period)
+            if cycle!=int(job.chomp_cycle):
+                job.chomp_cycle=cycle
+                _harvest_penalty(animal,job,70,"chomp",job.blade)
+                _send_harvest_state(peer,true)
+
+func _harvest_focus_valid(peer: int, job: Dictionary) -> bool:
+    var hunter=players.get(peer)
+    if not is_instance_valid(hunter): return false
+    if hunter.local_player: return hunter.control_enabled and hunter.harvest_target==int(job.id)
+    return bool(hunter.command.get("harvest",false)) and Time.get_ticks_msec()-int(hunter.command.get("time",0))<=500
+
+func _send_harvest_state(peer: int, reliable: bool) -> void:
+    if mode!="host" or peer==local_id() or not _peer_ready(peer): return
+    harvest_sequence+=1
+    var data: Dictionary=harvest_state(peer)
+    if reliable: _harvest_changed.rpc_id(peer,data,world_epoch,harvest_sequence)
+    else: _harvest_progress.rpc_id(peer,data,world_epoch,harvest_sequence)
+
+@rpc("authority","call_remote","reliable",0)
+func _harvest_changed(data: Dictionary, epoch: int, sequence: int) -> void:
+    _apply_harvest_state(data,epoch,sequence)
+
+@rpc("authority","call_remote","unreliable_ordered",1)
+func _harvest_progress(data: Dictionary, epoch: int, sequence: int) -> void:
+    _apply_harvest_state(data,epoch,sequence)
+
+func _apply_harvest_state(data: Dictionary, epoch: int, sequence: int) -> void:
+    if mode!="client" or epoch!=world_epoch or local_loaded_epoch!=epoch or phase!="hunt" or sequence<=harvest_received_sequence: return
+    harvest_received_sequence=sequence
+    local_harvest_state=data.duplicate(true)
+    if not local_harvest_state.is_empty(): local_harvest_state["received_at"]=Time.get_ticks_msec()/1000.0
+    var hunter=local_hunter()
+    if hunter: hunter.harvest_target=int(data.get("id",0)) if bool(data.get("active",false)) else 0
+
+func animal_died() -> void:
+    if not is_host(): return
+    var corpses: Array=[]
+    var total: int=0
+    for animal in animals.values():
+        if not animal.dead: continue
+        total+=1
+        if animal.harvest_owner==0: corpses.append(animal)
+    corpses.sort_custom(func(a,b) -> bool: return a.death_clock>b.death_clock)
+    while total>MAX_CORPSES and not corpses.is_empty():
+        var oldest=corpses.pop_front()
+        remove_animal(oldest.animal_id)
+        total-=1
+
 func _can_revive(helper, target) -> bool:
     if phase=="loading" or not is_instance_valid(helper) or not is_instance_valid(target): return false
     if helper==target or helper.health<=0 or target.health>0 or helper.seat_index>=0: return false
+    if is_harvesting(helper.peer_id): return false
     if not helper.world_ready or not target.world_ready: return false
     var point: Vector3=target.get_node("ReviveInteraction").interaction_position()
     if helper.global_position.distance_to(point)>3: return false

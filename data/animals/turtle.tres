@@ -17,3 +17,7 @@ length = 0.85
 width = 0.8
 aquatic = true
 loot_id = &"turtle_shell"
+harvest_strokes = 4
+harvest_period = 2.55
+harvest_window = 0.3
+harvest_quirks = PackedStringArray("shell")

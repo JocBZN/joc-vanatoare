@@ -119,8 +119,26 @@ func run() -> void:
     var frog=session.spawn_animal(&"frog",Vector3(60,0,-80));frog.set_physics_process(false)
     check(not frog.model.find_children("*","Skeleton3D",true,false).is_empty() and frog.animation!=null,"frog has imported articulated skeleton and animation")
     frog.take_damage(999,hunter.global_position,1)
-    var loot_id=session.loot.keys().back();hunter.global_position=session.loot[loot_id].global_position
-    session.request_action("pickup",str(loot_id));check(hunter.inventory.items.size()==1,"Swamp loot can be picked up")
+    hunter.set_physics_process(false)
+    hunter.control_enabled=true # Restore input after the isolated predator checks.
+    hunter.global_position=frog.global_position+Vector3(1.5,0,0)
+    session.set_physics_process(false)
+    session.request_action("harvest_start",str(frog.animal_id))
+    check(session.is_harvesting(1),"Swamp corpse begins a manual harvest")
+    # Frogs take two slippery slash waves and one yank, played through the host.
+    var bot=load("res://tests/harvest_bot.gd")
+    var clock: Dictionary={}
+    for i in 3:
+        hunter.command={"harvest":true,"time":Time.get_ticks_msec()}
+        if not bool(session.harvest_state(1).get("active",false)): break
+        bot.play_step(func() -> Dictionary: return session.harvest_state(1),
+            func(point: Vector2, stamp: int) -> void: session._harvest_blade(1,point,stamp),
+            func(value: String) -> void: session.request_action("harvest_click",value),
+            func(seconds: float) -> void: hunter.command={"harvest":true,"time":Time.get_ticks_msec()};session._tick_harvests(seconds),
+            clock)
+        check(frog.harvest_completed==i+1,"manual Swamp step "+str(i+1)+" advances once")
+    check(frog.harvested and hunter.inventory.items.size()==1,"Swamp loot requires manual cuts on the animal")
+    session.set_physics_process(true);hunter.set_physics_process(true)
     hunter.global_position=session.jeep.to_global(Vector3(0,.2,2.55));session.request_action("deposit")
     check(session.trunk.size()==1 and hunter.inventory.items.is_empty(),"Swamp loot enters owned shared cargo")
     session.request_action("return_lobby");await loaded()
@@ -129,7 +147,8 @@ func run() -> void:
     for stall in get_nodes_in_group("lobby_interactables"):
         if stall.interaction_kind=="sell": seller=stall
     session.jeep.reset_state(Transform3D(Basis.IDENTITY,seller.global_position+Vector3(4,.6,0)));hunter.global_position=seller.interaction_position()
-    session.request_action("sell_trunk");check(hunter.inventory.coins==18 and session.trunk.is_empty(),"seller pays individual owner for Swamp loot")
+    var pristine: int=AnimalCatalog.loot(&"frog_hide__s5").sell_value
+    session.request_action("sell_trunk");check(hunter.inventory.coins==pristine and session.trunk.is_empty(),"seller pays owner for pristine Swamp loot")
     var wallet: int=hunter.inventory.coins
     var fire=scene.world_router.active.get_node("Camp/GiantCampfire/Expedition")
     hunter.global_position=fire.global_position+Vector3(0,.5,3.4);session.request_action("start_hunt","forest");await loaded()

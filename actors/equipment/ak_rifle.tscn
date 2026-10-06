@@ -1,13 +1,26 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="PackedScene" path="res://assets/weapons/stylized/ak_rifle.glb" id="1_model"]
+[ext_resource type="PackedScene" path="res://assets/weapons/obur/fn_scar_l.glb" id="1_model"]
 
 [node name="AkRifle" type="Node3D"]
+metadata/source_author = "OBUR Games"
+metadata/source_model = "FN_SCAR_L"
+metadata/sight_spacing = 0.0020263
 
 [node name="Source" parent="." instance=ExtResource("1_model")]
-position = Vector3(0, -0.00993, 0.16709)
-rotation_degrees = Vector3(0, 90, 0)
-scale = Vector3(0.1547, 0.1547, 0.1547)
+transform = Transform3D(0.0000000, -0.0253293, 0.0000000, -0.0000000, 0.0000000, 0.0253293, -0.0253293, 0.0000000, -0.0000000, 0.0000000, 0.0432877, -0.1519759)
 
 [node name="Muzzle" type="Marker3D" parent="."]
-position = Vector3(0, 0.05, -0.425)
+position = Vector3(0.0000000, 0.0500000, -0.6121986)
+
+[node name="Grip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, -0.0580296, 0.0000000)
+
+[node name="SupportGrip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0179584, -0.2532932)
+
+[node name="FrontSight" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.1501349, -0.3844231)
+
+[node name="RearSight" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.1468142, 0.0451115)

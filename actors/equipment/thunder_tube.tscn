@@ -1,13 +1,27 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="PackedScene" path="res://assets/weapons/stylized/thunder_tube.glb" id="1_model"]
+[ext_resource type="PackedScene" path="res://assets/weapons/obur/m72_law.glb" id="1_model"]
 
 [node name="ThunderTube" type="Node3D"]
+metadata/source_author = "OBUR Games"
+metadata/source_model = "M_72_LAW"
+metadata/weapon_tint = Color(0.7300000, 0.8700000, 1.0000000, 1.0000000)
+metadata/sight_spacing = 0.0069483
 
 [node name="Source" parent="." instance=ExtResource("1_model")]
-position = Vector3(0, -0.067398, -0.075869)
-rotation_degrees = Vector3(0, 180, 0)
-scale = Vector3(0.10413, 0.10413, 0.10413)
+transform = Transform3D(0.0000000, -0.0173707, 0.0000000, -0.0000000, 0.0000000, 0.0173707, -0.0173707, 0.0000000, -0.0000000, 0.0000000, 0.0707927, -0.0000000)
 
 [node name="Muzzle" type="Marker3D" parent="."]
-position = Vector3(0, 0.04, -0.25)
+position = Vector3(0.0000000, 0.0500000, -0.4450715)
+
+[node name="Grip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, -0.0073753, 0.0000000)
+
+[node name="SupportGrip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0186807, -0.2084478)
+
+[node name="FrontSight" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.1605339, -0.3647837)
+
+[node name="RearSight" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.1605339, 0.1215946)

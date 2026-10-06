@@ -4,6 +4,13 @@ var animal_id: int
 var definition: AnimalDefinition
 var health: int
 var dead: bool = false
+var harvested: bool = false
+var harvest_owner: int = 0
+var harvest_completed: int = 0
+var harvest_mistakes: int = 0
+## Continuous damage from traced cuts, in permille, kept on the corpse so a
+## cancelled or handed-over hide is never silently repaired.
+var harvest_wear: int = 0
 var state: String = "Idle"
 var target_position := Vector3.ZERO
 var target_yaw: float = 0.0
@@ -87,6 +94,9 @@ func _ready() -> void:
         skeletons[0].add_child(motion);motion.configure(self)
 
     _dress_model()
+    var harvest_interaction = load("res://world/interactables/animal_harvest_interactable.gd").new()
+    harvest_interaction.name = "HarvestInteraction"
+    add_child(harvest_interaction)
 
 func _resolve_clips() -> void:
     var aliases: Dictionary={
@@ -170,8 +180,8 @@ func _physics_process(delta: float) -> void:
         rotation.y=lerp_angle(rotation.y,target_yaw,1-exp(-12*delta))
         return
     if dead:
-        death_clock+=delta
-        if death_clock>4: NetworkSession.remove_animal(animal_id)
+        if NetworkSession.phase=="hunt" and harvest_owner==0: death_clock+=delta
+        if death_clock>600: NetworkSession.remove_animal(animal_id)
         return
     if NetworkSession.phase!="hunt": velocity=Vector3.ZERO;return
     noise_clock=maxf(0,noise_clock-delta)
@@ -333,11 +343,11 @@ func take_damage(amount: int, source: Vector3, source_peer: int=0) -> bool:
         collision_layer=0
         velocity=Vector3.ZERO
         _animate("Die")
-        NetworkSession.spawn_loot(definition.loot_id,global_position+Vector3(0,.1,0))
+        NetworkSession.animal_died()
     return true
 
 func snapshot() -> Dictionary:
-    return {"attack_sequence":attack_sequence,"look":look_target,"behavior":behavior,"pace":movement_speed,"pitch":body_pitch,"clock":motion_clock,"id":animal_id,"kind":String(definition.id),"p":global_position,"r":rotation.y,"hp":health,"dead":dead,"state":state}
+    return {"attack_sequence":attack_sequence,"look":look_target,"behavior":behavior,"pace":movement_speed,"pitch":body_pitch,"clock":motion_clock,"id":animal_id,"kind":String(definition.id),"p":global_position,"r":rotation.y,"hp":health,"dead":dead,"state":state,"harvested":harvested,"harvest_owner":harvest_owner,"harvest_completed":harvest_completed,"harvest_mistakes":harvest_mistakes,"harvest_wear":harvest_wear}
 
 func apply_snapshot(data: Dictionary) -> void:
     look_target=data.get("look",data.p+Vector3.FORWARD*10)
@@ -346,6 +356,9 @@ func apply_snapshot(data: Dictionary) -> void:
     target_yaw=data.r
     health=data.hp
     dead=data.dead
+    harvested=bool(data.get("harvested",false));harvest_owner=int(data.get("harvest_owner",0))
+    harvest_completed=int(data.get("harvest_completed",0));harvest_mistakes=int(data.get("harvest_mistakes",0))
+    harvest_wear=clampi(int(data.get("harvest_wear",0)),0,1000)
     collision_layer=0 if dead else 4
     var sequence: int=int(data.get("attack_sequence",attack_sequence))
     var attack_changed: bool=sequence!=attack_sequence and str(data.state)=="Attack"

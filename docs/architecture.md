@@ -46,7 +46,7 @@ Relay între clienți este dezactivat: comunicarea de joc trece prin host.
 
 Clientul transmite originea și direcția aim-ului. Hostul verifică distanța față de hunter,
 cooldown-ul calculat din upgrade, cartușele, reîncărcarea, starea de viață și locul din jeep; calculează raza camerei și razele de la țeavă.
-Numai hostul aplică damage, alege dispersia și creează loot. Clienții primesc efectele focului.
+Numai hostul aplică damage, alege dispersia și acordă materialul recoltat manual. Clienții primesc efectele focului.
 Obiecte / Resources nu sunt deserializate din RPC-uri; conținutul este selectat prin ID-uri din catalog.
 
 Hostul verifică proximitatea tarabei sau pickup-ului și fondurile / spațiul înainte de tranzacție.
@@ -66,8 +66,11 @@ Identitatea actuală este anonimă, pentru prototip; conturile Steam verificate 
 
 Terenul și pozițiile copacilor sunt deterministe, identice pe fiecare peer.
 Trunchiurile au coliziuni în raza de 75 m de observatori; vizualurile se grupează pe sectoare de 64 m.
-Hostul generează animale la 55–145 m de exploratori, cu maximum 40 entități active.
-Speciile mai puternice au ponderi mai mici. Cadavrele dispar după 4 s; loot-ul rămâne până la colectare.
+Hostul generează animale la 55–145 m de exploratori, cu maximum 40 animale vii.
+Speciile mai puternice au ponderi mai mici. Moartea lasă un cadavru fără recompensă automată.
+Fiecare cadavru trebuie recoltat prin tăieturi manuale validate de host; progresul și greșelile rămân pe animal la întrerupere.
+Cadavrele nerecoltate expiră după 10 minute fără lucru activ, cu un buget de 80 cadavre neocupate; recoltele finalizate eliberează entitatea.
+Calitatea este parte din ID-ul validat al materialului și persistă în inventar, portbagaj și reconectare. Detalii: [Recoltare manuală](harvesting.md).
 
 Animațiile Idle / Walk / Run / Attack / Die sunt selectate după starea hostului și redate pe fiecare client.
 Unde sursa nu conține un clip separat, se folosesc clipuri adaptate sau stări derivate:

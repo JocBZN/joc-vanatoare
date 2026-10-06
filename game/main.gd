@@ -20,6 +20,12 @@ var inventory: HunterInventory
 @onready var slot_panels: Array[Panel] = [$HUD/Root/Vitals/Slot1,$HUD/Root/Vitals/Slot2]
 @onready var slot_names: Array[Label] = [$HUD/Root/Vitals/Slot1/Slot1Name,$HUD/Root/Vitals/Slot2/Slot2Name]
 @onready var slot_ammo: Array[Label] = [$HUD/Root/Vitals/Slot1/Slot1Ammo,$HUD/Root/Vitals/Slot2/Slot2Ammo]
+var harvest_panel
+var _harvest_camera: Camera3D
+var _harvest_tool
+var _harvest_focus_hunter: Hunter
+var _harvest_pending_time: float=0
+var _harvest_ignored_id: int=0
 var nearby: LobbyInteractable
 var _toast_time: float = 0
 var _hit_time: float = 0
@@ -57,6 +63,12 @@ func _ready() -> void:
     _menu_camera=Camera3D.new();add_child(_menu_camera)
     _menu_camera.position=Vector3(15,8.5,21)
     _menu_camera.look_at(Vector3(0,3.2,-2));_menu_camera.fov=65;_menu_camera.far=900
+    harvest_panel=load("res://ui/harvest/harvest_panel.gd").new();add_child(harvest_panel)
+    harvest_panel.click_requested.connect(_harvest_click)
+    harvest_panel.cancel_requested.connect(_cancel_harvest)
+    _harvest_camera=Camera3D.new();_harvest_camera.name="HarvestCamera";add_child(_harvest_camera)
+    _harvest_camera.near=.05;_harvest_camera.fov=67;_harvest_camera.far=900
+    _harvest_tool=load("res://actors/hunter/harvest_tool.gd").new();_harvest_camera.add_child(_harvest_tool)
     _bind_player()
     _slot_active_style=StyleBoxFlat.new()
     _slot_active_style.bg_color=Color(0.13,0.16,0.105,0.96)
@@ -90,6 +102,7 @@ func commit_world() -> void:
     menu.resume()
 
 func restore_lobby() -> void:
+    _cancel_harvest()
     world_router.restore_lobby()
     NetworkSession.forest=null
     if is_instance_valid(loading_screen): loading_screen.finish()
@@ -99,6 +112,7 @@ func restore_lobby() -> void:
     _localize()
 
 func _bind_player() -> void:
+    _release_harvest_focus()
     hunter=NetworkSession.local_hunter()
     if not is_instance_valid(hunter): return
     if shop.is_open: shop.close()
@@ -112,6 +126,7 @@ func _bind_player() -> void:
     if not menu.is_open: _on_continue()
 
 func _process(delta: float) -> void:
+    _update_harvest(delta)
     if NetworkSession.phase=="loading" or NetworkSession.local_loaded_epoch!=NetworkSession.world_epoch: return
     _toast_time=maxf(0,_toast_time-delta)
     _hit_time=maxf(0,_hit_time-delta)
@@ -120,11 +135,12 @@ func _process(delta: float) -> void:
         return
     toast.visible=_toast_time>0 and not shop.is_open and not menu.is_open and not map_menu.is_open
     hit_indicator.visible=_hit_time>0 and hunter.control_enabled
-    crosshair.visible=hunter.control_enabled and hunter.seat_index<0 and hunter.health>0 and not (hunter.camera_rig.is_first_person() and hunter.camera_rig.aiming)
+    crosshair.visible=hunter.control_enabled and hunter.harvest_target==0 and hunter.seat_index<0 and hunter.health>0 and not (hunter.camera_rig.is_first_person() and hunter.camera_rig.aiming)
     _update_nearby()
     _update_target()
+    cursor_hint.text=tr("HARVEST_CANCEL_HINT" if harvest_panel.is_open() else "CURSOR_HINT")
     var driving:=hunter.seat_index>=0
-    $HUD/Root/Controls.text=tr("DOWNED_HELP" if hunter.health<=0 else "DRIVING" if hunter.seat_index==0 else "PASSENGER" if driving else "CONTROLS")
+    $HUD/Root/Controls.text=tr("DOWNED_HELP" if hunter.health<=0 else "DRIVING" if hunter.seat_index==0 else "PASSENGER" if driving else "HARVEST_CONTROLS" if hunter.harvest_target>0 else "CONTROLS")
     $HUD/Root/Header/Status.text=NetworkSession.status_text()
     if hunter.health<=0: view_label.text=tr("DOWNED")
     elif driving: view_label.text="%d km/h" % roundi(absf(NetworkSession.jeep.speed)*3.6)
@@ -149,6 +165,7 @@ func _update_vitals() -> void:
 
 func _update_nearby() -> void:
     nearby=null
+    if is_instance_valid(harvest_panel) and harvest_panel.is_open(): prompt.hide();return
     var nearest: float=INF
     for candidate in get_tree().get_nodes_in_group("lobby_interactables"):
         if not is_instance_valid(candidate) or not candidate.can_interact(): continue
@@ -157,12 +174,18 @@ func _update_nearby() -> void:
             nearby=candidate
             nearest=distance
     prompt.visible=(nearby!=null or hunter.seat_index>=0) and hunter.control_enabled and hunter.health>0
+    var harvest_prompt: bool=nearby!=null and nearby.interaction_kind=="harvest" and hunter.seat_index<0
+    prompt.offset_top=-150 if harvest_prompt else -132
+    prompt_label.offset_top=8 if harvest_prompt else 10
+    prompt_label.offset_bottom=62 if harvest_prompt else 42
+    prompt_label.add_theme_font_size_override("font_size",16 if harvest_prompt else 20)
+    prompt_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART if harvest_prompt else TextServer.AUTOWRAP_OFF
     if hunter.seat_index>=0: prompt_label.text="[ E ]  "+tr("jeep_exit")
     elif nearby: prompt_label.text=nearby.localized_name() if nearby.interaction_kind=="revive" else "[ E ]  "+nearby.localized_name()
 
 func _update_target() -> void:
     health_label.hide()
-    if not hunter.control_enabled or hunter.seat_index>=0: return
+    if not hunter.control_enabled or hunter.seat_index>=0 or hunter.harvest_target>0: return
     var camera:=hunter.camera_rig.camera
     var center:=get_viewport().get_visible_rect().size*.5
     var origin:=camera.project_ray_origin(center)
@@ -190,6 +213,7 @@ func _unhandled_input(event: InputEvent) -> void:
             get_viewport().set_input_as_handled()
 
 func interact_nearby() -> void:
+    if is_instance_valid(harvest_panel) and harvest_panel.is_open(): _cancel_harvest();return
     if hunter.seat_index>=0: NetworkSession.request_action("exit");return
     _update_nearby()
     if not nearby or shop.is_open or menu.is_open or map_menu.is_open or not hunter.control_enabled or hunter.health<=0: return
@@ -197,6 +221,7 @@ func interact_nearby() -> void:
     elif nearby.interaction_kind=="test_loot": NetworkSession.request_action("test_loot")
     elif nearby.interaction_kind=="jeep": NetworkSession.request_action("enter")
     elif nearby.interaction_kind=="revive": return
+    elif nearby.interaction_kind=="harvest": _begin_harvest(nearby.get_parent() as WildlifeAnimal)
     elif nearby.interaction_kind=="expedition":
         map_menu.open()
         _set_capture(false);hud.hide()
@@ -254,11 +279,116 @@ func _on_hit(damage: int) -> void:
     _hit_time=.25
 
 func _set_capture(captured: bool) -> void:
+    if not captured: _cancel_harvest()
     if is_instance_valid(hunter): hunter.control_enabled=captured
     Input.mouse_mode=Input.MOUSE_MODE_CAPTURED if captured else Input.MOUSE_MODE_VISIBLE
 
 func _on_aim_changed(aiming: bool) -> void:
     view_label.text=tr("LOBBY_HOST_HINT" if NetworkSession.is_host() else "WAIT_HOST") if NetworkSession.phase=="lobby" else tr("VIEW_AIM" if aiming else WorldCatalog.name_key(NetworkSession.world_id))
+
+func _begin_harvest(animal: WildlifeAnimal) -> void:
+    if not is_instance_valid(animal) or not animal.dead or animal.harvested: return
+    if animal.harvest_owner>0 and animal.harvest_owner!=hunter.peer_id:
+        _show_feedback(tr("HARVEST_BUSY"));return
+    _harvest_ignored_id=0
+    if is_instance_valid(minimap): minimap.close_detail()
+    _harvest_pending_time=1.5
+    hunter.harvest_target=animal.animal_id;hunter.harvest_input_guard=true;hunter.jump_pending=false;hunter.revive_target=0
+    harvest_panel.begin_pending(animal.animal_id,String(animal.definition.id))
+    _hold_harvest_focus(animal.animal_id)
+    NetworkSession.request_action("harvest_start",str(animal.animal_id))
+
+func _update_harvest(delta: float) -> void:
+    if not is_instance_valid(harvest_panel): return
+    var unavailable: bool=not is_instance_valid(hunter) or NetworkSession.phase!="hunt" or NetworkSession.local_loaded_epoch!=NetworkSession.world_epoch
+    unavailable=unavailable or shop.is_open or menu.is_open or map_menu.is_open
+    if is_instance_valid(hunter): unavailable=unavailable or hunter.health<=0 or hunter.seat_index>=0 or not hunter.control_enabled
+    if unavailable:
+        if harvest_panel.is_open() or is_instance_valid(_harvest_focus_hunter): _cancel_harvest()
+        harvest_panel.close()
+        return
+    var state: Dictionary=NetworkSession.harvest_state(hunter.peer_id)
+    if state.is_empty():
+        _harvest_ignored_id=0
+        if harvest_panel.pending:
+            _harvest_pending_time=maxf(0,_harvest_pending_time-delta)
+            hunter.harvest_target=int(harvest_panel.state.get("id",0))
+            if _harvest_pending_time<=0: _cancel_harvest()
+        elif harvest_panel.is_open():
+            harvest_panel.close();_release_harvest_focus()
+        return
+    if bool(state.get("active",false)):
+        if int(state.get("id",0))==_harvest_ignored_id:
+            hunter.harvest_target=0
+            return
+        hunter.harvest_target=int(state.id)
+        _hold_harvest_focus(hunter.harvest_target)
+        harvest_panel.show_state(state)
+        _harvest_tool.observe(state)
+    else:
+        if int(state.get("id",0))!=_harvest_ignored_id: harvest_panel.show_state(state)
+        if state.get("feedback","")=="complete" and is_instance_valid(_harvest_focus_hunter):
+            _harvest_tool.observe(state)
+            if _harvest_tool.is_finishing():
+                hunter.harvest_target=int(state.get("id",0))
+                return
+        _release_harvest_focus()
+
+func _hold_harvest_focus(id: int) -> void:
+    if not is_instance_valid(hunter): return
+    if _harvest_focus_hunter!=hunter:
+        _release_harvest_focus()
+        _harvest_focus_hunter=hunter
+        var animal=NetworkSession.animals.get(id)
+        _harvest_camera.global_position=hunter.global_position+Vector3.UP*1.3
+        if is_instance_valid(animal):
+            var target: Vector3=_harvest_surface_point(animal)
+            var approach: Vector3=hunter.global_position-target;approach.y=0
+            if approach.length_squared()<.01: approach=Vector3.BACK
+            _harvest_camera.global_position=target+approach.normalized()*.90+Vector3.UP*.52
+            if _harvest_camera.global_position.distance_squared_to(target)>.01: _harvest_camera.look_at(target)
+            _harvest_tool.configure_surface(_harvest_camera.to_local(target),animal.definition.id)
+    hunter.camera_rig.enabled=false;hunter.camera_rig.set_process(false)
+    hunter.camera_rig.set_aiming(false)
+    hunter.camera_rig.view_model.hide();hunter.camera_rig.scope_overlay.hide();hunter.visual.hide()
+    _harvest_camera.current=true
+    _harvest_tool.set_active(true)
+    prompt.hide();health_label.hide();crosshair.hide()
+
+func _harvest_surface_point(animal: WildlifeAnimal) -> Vector3:
+    # Follow the posed torso rather than the upright collision box of a dead animal.
+    for skeleton: Skeleton3D in animal.model.find_children("*","Skeleton3D",true,false):
+        for index in skeleton.get_bone_count():
+            var bone: String=skeleton.get_bone_name(index).to_lower()
+            if "spine" in bone or "chest" in bone or bone=="body":
+                var point: Vector3=skeleton.to_global(skeleton.get_bone_global_pose(index).origin)
+                return point+Vector3.UP*.12
+    return animal.global_position+Vector3.UP*minf(animal.definition.height*.3,.65)
+
+func _release_harvest_focus() -> void:
+    if is_instance_valid(_harvest_tool): _harvest_tool.set_active(false)
+    if not is_instance_valid(_harvest_focus_hunter): _harvest_focus_hunter=null;return
+    var previous: Hunter=_harvest_focus_hunter
+    _harvest_focus_hunter=null
+    previous.harvest_target=0;previous.harvest_input_guard=true;previous.jump_pending=false
+    previous.camera_rig.enabled=previous.local_player and previous.seat_index<0
+    previous.camera_rig.set_process(true)
+    previous.visual.visible=not previous.camera_rig.is_first_person()
+    if previous==hunter and previous.control_enabled and not menu.is_open:
+        previous.camera_rig.camera.current=true
+
+func _harvest_click(id: int,token: int,click: int,point: Vector2) -> void:
+    if not is_instance_valid(hunter) or hunter.health<=0 or not harvest_panel.is_open(): return
+    NetworkSession.request_action("harvest_click","%d:%d:%d:%.4f:%.4f" % [id,token,click,point.x,point.y])
+
+func _cancel_harvest() -> void:
+    if not is_instance_valid(harvest_panel): return
+    var needs_cancel: bool=harvest_panel.is_open() or is_instance_valid(_harvest_focus_hunter)
+    if needs_cancel:
+        _harvest_ignored_id=int(harvest_panel.state.get("id",0))
+        NetworkSession.request_action("harvest_cancel")
+    harvest_panel.close();_release_harvest_focus()
+    if is_instance_valid(hunter): hunter.harvest_target=0;hunter.jump_pending=false
 
 func _exit_tree() -> void:
     Input.mouse_mode=Input.MOUSE_MODE_VISIBLE

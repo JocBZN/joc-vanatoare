@@ -199,6 +199,17 @@ static func dress_scene(root: Node3D,kind: String="prop") -> void:
                 keep(base)
                 continue
             if not base is StandardMaterial3D or base.emission_enabled or base.transparency!=BaseMaterial3D.TRANSPARENCY_DISABLED: continue
+            if kind=="weapon" and root.get_meta("source_author","")=="OBUR Games":
+                # The replacement pack supplies its own palette and metal/plastic roughness.
+                var tint: Color=root.get_meta("weapon_tint",Color.WHITE)
+                var imported: StandardMaterial3D=base
+                if tint!=Color.WHITE:
+                    imported=base.duplicate();imported.albedo_color*=tint
+                    if mesh.material_override: mesh.material_override=imported
+                    else: mesh.set_surface_override_material(surface,imported)
+                # Mesh overrides own the tint copies; retaining every equip copy would leak.
+                keep(base)
+                continue
             if kind=="weapon" and base.albedo_texture!=null:
                 # Sourced weapon art already carries real surface detail; keep it, just match the toon shading everywhere else.
                 var toon: StandardMaterial3D=base.duplicate()

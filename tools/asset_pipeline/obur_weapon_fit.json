@@ -1,0 +1,258 @@
+{
+  "models": {
+    "baretta_93r": {
+      "grip": [
+        -3,
+        0,
+        -2.4
+      ],
+      "support": [
+        -0.8,
+        0,
+        -2.2
+      ],
+      "muzzle": [
+        6.7388,
+        0,
+        2.184
+      ],
+      "sight": 2.759,
+      "front_sight_x": 4.877,
+      "rear_sight_x": -2.427,
+      "rear_sight": 2.788,
+      "sight_spacing": 0.175
+    },
+    "fn_scar_l": {
+      "grip": [
+        -6,
+        0,
+        -4
+      ],
+      "support": [
+        4,
+        0,
+        -1
+      ],
+      "muzzle": [
+        18.0906,
+        0,
+        0.265
+      ],
+      "sight": 4.1591,
+      "front_sight_x": 9.177,
+      "rear_sight_x": -7.781,
+      "rear_sight": 4.028,
+      "sight_spacing": 0.08
+    },
+    "g36_k": {
+      "grip": [
+        -6,
+        0,
+        -2.6
+      ],
+      "support": [
+        5,
+        0,
+        -1.2
+      ],
+      "muzzle": [
+        18.0915,
+        0,
+        0.593
+      ]
+    },
+    "m72_law": {
+      "grip": [
+        0,
+        0,
+        -4.5
+      ],
+      "support": [
+        12,
+        0,
+        -3
+      ],
+      "muzzle": [
+        25.5069,
+        0,
+        -1.197
+      ],
+      "sight": 5.0799,
+      "front_sight_x": 21,
+      "rear_sight_x": -7
+    },
+    "mg42": {
+      "grip": [
+        0,
+        0,
+        -3.8
+      ],
+      "support": [
+        9,
+        0,
+        -0.2
+      ],
+      "muzzle": [
+        18.747,
+        0,
+        5.837
+      ],
+      "level_degrees": 18.013,
+      "sight": 2.234,
+      "front_sight_x": 14.711,
+      "rear_sight_x": 0.864,
+      "rear_sight": 2.751,
+      "sight_spacing": 0.21
+    },
+    "maverick_88": {
+      "grip": [
+        -10,
+        0,
+        -2.7
+      ],
+      "support": [
+        7,
+        0,
+        -0.7
+      ],
+      "muzzle": [
+        23.867,
+        0,
+        1.363
+      ],
+      "sight": 2.298,
+      "front_sight_x": 23.173,
+      "rear_sight_x": -6.995,
+      "rear_sight": 2.375,
+      "sight_spacing": 0.45
+    },
+    "tarran_tactical": {
+      "grip": [
+        -4,
+        0,
+        -3
+      ],
+      "support": [
+        -1.6,
+        0,
+        -2.5
+      ],
+      "muzzle": [
+        7.4833,
+        0,
+        1.38
+      ],
+      "sight": 2.364,
+      "front_sight_x": 6.273,
+      "rear_sight_x": -3.692,
+      "rear_sight": 2.487,
+      "sight_spacing": 0.3
+    },
+    "uzi": {
+      "grip": [
+        1.5,
+        0,
+        -2.5
+      ],
+      "support": [
+        6,
+        0,
+        -1
+      ],
+      "muzzle": [
+        11.595,
+        0,
+        0.491
+      ],
+      "sight": 2.406,
+      "front_sight_x": 7.339,
+      "rear_sight_x": -4.534,
+      "rear_sight": 2.399,
+      "sight_spacing": 0.4
+    }
+  },
+  "weapons": {
+    "rusty_pistol": {
+      "model": "baretta_93r",
+      "length": 0.26
+    },
+    "old_rifle": {
+      "model": "fn_scar_l",
+      "length": 0.78,
+      "tint": [
+        0.78,
+        0.84,
+        0.76,
+        1
+      ]
+    },
+    "double_barrel": {
+      "model": "maverick_88",
+      "length": 0.62
+    },
+    "scrap_blaster": {
+      "model": "maverick_88",
+      "length": 0.69,
+      "tint": [
+        0.72,
+        0.64,
+        0.53,
+        1
+      ]
+    },
+    "beehive": {
+      "model": "uzi",
+      "length": 0.59
+    },
+    "sniper_rifle": {
+      "model": "g36_k",
+      "length": 0.87
+    },
+    "thunder_tube": {
+      "model": "m72_law",
+      "length": 0.98,
+      "tint": [
+        0.73,
+        0.87,
+        1,
+        1
+      ]
+    },
+    "revolver": {
+      "model": "tarran_tactical",
+      "length": 0.27
+    },
+    "ak_rifle": {
+      "model": "fn_scar_l",
+      "length": 0.9
+    },
+    "railgun": {
+      "model": "g36_k",
+      "length": 0.94,
+      "tint": [
+        0.6,
+        0.82,
+        1,
+        1
+      ]
+    },
+    "raygun": {
+      "model": "baretta_93r",
+      "length": 0.27,
+      "tint": [
+        0.56,
+        1,
+        0.7,
+        1
+      ]
+    },
+    "chain_smg": {
+      "model": "mg42",
+      "length": 0.98
+    },
+    "nova_shotgun": {
+      "model": "maverick_88",
+      "length": 0.85
+    }
+  }
+}

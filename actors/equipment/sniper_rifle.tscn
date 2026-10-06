@@ -1,13 +1,19 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="PackedScene" path="res://assets/weapons/stylized/sniper_rifle.glb" id="1_model"]
+[ext_resource type="PackedScene" path="res://assets/weapons/obur/g36_k.glb" id="1_model"]
 
 [node name="SniperRifle" type="Node3D"]
+metadata/source_author = "OBUR Games"
+metadata/source_model = "G36_K"
 
 [node name="Source" parent="." instance=ExtResource("1_model")]
-position = Vector3(-0.011773, 0.00723, 0.252821)
-rotation_degrees = Vector3(0, 90, 0)
-scale = Vector3(0.15764, 0.15764, 0.15764)
+transform = Transform3D(0.0000000, -0.0238190, 0.0000000, -0.0000000, 0.0000000, 0.0238190, -0.0238190, 0.0000000, -0.0000000, 0.0000000, 0.0358754, -0.1429137)
 
 [node name="Muzzle" type="Marker3D" parent="."]
-position = Vector3(0, 0.05, -0.575)
+position = Vector3(0.0000000, 0.0500000, -0.5758343)
+
+[node name="Grip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, -0.0260539, 0.0000000)
+
+[node name="SupportGrip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0072926, -0.2620085)

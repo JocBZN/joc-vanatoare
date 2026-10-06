@@ -1,6 +1,8 @@
-# Stylized weapon sources and modifications
+# Legacy stylized weapon sources and retained audio
 
 Only free assets are used. No commercial pack has been purchased.
+
+The thirteen model assets recorded below are **legacy, unused by the current weapon wrappers**. They are retained for provenance and possible recovery. Current weapon and recovery-knife model credits, license, extraction and gameplay mappings are in [OBUR weapon attribution](../obur/ATTRIBUTION.md). The table's reload and scope notes describe the earlier integration; the current Patrol SCAR (`old_rifle`) uses iron sights.
 
 | Weapon | Original author / source | License | Imported and authored work |
 | --- | --- | --- | --- |
@@ -18,13 +20,15 @@ Only free assets are used. No commercial pack has been purchased.
 | Chain SMG | Quaternius, [Submachine Gun](https://poly.pizza/m/nsP3JukU73), Ultimate Guns Pack | CC0 1.0 | Same wrapper treatment as above |
 | Nova | Quaternius, [Shotgun](https://poly.pizza/m/8Z4HaN1NyS), Ultimate Guns Pack | CC0 1.0 | Same wrapper treatment as above |
 
-All thirteen models are downloaded directly from poly.pizza's public static CDN (`static.poly.pizza/*.glb`), which is Quaternius' own mirror of their packs; poly.pizza lists the individual pages under CC-BY 3.0, while Quaternius publishes the packs themselves as CC0 — see https://quaternius.com. No name/credit requirement either way, credited here regardless.
+These legacy models were downloaded from poly.pizza's public static CDN (`static.poly.pizza/*.glb`). The individual pages list CC-BY 3.0, while Quaternius publishes the referenced packs as CC0 — see https://quaternius.com. Their author/source credits are retained here; this legacy notice does not describe the license of the newer OBUR assets.
 
-None of the thirteen have a matching `assets/art/props/<id>.glb`, so `GameArt.refine_scene`'s old mesh-name-swap step is a no-op for them; the full model is the sourced GLB itself, instanced directly in `actors/equipment/<id>.tscn`. `GameArt.dress_scene` keeps their own baked textures (toon-shaded to match the rest of the game) instead of flattening them to the generic procedural paint used by the original box-primitive weapon shapes.
+In the earlier integration, the full sourced GLBs were instanced in `actors/equipment/<id>.tscn` and retained their baked textures. The current wrappers use the OBUR models instead.
 
-Only the Rusty pistol ships with baked animations; the rest use the game's existing procedural reload motion (`actors/hunter/first_person_weapon.gd`).
+Only the legacy Rusty pistol contains baked animations. Current OBUR models have no clips and use the game's procedural reload motion (`actors/hunter/first_person_weapon.gd`).
 
 ## Gunshot audio sources
+
+These audio sources **remain in use** after the model replacement. Weapon names below refer to the existing gameplay entries; their IDs and audio paths are unchanged.
 
 | Weapon | Source recording | License |
 | --- | --- | --- |
@@ -37,4 +41,4 @@ Only the Rusty pistol ships with baked animations; the rest use the game's exist
 
 All real recordings above are longer raw takes (multiple shots and/or reverb tails); each was trimmed to the single loudest transient, downmixed to mono, resampled to 44100Hz and normalized (`work/sound_sources/extract_shots.py`, `extract_lib_shots.py`) before being placed in `assets/audio/`.
 
-License: https://creativecommons.org/publicdomain/zero/1.0/ (models); individual gunshot sources credited above.
+Legacy pack license: https://creativecommons.org/publicdomain/zero/1.0/ (legacy models only); individual gunshot sources are credited above. Current OBUR models use [CC BY 4.0](../obur/ATTRIBUTION.md).

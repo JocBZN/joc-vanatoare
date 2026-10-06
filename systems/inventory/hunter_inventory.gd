@@ -37,6 +37,9 @@ func loot_value() -> int:
     return total
 
 
+func can_collect(item: LootDefinition) -> bool:
+    return item != null and item.space > 0 and item.sell_value >= 0 and used_space() + item.space <= capacity()
+
 func collect(item: LootDefinition) -> bool:
     if item == null or item.space <= 0 or item.sell_value < 0:
         return false
@@ -45,7 +48,7 @@ func collect(item: LootDefinition) -> bool:
         return false
     items.append(item)
     changed.emit()
-    _feedback("COLLECTED",{"item_key":item.display_name,"n":item.sell_value})
+    _feedback("COLLECTED",{"loot_id":String(item.id),"n":item.sell_value})
     return true
 
 

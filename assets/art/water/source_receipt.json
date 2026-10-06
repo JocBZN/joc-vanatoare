@@ -1,0 +1,17 @@
+{
+  "author": "zookeeper",
+  "source_page": "https://opengameart.org/content/seamless-looping-waves-heightmaps",
+  "archive_url": "https://opengameart.org/sites/default/files/waves5.zip",
+  "license": "CC0-1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "frames": {
+    "waves5_000.png": "a5ffd0cd2e582889e891f4a91ec89e44d82b7cfa079fd00b42bb7938d3e8bbce",
+    "waves5_067.png": "810c88f8da94b591c9006dd9d3e2560a778f356e99fde9eed6e7ee56cfa8d195"
+  },
+  "method": "Periodic centered derivatives of source heights; normalized tangent-space +Y normals. Original periodic cellular foam.",
+  "outputs": {
+    "water_normal.png": "4d91adb2e933fd09e4835292e50badca4414404f9c9d345c1a9dc9bbe3ab8f87",
+    "water_detail_normal.png": "84ed48ffa582071add0a14aff0fac0d2e8edb4e907eae0685db8f0e2f8bb9d12",
+    "water_foam.png": "ae55a6027263b8e169fee8c51f90b4438e3947b368df1d79b4dc753b93903e85"
+  }
+}

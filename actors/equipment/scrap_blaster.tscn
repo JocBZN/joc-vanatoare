@@ -1,13 +1,27 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="PackedScene" path="res://assets/weapons/stylized/scrap_blaster.glb" id="1_model"]
+[ext_resource type="PackedScene" path="res://assets/weapons/obur/maverick_88.glb" id="1_model"]
 
 [node name="ScrapBlaster" type="Node3D"]
+metadata/source_author = "OBUR Games"
+metadata/source_model = "Maverick_88"
+metadata/weapon_tint = Color(0.7200000, 0.6400000, 0.5300000, 1.0000000)
+metadata/sight_spacing = 0.0085965
 
 [node name="Source" parent="." instance=ExtResource("1_model")]
-position = Vector3(0, -0.008222, 0.263669)
-rotation_degrees = Vector3(0, 90, 0)
-scale = Vector3(0.14538, 0.14538, 0.14538)
+transform = Transform3D(0.0000000, -0.0191033, 0.0000000, -0.0000000, 0.0000000, 0.0191033, -0.0191033, 0.0000000, -0.0000000, 0.0000000, 0.0239622, -0.1910330)
 
 [node name="Muzzle" type="Marker3D" parent="."]
-position = Vector3(0, 0.05, -0.325)
+position = Vector3(0.0000000, 0.0500000, -0.6489715)
+
+[node name="Grip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, -0.0276167, 0.0000000)
+
+[node name="SupportGrip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0105899, -0.3247561)
+
+[node name="FrontSight" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0693616, -0.6337138)
+
+[node name="RearSight" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0708325, -0.0574054)

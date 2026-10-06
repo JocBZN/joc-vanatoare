@@ -43,9 +43,9 @@ func verify() -> void:
         check(a.health==a.definition.max_health-1,"correct health "+kind)
         var before: int=session.loot.size()
         a.take_damage(a.definition.max_health,p.global_position)
-        check(session.loot.size()==before+1,"single species loot "+kind)
+        check(a.dead and session.animals.has(a.animal_id) and session.loot.size()==before,"death leaves a corpse without automatic loot "+kind)
         a.take_damage(999,p.global_position)
-        check(session.loot.size()==before+1,"no duplicate death payout "+kind)
+        check(session.loot.size()==before and not a.harvested,"repeated damage cannot harvest a corpse "+kind)
     p.inventory.items.clear()
     p.inventory.coins=0
     p.inventory.collect(load("res://data/loot/wolf_pelt.tres"))

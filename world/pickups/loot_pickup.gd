@@ -27,4 +27,4 @@ func collect_into(inventory: HunterInventory) -> bool:
     return true
 
 func localized_name() -> String:
-    return tr(loot_definition.display_name) if loot_definition else tr("loot")
+    return loot_definition.localized_name() if loot_definition else tr("loot")

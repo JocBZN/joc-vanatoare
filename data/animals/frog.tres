@@ -17,3 +17,7 @@ length = 0.52
 width = 0.5
 aquatic = true
 loot_id = &"frog_hide"
+harvest_strokes = 2
+harvest_period = 2.8
+harvest_window = 0.36
+harvest_quirks = PackedStringArray("slippery")

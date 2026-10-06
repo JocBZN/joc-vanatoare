@@ -1,13 +1,20 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="PackedScene" path="res://assets/weapons/stylized/railgun.glb" id="1_model"]
+[ext_resource type="PackedScene" path="res://assets/weapons/obur/g36_k.glb" id="1_model"]
 
 [node name="Railgun" type="Node3D"]
+metadata/source_author = "OBUR Games"
+metadata/source_model = "G36_K"
+metadata/weapon_tint = Color(0.6000000, 0.8200000, 1.0000000, 1.0000000)
 
 [node name="Source" parent="." instance=ExtResource("1_model")]
-position = Vector3(0, -0.003349, 0.359323)
-rotation_degrees = Vector3(0, 0, 0)
-scale = Vector3(0.10403, 0.10403, 0.10403)
+transform = Transform3D(0.0000000, -0.0257354, 0.0000000, -0.0000000, 0.0000000, 0.0257354, -0.0257354, 0.0000000, -0.0000000, 0.0000000, 0.0347389, -0.1544125)
 
 [node name="Muzzle" type="Marker3D" parent="."]
-position = Vector3(0, 0.06, -0.6)
+position = Vector3(0.0000000, 0.0500000, -0.6220049)
+
+[node name="Grip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, -0.0321732, 0.0000000)
+
+[node name="SupportGrip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0038564, -0.2830896)

@@ -8,6 +8,7 @@ const LAKE_CENTER := Vector2(190.0, 160.0)
 const LAKE_RADIUS: float = 72.0
 const LAKE_SHORE: float = 26.0
 const LAKE_LEVEL: float = -3.0
+const LAKE_DEPTH: float = 1.15
 signal build_progress(value: float)
 var built: bool=false
 var cancelled: bool=false
@@ -19,6 +20,7 @@ var trees: Array[Vector3] = []
 var colliders: Dictionary = {}
 var collider_clock: float = 0.0
 var water_material: ShaderMaterial
+var water_interaction: WaterInteraction
 var current_seed: int = SEED
 
 ## Re-seeds every noise layer from a single value; called by WorldRouter before build() with a
@@ -52,7 +54,12 @@ func mountains_at(x: float, z: float, dist: float) -> float:
 func lake_basin(height: float, x: float, z: float) -> float:
     var dist: float = Vector2(x, z).distance_to(LAKE_CENTER)
     var basin: float = 1.0 - smoothstep(LAKE_RADIUS, LAKE_RADIUS + LAKE_SHORE, dist)
-    return lerpf(height, LAKE_LEVEL, basin)
+    var depth: float = LAKE_DEPTH * (1.0 - smoothstep(LAKE_RADIUS * .45, LAKE_RADIUS + LAKE_SHORE * .7, dist))
+    # Random lowlands must not open a deep trough in the walkable lake's rim.
+    # A low earthen bank fades gently back into the unchanged terrain beyond it.
+    var bank_weight: float = 1.0 - smoothstep(LAKE_RADIUS + LAKE_SHORE, LAKE_RADIUS + LAKE_SHORE + 14.0, dist)
+    var bank_height: float = lerpf(height, maxf(height, LAKE_LEVEL + .2), bank_weight)
+    return lerpf(bank_height, LAKE_LEVEL - depth, basin)
 
 func height_at(x: float, z: float) -> float:
     var dist: float = Vector2(x, z).length()
@@ -69,7 +76,19 @@ func slope_at(x: float, z: float) -> float:
     return rad_to_deg(atan(Vector2(dx, dz).length() / (2.0 * eps)))
 
 func in_lake(x: float, z: float) -> bool:
-    return Vector2(x, z).distance_to(LAKE_CENTER) < LAKE_RADIUS + LAKE_SHORE * .7
+    return Vector2(x, z).distance_to(LAKE_CENTER) < LAKE_RADIUS + LAKE_SHORE and height_at(x, z) < LAKE_LEVEL
+
+## Gameplay uses the nominal plane on every peer; small visual waves have no effect
+## on prediction, and being above water on a bridge never applies water drag.
+func water_level_at(_point: Vector3) -> float: return LAKE_LEVEL
+
+func water_depth(point: Vector3) -> float:
+    if not in_lake(point.x, point.z): return 0.0
+    return maxf(0.0, water_level_at(point) - height_at(point.x, point.z))
+
+func water_submersion(point: Vector3) -> float:
+    if water_depth(point) <= 0.0: return 0.0
+    return maxf(0.0, water_level_at(point) - point.y)
 
 func animal_spawn(entry: AnimalDefinition, point: Vector3) -> Vector3:
     var best := point
@@ -124,6 +143,10 @@ func _terrain() -> void:
     var visual := MeshInstance3D.new()
     visual.mesh = mesh
     var material := GameArt.ground_material()
+    material.set_shader_parameter("lake_center", LAKE_CENTER)
+    material.set_shader_parameter("lake_radius", LAKE_RADIUS)
+    material.set_shader_parameter("lake_shore", LAKE_SHORE)
+    material.set_shader_parameter("lake_level", LAKE_LEVEL)
     visual.material_override = material
     add_child(visual)
     var ground := StaticBody3D.new()
@@ -136,17 +159,26 @@ func _terrain() -> void:
 ## Overridden to a no-op by SwampMap, which already owns a full-map water system.
 func _build_lake() -> void:
     water_material = ShaderMaterial.new(); water_material.shader = load("res://world/forest/forest_lake.gdshader")
-    water_material.set_shader_parameter("normal_map", GameArt.texture("forest_ground_04", "nor_gl"))
+    _configure_water_material(1.0)
     water_material.set_shader_parameter("lake_center", LAKE_CENTER)
     water_material.set_shader_parameter("lake_radius", LAKE_RADIUS)
     water_material.set_shader_parameter("lake_shore", LAKE_SHORE)
     var water := MeshInstance3D.new(); water.name = "Lake"
     var lake_span: float = (LAKE_RADIUS + LAKE_SHORE) * 2.0
-    var plane := PlaneMesh.new(); plane.size = Vector2(lake_span, lake_span); plane.subdivide_width = 24; plane.subdivide_depth = 24
+    var plane := PlaneMesh.new(); plane.size = Vector2(lake_span, lake_span); plane.subdivide_width = 128; plane.subdivide_depth = 128
     water.mesh = plane; water.material_override = water_material
     water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     water.position = Vector3(LAKE_CENTER.x, LAKE_LEVEL, LAKE_CENTER.y)
     add_child(water)
+
+func _configure_water_material(wave_strength: float, wave_spatial_scale: float = 1.0) -> void:
+    water_material.set_shader_parameter("normal_map", load("res://assets/art/water/water_normal.png"))
+    water_material.set_shader_parameter("detail_normal", load("res://assets/art/water/water_detail_normal.png"))
+    water_material.set_shader_parameter("foam_texture", load("res://assets/art/water/water_foam.png"))
+    water_material.set_shader_parameter("wave_strength", wave_strength)
+    water_material.set_shader_parameter("wave_spatial_scale", wave_spatial_scale)
+    water_interaction = WaterInteraction.new()
+    water_interaction.configure(self, water_material)
 
 func _trees() -> void:
     var rng := RandomNumberGenerator.new()
@@ -256,9 +288,7 @@ func _plant_sector(key: Vector2i) -> void:
 func _process(delta: float) -> void:
     if not built: return
     _stream_vegetation(delta)
-    if water_material:
-        var hunter=NetworkSession.local_hunter()
-        if is_instance_valid(hunter): water_material.set_shader_parameter("observer",hunter.global_position)
+    if water_interaction: water_interaction.update(delta)
     collider_clock -= delta
     if collider_clock > 0: return
     collider_clock = 1.0

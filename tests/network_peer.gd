@@ -126,6 +126,32 @@ func host_test() -> void:
     check(await wait_until(func(): return predator_victim.health==50,8),"remote teammate completes free three second revive")
     write_phase("revived")
     check(await wait_until(func(): return all_marked("revived")),"all peers see revived hunter standing")
+    # A real remote hunter must manually recover the new corpse. Competing
+    # clients cannot duplicate cuts or claim the same skin.
+    for animal_id in session.animals.keys(): session.remove_animal(animal_id)
+    session.spawn_clock=60
+    var body=session.spawn_animal(&"rabbit",Vector3(30,0,-60))
+    body.set_physics_process(false);body.global_position=Vector3(30,30,-60)
+    var drops_before: int=session.loot.size()
+    body.take_damage(999,reviver.global_position,reviver.peer_id)
+    check(body.dead and session.loot.size()==drops_before,"network death produces corpse without automatic loot")
+    for p in session.players.values():
+        p.inventory.items.clear()
+        p.set_physics_process(false)
+        p.global_position=body.global_position+Vector3(1.6 if p.player_name=="client1" else -1.6 if p.player_name=="client2" else 8,0,0)
+        session._send_inventory(p.peer_id)
+    var body_file:=FileAccess.open(folder+"/harvest_id.txt",FileAccess.WRITE)
+    body_file.store_string(str(body.animal_id));body_file.close()
+    var harvested_id: int=body.animal_id
+    await frames(12);write_phase("harvest")
+    check(await wait_until(func(): return all_marked("harvest"),15),"remote cuts and exclusive corpse claim finish")
+    check(not session.animals.has(harvested_id) and reviver.inventory.items.size()==1,"host awards one manually recovered remote pelt")
+    if not reviver.inventory.items.is_empty():
+        check(reviver.inventory.items[0].id==&"rabbit_pelt__s5" and reviver.inventory.loot_value()==15,"pristine quality value replicated through authoritative inventory")
+    check(predator_victim.inventory.items.is_empty() and session.loot.size()==drops_before,"contested and replayed cuts award no extra loot")
+    check(session.animals.is_empty(),"last corpse leaves an empty authoritative wildlife roster")
+    session.spawn_clock=8
+    for p in session.players.values(): p.set_physics_process(true)
     for peer in session.players:
         if peer==1: continue
         var p=session.players[peer]
@@ -157,7 +183,9 @@ func host_test() -> void:
     start_forest()
     check(await wait_until(func(): return session.phase=="hunt",30),"second expedition loads for whole party")
     for animal in session.animals.values(): animal.set_physics_process(false)
-    var drive_point: Vector3=Vector3(0,session.forest.height_at(0,-40)+.6,-40) if hunt_map=="swamp" else Vector3(-26,session.forest.height_at(-26,-100)+.6,-100)
+    # Both biomes guarantee a flat, dry arrival area. Test transport/controls
+    # here so a random hillside cannot roll the parked car during exit checks.
+    var drive_point: Vector3=Vector3(0,session.forest.height_at(0,-12)+.6,-12)
     session.jeep.reset_state(Transform3D(Basis.IDENTITY,drive_point))
     await frames(90)
     for peer in session.players:
@@ -173,8 +201,7 @@ func host_test() -> void:
     check(await wait_until(func(): return not session.jeep.occupants.has(0)),"three clients enter passenger seats")
     var before: Vector3=session.jeep.global_position
     write_phase("drive")
-    await frames(85)
-    check(Vector2(session.jeep.global_position.x-before.x,session.jeep.global_position.z-before.z).length()>1,"authoritative movement from remote driver input")
+    check(await wait_until(func(): return Vector2(session.jeep.global_position.x-before.x,session.jeep.global_position.z-before.z).length()>1,5),"authoritative movement from remote driver input")
     write_phase("seats")
     await frames(120)
     session.jeep.linear_velocity=Vector3.ZERO;session.jeep.angular_velocity=Vector3.ZERO
@@ -321,6 +348,63 @@ func client_test() -> void:
     check(await wait_until(func(): return phase()=="revived"),"revive completed phase")
     check(await wait_until(func(): return fallen.health==50 and not fallen.life_pose_downed),"replicated revive gives fifty health and upright pose")
     mark("revived")
+    check(await wait_until(func(): return phase()=="harvest"),"manual harvest network phase")
+    var body_id:=int(FileAccess.get_file_as_string(folder+"/harvest_id.txt"))
+    check(await wait_until(func(): return session.animals.has(body_id) and session.animals[body_id].dead),"dead harvestable corpse replicated")
+    var local_hunter=session.local_hunter()
+    local_hunter.set_physics_process(false)
+    if role=="client1":
+        session.set_physics_process(false)
+        session.request_action("harvest_start",str(body_id))
+        check(await wait_until(func(): return session.is_harvesting(session.local_id()),4),"remote player receives private harvest state")
+        mark("harvest_claimed")
+        # Play the skinning routine from the replicated state only: blade samples
+        # carry this client's own clock, clicks go through the reliable action path.
+        var bot=load("res://tests/harvest_bot.gd")
+        var clock: Dictionary={}
+        var queue: Array=[]
+        var settle_fx: int=-1
+        var settle_until: int=0
+        var previous_cut: String=""
+        var deadline: int=Time.get_ticks_msec()+20000
+        while session.is_harvesting(session.local_id()) and Time.get_ticks_msec()<deadline:
+            var state: Dictionary=session.harvest_state(session.local_id())
+            local_hunter.input_sequence+=1
+            var packet: Dictionary={"seq":local_hunter.input_sequence,"direction":Vector3.ZERO,"drive":Vector2.ZERO,"yaw":0,"pitch":0,"harvest":true}
+            if int(clock.get("token",-1))!=int(state.token):
+                clock.token=int(state.token);clock.blade=Vector2(state.get("blade",Vector2(.5,.5)))
+            # Replan only once the host has answered the last batch (or gone quiet).
+            if queue.is_empty() and (int(state.get("fx",0))!=settle_fx or Time.get_ticks_msec()>settle_until):
+                queue=bot.next_ops(state,Vector2(clock.blade))
+                settle_fx=int(state.get("fx",0));settle_until=Time.get_ticks_msec()+1500
+            if not queue.is_empty():
+                var op: Dictionary=queue.pop_front()
+                if op.kind=="blade":
+                    clock.stamp=int(clock.get("stamp",1000))+int(op.dt);clock.blade=op.p
+                    packet["blade"]=op.p;packet["bt"]=int(clock.stamp)
+                elif op.kind=="click":
+                    clock.click=maxi(int(clock.get("click",0)),int(state.get("clicks",0)))+1
+                    previous_cut="%d:%d:%d:%.5f:%.5f" % [int(state.id),int(state.token),int(clock.click),Vector2(op.p).x,Vector2(op.p).y]
+                    session.request_action("harvest_click",previous_cut)
+            session.send_input(packet)
+            await frames(1)
+        check(await wait_until(func(): return local_hunter.inventory.items.size()==1,3),"remote manual cuts deliver one pelt")
+        if not local_hunter.inventory.items.is_empty():
+            check(local_hunter.inventory.items[0].id==&"rabbit_pelt__s5" and local_hunter.inventory.loot_value()==15,"remote quality ID and value match host")
+        session.request_action("harvest_click",previous_cut)
+        session.request_action("harvest_start",str(body_id))
+        await frames(8)
+        check(local_hunter.inventory.items.size()==1,"remote completion replay cannot duplicate recovered skin")
+        session.set_physics_process(true)
+    elif role=="client2":
+        check(await wait_until(func(): return FileAccess.file_exists(folder+"/client1_harvest_claimed.txt"),4),"other hunter starts exclusive harvest")
+        session.request_action("harvest_start",str(body_id))
+        await frames(12)
+        check(not session.is_harvesting(session.local_id()) and local_hunter.inventory.items.is_empty(),"competing remote client cannot take occupied corpse")
+    else:
+        check(await wait_until(func(): return not session.animals.has(body_id),10),"bystander sees completed corpse removal")
+    local_hunter.set_physics_process(true)
+    mark("harvest")
     check(await wait_until(func(): return phase()=="deposit"),"deposit phase")
     session.request_action("deposit")
     check(await wait_until(func(): return session.local_hunter().inventory.items.is_empty()),"own bag updated by server")

@@ -1,13 +1,26 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="PackedScene" path="res://assets/weapons/stylized/beehive.glb" id="1_model"]
+[ext_resource type="PackedScene" path="res://assets/weapons/obur/uzi.glb" id="1_model"]
 
 [node name="Beehive" type="Node3D"]
+metadata/source_author = "OBUR Games"
+metadata/source_model = "UZI"
+metadata/sight_spacing = 0.0092076
 
 [node name="Source" parent="." instance=ExtResource("1_model")]
-position = Vector3(0, -0.00856, 0.030858)
-rotation_degrees = Vector3(0, 90, 0)
-scale = Vector3(0.136, 0.136, 0.136)
+transform = Transform3D(0.0000000, -0.0230190, 0.0000000, -0.0000000, 0.0000000, 0.0230190, -0.0230190, 0.0000000, -0.0000000, 0.0000000, 0.0386977, 0.0345284)
 
 [node name="Muzzle" type="Marker3D" parent="."]
-position = Vector3(0, 0.05, -0.275)
+position = Vector3(0.0000000, 0.0500000, -0.2343763)
+
+[node name="Grip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, -0.0188497, 0.0000000)
+
+[node name="SupportGrip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0156787, -0.1035853)
+
+[node name="FrontSight" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0955813, -0.1344077)
+
+[node name="RearSight" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0954202, 0.1388964)

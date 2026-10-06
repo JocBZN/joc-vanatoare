@@ -17,3 +17,7 @@ length = 5.3
 width = 1.7
 aquatic = true
 loot_id = &"ancient_crocodile_hide"
+harvest_strokes = 14
+harvest_period = 1.8
+harvest_window = 0.16
+harvest_quirks = PackedStringArray("chomp", "thick", "twitch")

@@ -1,13 +1,27 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="PackedScene" path="res://assets/weapons/stylized/raygun.glb" id="1_model"]
+[ext_resource type="PackedScene" path="res://assets/weapons/obur/baretta_93r.glb" id="1_model"]
 
-[node name="RayGun" type="Node3D"]
+[node name="Raygun" type="Node3D"]
+metadata/source_author = "OBUR Games"
+metadata/source_model = "Baretta_93_R"
+metadata/weapon_tint = Color(0.5600000, 1.0000000, 0.7000000, 1.0000000)
+metadata/sight_spacing = 0.0039474
 
 [node name="Source" parent="." instance=ExtResource("1_model")]
-position = Vector3(0.000331, -0.06403, -0.17107)
-rotation_degrees = Vector3(0, 180, 0)
-scale = Vector3(0.1338, 0.1338, 0.1338)
+transform = Transform3D(0.0000000, -0.0225565, 0.0000000, -0.0000000, 0.0000000, 0.0225565, -0.0225565, 0.0000000, -0.0000000, 0.0000000, 0.0007366, -0.0676695)
 
 [node name="Muzzle" type="Marker3D" parent="."]
-position = Vector3(0, 0.04, -0.225)
+position = Vector3(0.0000000, 0.0500000, -0.2216732)
+
+[node name="Grip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, -0.0533990, 0.0000000)
+
+[node name="SupportGrip" type="Marker3D" parent="."]
+position = Vector3(0.0000000, -0.0488877, -0.0496243)
+
+[node name="FrontSight" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0644700, -0.1776775)
+
+[node name="RearSight" type="Marker3D" parent="."]
+position = Vector3(0.0000000, 0.0651241, -0.0129249)

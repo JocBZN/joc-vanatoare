@@ -34,3 +34,7 @@ The pre-existing forest animals keep their separate credits in assets/animals/fo
 ## Stylized update — October 2026
 
 Environment textures are now original procedural painted maps. Source normal maps are disabled for the stylized surfaces. Hunters, equipment, vehicles and wildlife share a simplified palette and rough materials. Source archives stay in ignored work folders; shipped asset attribution and conversion tools are versionable.
+
+## Natural water — October 2026
+
+Lake and marsh water now use dedicated normals derived from zookeeper's free CC0 seamless wave heightmaps, with original procedural foam and new project-authored optical/interaction shaders. Exact source links, license, retained source frames, hashes and reproducible texture conversion are in [water attribution](water/ATTRIBUTION.md). These water normals are intentionally separate from the painted ground and mud materials.
