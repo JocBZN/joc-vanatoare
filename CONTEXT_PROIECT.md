@@ -618,3 +618,52 @@ Modificări:
 - **Texte RO/EN:** noi `board`, `alight`, `ladder_up`, `ladder_down`, `TRUCK_TOO_FAST`, boșii, trofeele, `BOSS_*`, `HUD_*`, `HINT_*`, `MAP_*`, `COMPASS_*`; actualizate `SEATS_FULL`, `MINIMAP_*`, descrierile hărților (2,4 km, boss); șterse cheile vechi de HUD (`HUD_COINS`, `HUD_BAG`, `AMMO`, `RELOADING`, `ANIMAL_HP`, `VIEW_AIM`, `CURSOR_HINT`, `CONTROLS`, `DRIVING`, `HARVEST_CANCEL_HINT`), `terrace`, `terrace_exit`, `RIDER_SECURED`, `PASSENGER`. RO și EN au aceleași 397 de chei.
 - **Teste:** `verify_base.gd` rescris (75): fără NPC-uri, scări, plimbare pe terasă, balustradă, săritură, în mers (stă pe loc / merge înainte / trage / scara interioară da, cea de frânghie nu), curățare în mers, călătorie. `verify_bosses.gd` nou (76; în `run_headless_tests.ps1`). `network_peer.gd`: client1 conduce, hostul + 2 clienți urcă pe jos; pe ecranul lui client2 rămâne pe puntea care se mișcă; client3 vede toate replicile pe camion; toți coboară pe scări. Adaptate: `verify_forest` (un singur loc + urcare pe jos), `verify_swamp` (boss-ul în populația inițială), `verify_harvest` (verificările de tăietură nu mai depind de ID-ul corpului; locul așezat e 0), `verify_maps_predators` (locul 0). Noi: `tests/preview_bosses.gd`, `tests/preview_hud.gd`; `preview_base.gd` folosește `place_aboard`.
 - **Docs:** `docs/base.md` rescris, `docs/bosses.md` și `docs/hud.md` noi; `docs/architecture.md` și `docs/play_guide.md` actualizate (CRLF păstrat).
+- **Încărcare:** `LoadingScreen.begin()` oprește randarea 3D a viewport-ului (`disable_3d`) până la `finish()`. În capturile cu randare software, încărcarea hărții de 2,4 km a scăzut de la ~500 s la 4–6 s; pe un GPU real câștigul e mai mic și nu a fost măsurat.
+- **Harta mare, zoom:** rotița mouse-ului face zoom 1×/2×/4×/8× (`Minimap.zoom_full`). Cu zoom, harta te urmărește și se oprește la marginile lumii; scara se adaptează.
+- **Corecturi după inspecția capturilor finale:**
+  - pe harta mare, numele (tu → prieteni → camion → locuri) se desenează după pictograme, iar unul care ar acoperi un nume deja scris se ascunde până la zoom (`Minimap._draw_labels`);
+  - titlul hărții și numele lung al boss-ului nu se mai taie în legendă (`Paint.fit_size`, `Paint.wrap`);
+  - fumul hornului se estompează lin de aproape (`DISTANCE_FADE_PIXEL_ALPHA`, 3–8 m), în loc de cercurile punctate dither din fața celui de pe terasă;
+  - trofeele erau supraexpuse: lumina aurie a scăzut la 0,45 și a urcat la 1 m, iar chihlimbarul e portocaliu, cu emisie 0,55.
+- `docs/base_gunner.png` (postul de tragere dispărut) a fost șters.
+
+Verificări rulate local (Linux, Godot 4.7.2; echivalente bash ale scripturilor `.ps1`). Toate sunt rulări locale din această sesiune, nu rezultate upstream:
+- Import headless: exit 0, fără erori. A generat `.uid` pentru cele 10 scripturi și shadere noi.
+- Douăsprezece suite headless, rulate pe codul final, după ultimele corecturi: **853 checks, 0 failures**:
+
+  | Suită | Checks |
+  | --- | --- |
+  | maps_predators | 42 |
+  | worlds_vehicle | 45 |
+  | forest | 56 |
+  | progression | 57 |
+  | revive_perspective | 37 |
+  | art_wildlife | 48 |
+  | swamp | 51 |
+  | animated_wildlife | 103 |
+  | harvest | 204 |
+  | cleaning | 59 |
+  | base | 75 |
+  | bosses | 76 |
+
+  `verify_water.gd`: 22/0 (COAST dry 5,48 / lake 4,83 m/s; BUOYANCY dry 0,178 / wet 0,108 m). `verify_random_terrain.gd`: 6/0.
+- ENet host + 3 clienți + al cincilea refuzat, pe codul final, rulate una după alta (portul 24680): Forest host 66 / client1 57 / client2 53 / client3 58 / extra 3 = **237 checks, 0 failures**. Swamp: **237 checks, 0 failures**. `_err.log` e curat. Pe ecranul lui client2, vânătorul rămâne pe puntea care se mișcă (local (0,95; 7,80; 2,30)).
+- Rulări intermediare, neincluse în totaluri, care au găsit probleme:
+  - în cod: încărcarea de ~500 s cu randare software (3D-ul se randa în timpul construcției); fumul care umplea vederea de pe terasă; punctul de aterizare după scară care redeschidea promptul scării; etichetele suprapuse, numele tăiate și trofeele supraexpuse văzute în capturi. Toate sunt corectate mai sus;
+  - în teste: săritura la balustradă se verifica înainte de apex; verificările de tăietură din `verify_harvest` depindeau de ID-ul corpului (boss-ul schimbă ID-urile); numărătorile din `verify_swamp` nu includeau boss-ul; în `verify_bosses`, montajul arenei (pe drum), pragul marginii și un peer fals care bloca startul în mlaștină. Testele au fost corectate și verifică același comportament.
+- Capturi reale cu Xvfb + OpenGL3/llvmpipe (Compatibility), inspectate și salvate în `docs/`:
+  - `tests/preview_hud.gd`: `hud_forest_{foot,map,drive,ride}.png`, `hud_swamp_{foot,map,drive,ride}.png`;
+  - `tests/preview_bosses.gd`: `boss_ancient_bear(_back).png`, `boss_albino_crocodile(_back).png`, `boss_trophies.png`;
+  - `tests/preview_base.gd`: `base_*.png`, inclusiv `base_rider.png` (vânător pe terasă în mers).
+
+  FPS-ul și Forward+ pe GPU real nu au fost măsurate.
+
+Limite și reluare:
+- Jocul nu a fost jucat de un om cu tastatura și mouse-ul în această sesiune. Balansul boșilor (viață, lovitură, frecvență, prețuri) nu e verificat în joc.
+- Hărțile de 2,4 km au ~23 000 / ~15 000 de copaci. Performanța pe PC-ul utilizatorului (Intel UHD 620, Compatibility) trebuie urmărită.
+- Desenul HUD-ului și al hărților se verifică doar vizual. Testele headless acoperă logica lor, nu aspectul.
+- Pe terasă ești în siguranță față de boși, pe verandă nu (intenționat).
+- Remorca e rigidă față de cabină, iar scările sunt teleporturi scurte cu E.
+- Magazinele funcționează și în expediție.
+
+Commit și push pe `claude/absurd-vehicle-game-a1mq0h`: `1f12ac2` (codul și documentația), apoi un commit cu capturile, fișierele `.uid` și acest jurnal.
