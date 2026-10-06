@@ -26,7 +26,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
     if not hunter.local_player: hide();return
-    if not rig.enabled or hunter.harvest_target>0: hide();return
+    if not rig.enabled or hunter.busy(): hide();return
     if not is_instance_valid(hunter.inventory): return
     if shown!=hunter.inventory.equipped_weapon_id: _equip(hunter.inventory.equipped_weapon_id)
     ads_blend=lerpf(ads_blend,1.0 if rig.aiming else 0.0,1-exp(-14*delta))

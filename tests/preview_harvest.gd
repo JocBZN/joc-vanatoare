@@ -92,26 +92,17 @@ func run() -> void:
         if int(clock.get("token",-1))!=int(state.token): clock.token=int(state.token);clock.blade=Vector2(state.blade)
         for op in Bot.next_ops(state,Vector2(clock.blade)):
             refresh_intent()
-            match String(op.kind):
-                "wait": session._tick_harvests(.1)
-                "blade":
-                    clock.stamp=int(clock.get("stamp",1000))+int(op.dt);clock.blade=op.p
-                    session.local_blade=op.p
-                    session._harvest_blade(1,op.p,int(clock.stamp))
-                "click":
-                    clock.click=maxi(int(clock.get("click",0)),int(state.get("clicks",0)))+1
-                    session._harvest_click(1,"%d:%d:%d:%.5f:%.5f" % [int(state.id),int(state.token),int(clock.click),Vector2(op.p).x,Vector2(op.p).y])
+            if String(op.kind)=="wait": session._tick_harvests(.1)
+            else:
+                clock.stamp=int(clock.get("stamp",1000))+int(op.dt);clock.blade=op.p
+                session.local_blade=op.p
+                session._harvest_blade(1,op.p,int(clock.stamp))
             scene._update_harvest(0)
             await process_frame
             var now: Dictionary=session.harvest_state(1)
             if not bool(now.get("active",false)): break
-            var move: int=int(now.move)
-            if move==HarvestPattern.MOVE_SLASH and not shots.has("slash") and not scene.harvest_panel._popups.is_empty() and int(now.completed)>=1:
+            if not shots.has("slash") and not scene.harvest_panel._popups.is_empty() and int(now.completed)>=1:
                 shots["slash"]=true;await frames(2);await capture("jupuire_taiere")
-            if move==HarvestPattern.MOVE_SCRAPE and not shots.has("scrape") and float(now.fat[0])<.6:
-                shots["scrape"]=true;await capture("jupuire_razuire")
-            if move==HarvestPattern.MOVE_YANK and not shots.has("yank") and bool(now.grabbed) and HarvestPattern.yank_tension(HarvestPattern.yank(int(now.id),int(now.step)).ring,session.local_blade,HarvestPattern.yank(int(now.id),int(now.step)).dir)>.5:
-                shots["yank"]=true;await capture("jupuire_smulgere")
             if int(now.round)!=int(state.round): break
     var finished: Dictionary=session.harvest_state(1)
     if bool(finished.get("active",true)) or finished.get("feedback","")!="complete" or session.animals.has(carcass_id):

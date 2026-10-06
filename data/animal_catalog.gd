@@ -28,6 +28,12 @@ static func loot(id: StringName) -> LootDefinition:
     if parts.size()==2 and StringName(parts[0]) in LOOT_IDS and parts[1] in ["1","2","3","4","5"]:
         var stars: int=int(parts[1])
         return _loot_variant(id,loot(StringName(parts[0])),0,stars,star_multiplier(stars))
+    parts=String(id).split("__r")
+    if parts.size()==2 and StringName(parts[0]) in LOOT_IDS and parts[1] in ["1","2","3","4","5"]:
+        var raw_stars: int=int(parts[1])
+        var hide: LootDefinition=_loot_variant(id,loot(StringName(parts[0])),0,raw_stars,star_multiplier(raw_stars)*RAW_VALUE)
+        hide.raw=true
+        return hide
     return null
 
 static func _loot_variant(id: StringName,base: LootDefinition,quality: int,stars: int,multiplier: float) -> LootDefinition:
@@ -60,6 +66,25 @@ static func stars_from_wear(wear: int) -> int:
     if damage<=430: return 3
     if damage<=680: return 2
     return 1
+
+## A raw hide sells for this share of what the same hide earns once cleaned.
+const RAW_VALUE: float = .4
+
+## What the field gives: a raw hide carrying the stars the cut earned.
+static func raw_hide(base_id: StringName,wear: int) -> LootDefinition:
+    if base_id not in LOOT_IDS: return null
+    return loot(StringName(String(base_id)+"__r"+str(stars_from_wear(wear))))
+
+## What the camp cleaner gives back for a raw hide.
+static func cleaned_hide(raw: LootDefinition,clean: float) -> LootDefinition:
+    if raw==null or not raw.raw: return null
+    return loot(StringName(String(raw.base_id)+"__s"+str(CleaningPattern.final_stars(raw.stars,clean))))
+
+## The species a hide came from, for drawing what the cleaner throws off it.
+static func animal_for_loot(base_id: StringName) -> AnimalDefinition:
+    for entry: AnimalDefinition in ANIMALS+SWAMP_ANIMALS:
+        if entry.loot_id==base_id: return entry
+    return null
 
 static func harvested_loot_wear(base_id: StringName,wear: int) -> LootDefinition:
     if base_id not in LOOT_IDS: return null

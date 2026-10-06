@@ -54,6 +54,13 @@ var local_blade: Vector2=Vector2(.5,.5)
 var harvest_token: int=0
 var harvest_sequence: int=0
 var harvest_received_sequence: int=-1
+## Camp cleaner jobs, mirroring the harvest jobs above.
+var clean_jobs: Dictionary={}
+var clean_views: Dictionary={}
+var local_clean_state: Dictionary={}
+var clean_token: int=0
+var clean_sequence: int=0
+var clean_received_sequence: int=-1
 
 func _ready() -> void:
     rng.seed=10337
@@ -149,6 +156,7 @@ func leave_game() -> void:
 func _clear_world() -> void:
     if OS.get_environment("HUNT_NET_TRACE")=="1": print("TRACE clear world ",mode)
     _clear_harvests()
+    _clear_cleans()
     for collection in [players,animals,loot]:
         for node in collection.values():
             node.get_parent().remove_child(node)
@@ -178,6 +186,8 @@ func _peer_disconnected(peer: int) -> void:
     pending_peers.erase(peer)
     _cancel_harvest(peer,"cancelled",false)
     harvest_views.erase(peer)
+    _cancel_clean(peer,false)
+    clean_views.erase(peer)
     if players.has(peer):
         if is_host():
             profiles[identities.get(peer,"")]=players[peer].inventory.export_state()
@@ -262,6 +272,7 @@ func _physics_process(delta: float) -> void:
             if peer!=1 and Time.get_ticks_msec()-int(p.command.get("time",0))>500: p.command={}
             if phase!="loading" and p.inventory.tick_reload(delta): _send_inventory(peer)
         _tick_harvests(delta)
+        _tick_cleans(delta)
         _tick_revives(delta)
         if phase=="loading":
             loading_clock-=delta
@@ -291,6 +302,8 @@ func _physics_process(delta: float) -> void:
                 _broadcast(&"_wildlife_state",[var_to_bytes([]).compress(FileAccess.COMPRESSION_DEFLATE),[],snapshot_sequence,world_epoch])
             for peer in harvest_jobs.keys()+harvest_views.keys():
                 _send_harvest_state(peer,false)
+            for peer in clean_jobs.keys()+clean_views.keys():
+                _send_clean_state(peer,false)
     if tick>=.05:
         var p=local_hunter()
         if p: send_input(p.sample_input())
@@ -327,10 +340,11 @@ func _accept_input(peer: int, data: Dictionary) -> void:
         validated["bt"]=int(data.get("bt",0)) if data.get("bt",0) is int else 0
     if target>0:
         validated.direction=Vector3.ZERO;validated.drive=Vector2.ZERO;validated.jump=false;validated.aim=false
-    if is_harvesting(peer):
+    if is_busy(peer):
         validated.direction=Vector3.ZERO;validated.drive=Vector2.ZERO;validated.jump=false;validated.aim=false;validated.revive=0
     players[peer].command=validated
     if validated.has("blade") and harvest_jobs.has(peer): _harvest_blade(peer,validated.blade,int(validated.bt))
+    elif validated.has("blade") and clean_jobs.has(peer): _clean_blade(peer,validated.blade,int(validated.bt))
     if jeep.occupants[0]==peer: jeep.command=validated
 
 func _snapshot() -> Dictionary:
@@ -424,17 +438,23 @@ func _action(peer: int, kind: String, value: String) -> void:
     if kind=="harvest_cancel":
         _cancel_harvest(peer)
         return
+    if kind=="clean_cancel":
+        _cancel_clean(peer)
+        return
     if phase=="loading" or not players[peer].world_ready or players[peer].health<=0: return
     var p=players[peer]
     var inv=p.inventory
     if kind=="harvest_start":
         if value.is_valid_int(): _start_harvest(peer,int(value))
         return
-    if kind=="harvest_click":
-        _harvest_click(peer,value)
+    if kind=="clean_start":
+        _start_clean(peer)
         return
     if is_harvesting(peer):
         if kind in ["reset","enter"]: _cancel_harvest(peer)
+        else: return
+    if is_cleaning(peer):
+        if kind in ["reset","enter"]: _cancel_clean(peer)
         else: return
     match kind:
         "recover_vehicle":
@@ -500,6 +520,7 @@ func _phase_changed(value: String) -> void:
 
 func _clear_entities() -> void:
     _clear_harvests()
+    _clear_cleans()
     for collection in [animals,loot]:
         for node in collection.values():
             node.get_parent().remove_child(node)
@@ -725,7 +746,7 @@ func _shot_command(origin: Vector3, direction: Vector3) -> void:
 func _shoot(peer: int, origin: Vector3, direction: Vector3) -> void:
     if not players.has(peer) or not origin.is_finite() or not direction.is_finite() or direction.length_squared()<.8: return
     var p=players[peer]
-    if phase=="loading" or not p.world_ready or is_harvesting(peer): return
+    if phase=="loading" or not p.world_ready or is_busy(peer): return
     if p.seat_index>=0 or p.health<=0 or int(p.command.get("revive",0))>0 or origin.distance_to(p.global_position)>8: return
     var now:=Time.get_ticks_msec()
     if now<int(cooldowns.get(peer,0)): return
@@ -887,27 +908,15 @@ func harvest_state(peer: int) -> Dictionary:
     var job: Dictionary=harvest_jobs[peer]
     var animal=animals.get(int(job.id))
     if not is_instance_valid(animal): return {}
-    var item: LootDefinition=AnimalCatalog.harvested_loot_wear(animal.definition.loot_id,animal.harvest_wear)
-    var base: LootDefinition=AnimalCatalog.loot(animal.definition.loot_id)
+    var item: LootDefinition=AnimalCatalog.raw_hide(animal.definition.loot_id,animal.harvest_wear)
     # Streamed unreliably at 20 Hz, so it must stay under one MTU: only the live
-    # counters and tuning the current move actually needs travel with it.
-    var move: int=int(job.move)
+    # counters and the tuning the current wave actually needs travel with it.
     var quirks: PackedStringArray=job.quirks
     var state: Dictionary={"id":int(job.id),"token":int(job.token),"round":int(job.round),"completed":animal.harvest_completed,"required":int(job.required),
-        "stars":item.stars,"base_value":base.sell_value,"sell_value":item.sell_value,"value_percent":AnimalCatalog.star_percent(item.stars),
+        "stars":item.stars,"sell_value":item.sell_value,"clean_value":AnimalCatalog.cleaned_hide(item,1.0).sell_value,
         "animal_kind":String(animal.definition.id),"feedback":String(job.feedback),"fx":int(job.fx),"fx_pos":Vector2(job.fx_pos),"combo":int(job.combo),
-        "active":true,"wear":animal.harvest_wear,"move":move,"step":int(job.step),"move_time":float(job.move_time),"quirks":quirks,"clicks":int(job.clicks),"blade":Vector2(job.blade)}
-    var keys: Array=["difficulty","pressure"]
-    match move:
-        HarvestPattern.MOVE_SLASH:
-            state["hp"]=Array(job.hp).duplicate()
-            keys.append_array(["seams","seam_length","perfect_band","min_speed","directional","seam_hp"])
-        HarvestPattern.MOVE_SCRAPE:
-            state["fat"]=Array(job.fat).duplicate();state["scrape_left"]=float(job.scrape_left)
-            keys.append_array(["fat_count","fat_radius","scrape_time"])
-        HarvestPattern.MOVE_YANK:
-            state["grabbed"]=bool(job.grabbed)
-            keys.append_array(["sweet_width","wobble"])
+        "active":true,"wear":animal.harvest_wear,"step":int(job.step),"move_time":float(job.move_time),"quirks":quirks,"blade":Vector2(job.blade),"hp":Array(job.hp).duplicate()}
+    var keys: Array=["difficulty","pressure","seams","seam_length","perfect_band","min_speed","directional","seam_hp"]
     if quirks.has("twitch"): keys.append("twitch_period")
     if quirks.has("chomp"): keys.append("jaw_period")
     if quirks.has("ticks") or quirks.has("bees"):
@@ -915,30 +924,17 @@ func harvest_state(peer: int) -> Dictionary:
     for key in keys: state[key]=job.tuning[key]
     return state
 
-## Lays out the next move on the corpse: a slash wave, a fat scrape or a yank.
-## Geometry is regenerated from the body id and step on every peer, so only
-## the live counters (seam health, fat left, grab) ever travel over the network.
+## Lays out the next slash wave on the corpse. Geometry is regenerated from the
+## body id and step on every peer, so only seam health travels over the network.
 func _prepare_harvest_move(job: Dictionary, animal) -> void:
     var tuning: Dictionary=animal.definition.harvest_tuning(animal.harvest_completed,int(job.required))
-    job.tuning=tuning
-    job.move=HarvestPattern.move_of(animal.harvest_completed,int(job.strokes),job.quirks)
-    job.step=animal.harvest_completed
-    job.move_time=0.0;job.dead=0;job.grabbed=false;job.scrape_left=0.0
-    job.hp=[];job.fat=[];job.seams=[];job.fat_pos=PackedVector2Array()
-    job.ring=Vector2(.5,.5);job.pull=Vector2.RIGHT
     var id: int=int(job.id)
-    match int(job.move):
-        HarvestPattern.MOVE_SLASH:
-            var jaw: int=HarvestPattern.jaw_side(id) if job.quirks.has("chomp") else 0
-            job.seams=HarvestPattern.seams(id,int(job.step),int(tuning.seams),float(tuning.seam_length),jaw)
-            for seam in job.seams: job.hp.append(int(tuning.seam_hp))
-        HarvestPattern.MOVE_SCRAPE:
-            job.fat_pos=HarvestPattern.fat(id,int(job.step),int(tuning.fat_count),float(tuning.fat_radius))
-            for blob in job.fat_pos: job.fat.append(1.0)
-            job.scrape_left=float(tuning.scrape_time)
-        HarvestPattern.MOVE_YANK:
-            var flap: Dictionary=HarvestPattern.yank(id,int(job.step))
-            job.ring=flap.ring;job.pull=flap.dir
+    job.tuning=tuning
+    job.step=animal.harvest_completed
+    job.move_time=0.0;job.dead=0;job.hp=[]
+    var jaw: int=HarvestPattern.jaw_side(id) if job.quirks.has("chomp") else 0
+    job.seams=HarvestPattern.seams(id,int(job.step),int(tuning.seams),float(tuning.seam_length),jaw)
+    for seam in job.seams: job.hp.append(int(tuning.seam_hp))
 
 func _harvest_point(animal) -> Vector3:
     var interaction=animal.get_node_or_null("HarvestInteraction")
@@ -962,13 +958,13 @@ func _start_harvest(peer: int, id: int) -> void:
         return
     var strokes: int=clampi(animal.definition.harvest_strokes,2,16)
     var required: int=HarvestPattern.total_steps(strokes)
-    var item: LootDefinition=AnimalCatalog.harvested_loot_wear(animal.definition.loot_id,animal.harvest_wear)
+    var item: LootDefinition=AnimalCatalog.raw_hide(animal.definition.loot_id,animal.harvest_wear)
     var hunter=players[peer]
     if not hunter.inventory.can_collect(item): tell(peer,"FULL_BAG");return
     harvest_token+=1
     harvest_jobs[peer]={"id":id,"token":harvest_token,"round":0,"required":required,"strokes":strokes,"epoch":world_epoch,"damage":hunter.damage_version,
         "feedback":"","feedback_time":0.0,"focus_grace":.75,"fx":0,"fx_pos":Vector2(.5,.5),"combo":0,"best_combo":0,"combo_clock":9.0,
-        "blade":Vector2(.5,.5),"bt":0,"speed":0.0,"clicks":0,"chomp_cycle":-1,"quirks":PackedStringArray(animal.definition.harvest_quirks)}
+        "blade":Vector2(.5,.5),"bt":0,"speed":0.0,"chomp_cycle":-1,"quirks":PackedStringArray(animal.definition.harvest_quirks)}
     _prepare_harvest_move(harvest_jobs[peer],animal)
     harvest_views.erase(peer)
     animal.harvest_owner=peer
@@ -980,93 +976,33 @@ func _start_harvest(peer: int, id: int) -> void:
     _send_harvest_state(peer,true)
     if animal.harvest_completed>=int(harvest_jobs[peer].required): _complete_harvest(peer)
 
-## Clicks only matter for the yank: one to grab the flap, one to let it fly.
-## The value is "id:token:click:x:y"; the click number only ever increases, so
-## a duplicated or replayed packet can never release the same flap twice.
-func _harvest_click(peer: int, value: String) -> void:
-    if not harvest_jobs.has(peer) or value.length()>80: return
-    var parts: PackedStringArray=value.split(":")
-    if parts.size()!=5: return
-    for i in 3:
-        if not parts[i].is_valid_int(): return
-    if not parts[3].is_valid_float() or not parts[4].is_valid_float(): return
-    var job: Dictionary=harvest_jobs[peer]
-    if int(parts[0])!=int(job.id) or int(parts[1])!=int(job.token) or int(parts[2])<=int(job.clicks) or int(job.epoch)!=world_epoch: return
-    var animal=animals.get(int(job.id))
-    if not _can_harvest(peer,animal) or players[peer].damage_version!=int(job.damage): _cancel_harvest(peer);return
-    if float(job.focus_grace)<=0.0 and not _harvest_focus_valid(peer,job): _cancel_harvest(peer);return
-    var point:=Vector2(float(parts[3]),float(parts[4]))
-    if not point.is_finite(): return
-    point=Vector2(clampf(point.x,-.1,1.1),clampf(point.y,-.1,1.1))
-    # A click lands where the blade already is; it cannot teleport across the hide.
-    if HarvestPattern.metric(point).distance_to(HarvestPattern.metric(job.blade))>.5: return
-    job.clicks=int(parts[2]);job.blade=point
-    if int(job.move)!=HarvestPattern.MOVE_YANK: return
-    var tuning: Dictionary=job.tuning
-    if not bool(job.grabbed):
-        if HarvestPattern.metric(point).distance_to(HarvestPattern.metric(job.ring))<=HarvestPattern.GRAB_RADIUS:
-            job.grabbed=true;_harvest_fx(job,"grab",job.ring)
-        else: _harvest_fx(job,"fumble",point)
-        _send_harvest_state(peer,true)
-        return
-    var tension: float=_yank_tension(job,point)
-    var low: float=HarvestPattern.YANK_SWEET-float(tuning.sweet_width)*.5
-    var high: float=HarvestPattern.YANK_SWEET+float(tuning.sweet_width)*.5
-    if tension<low:
-        # Not enough pull: the flap snaps back into place and must be regrabbed.
-        job.grabbed=false
-        _harvest_penalty(animal,job,15,"boing",point)
-        _send_harvest_state(peer,true)
-        return
-    if tension<=high:
-        _harvest_combo(job)
-        if absf(tension-HarvestPattern.YANK_SWEET)<=float(tuning.sweet_width)*.18: _harvest_fx(job,"flop_perfect",point)
-        else:
-            _harvest_tear(animal,job,10)
-            _harvest_fx(job,"flop",point)
-    else: _harvest_penalty(animal,job,55,"overpull",point)
-    _finish_harvest_step(peer,job,animal)
-
-## Tension the host reads off the flap right now, including the hide fighting
-## back and, on twitchy bodies, the extra kick of a spasm.
-func _yank_tension(job: Dictionary, point: Vector2) -> float:
-    var tuning: Dictionary=job.tuning
-    var wobble: float=float(tuning.wobble)
-    if job.quirks.has("twitch") and HarvestPattern.spasm(int(job.id),float(job.move_time),float(tuning.twitch_period))==2: wobble+=.22
-    return HarvestPattern.yank_tension(job.ring,point,job.pull)+HarvestPattern.yank_wobble(int(job.id),float(job.move_time),wobble)
-
 ## Clients stream only the raw blade position and their own sample clock; the
-## host owns every seam, bug, blob and flap and decides each cut itself.
+## host owns every seam and bug and decides each cut itself.
 func _harvest_blade(peer: int, point: Vector2, stamp: int=0) -> void:
     if not harvest_jobs.has(peer): return
     var job: Dictionary=harvest_jobs[peer]
     if int(job.epoch)!=world_epoch: return
     var animal=animals.get(int(job.id))
     if not _can_harvest(peer,animal) or players[peer].damage_version!=int(job.damage): _cancel_harvest(peer);return
-    # Blade speed uses the sender's own sample clock, so network jitter cannot
-    # turn a clean flick into a snag. Intervals are clamped to sane values.
+    var motion: Array=_blade_motion(job,point,stamp)
+    if motion.is_empty(): return
+    var bitten: bool=_harvest_hazards(job,animal,motion[0],motion[1])
+    if not _harvest_slash(peer,job,animal,motion[0],motion[1]) and bitten: _send_harvest_state(peer,true)
+
+## Shared by skinning and cleaning: moves the job's blade and returns the metric
+## motion [from, to], or [] for a stale sample. Speed uses the sender's own
+## sample clock, so network jitter cannot turn a clean flick into a snag.
+func _blade_motion(job: Dictionary, point: Vector2, stamp: int) -> Array:
     var delta: float=.05
     if stamp>0:
-        if stamp<=int(job.bt): return
+        if stamp<=int(job.bt): return []
         if int(job.bt)>0: delta=clampf(float(stamp-int(job.bt))/1000.0,.01,.35)
         job.bt=stamp
-    var previous: Vector2=job.blade
-    job.blade=point
-    var a: Vector2=HarvestPattern.metric(previous)
+    var a: Vector2=HarvestPattern.metric(job.blade)
     var b: Vector2=HarvestPattern.metric(point)
+    job.blade=point
     job.speed=a.distance_to(b)/delta
-    match int(job.move):
-        HarvestPattern.MOVE_SLASH:
-            var bitten: bool=_harvest_hazards(job,animal,a,b)
-            if not _harvest_slash(peer,job,animal,a,b) and bitten: _send_harvest_state(peer,true)
-        HarvestPattern.MOVE_SCRAPE:
-            var stung: bool=_harvest_hazards(job,animal,a,b)
-            if not _harvest_scrape(peer,job,animal,a,b) and stung: _send_harvest_state(peer,true)
-        HarvestPattern.MOVE_YANK:
-            if bool(job.grabbed) and _yank_tension(job,point)>HarvestPattern.YANK_RIP:
-                # Overstretched past breaking: the hide comes off, in tatters.
-                _harvest_penalty(animal,job,110,"rip",point)
-                _finish_harvest_step(peer,job,animal)
+    return [a,b]
 
 ## Ticks and bees are only hurt by a moving knife; a hovering blade passes over.
 func _harvest_hazards(job: Dictionary, animal, a: Vector2, b: Vector2) -> bool:
@@ -1131,35 +1067,6 @@ func _harvest_slash(peer: int, job: Dictionary, animal, a: Vector2, b: Vector2) 
     _finish_harvest_step(peer,job,animal)
     return true
 
-## Scrubbing: every bit of blade travel over a blob wears the fat down.
-func _harvest_scrape(peer: int, job: Dictionary, animal, a: Vector2, b: Vector2) -> bool:
-    var radius: float=float(job.tuning.fat_radius)*1.15
-    var travel: float=a.distance_to(b)
-    if travel<=0.0: return false
-    var worked: bool=false
-    var cleared: bool=false
-    for i in job.fat.size():
-        if float(job.fat[i])<=0.0: continue
-        var centre: Vector2=HarvestPattern.metric(job.fat_pos[i])
-        var inside: float=0.0
-        for k in 8:
-            if a.lerp(b,(float(k)+.5)/8.0).distance_to(centre)<=radius: inside+=travel/8.0
-        if inside<=0.0: continue
-        worked=true
-        job.fat[i]=float(job.fat[i])-inside*HarvestPattern.SCRAPE_RATE
-        if float(job.fat[i])<=0.0:
-            job.fat[i]=0.0;cleared=true
-            _harvest_combo(job)
-            _harvest_fx(job,"scraped",job.fat_pos[i])
-    if not worked: return false
-    for value in job.fat:
-        if float(value)>0.0:
-            _send_harvest_state(peer,cleared)
-            return true
-    _harvest_fx(job,"clean",Vector2(.5,.5))
-    _finish_harvest_step(peer,job,animal)
-    return true
-
 func _harvest_combo(job: Dictionary) -> void:
     job.combo=int(job.combo)+1 if float(job.combo_clock)<=HarvestPattern.COMBO_WINDOW else 1
     job.combo_clock=0.0
@@ -1180,7 +1087,7 @@ func _harvest_tear(animal, job: Dictionary, amount: int) -> void:
     if amount<=0: return
     animal.harvest_wear=clampi(animal.harvest_wear+amount,0,1000)
 
-## One slash wave, scrape or yank finished. Progress lives on the corpse so
+## One slash wave finished. Progress lives on the corpse so
 ## handing the body over never rewinds or repairs the work.
 func _finish_harvest_step(peer: int, job: Dictionary, animal) -> void:
     animal.harvest_completed+=1
@@ -1197,7 +1104,7 @@ func _complete_harvest(peer: int) -> void:
     var animal=animals.get(int(job.id))
     if not _can_harvest(peer,animal) or players[peer].damage_version!=int(job.damage): _cancel_harvest(peer);return
     if animal.harvest_completed<int(job.required): return
-    var item: LootDefinition=AnimalCatalog.harvested_loot_wear(animal.definition.loot_id,animal.harvest_wear)
+    var item: LootDefinition=AnimalCatalog.raw_hide(animal.definition.loot_id,animal.harvest_wear)
     if not players[peer].inventory.can_collect(item):
         tell(peer,"FULL_BAG");_cancel_harvest(peer,"full_bag");return
     var finished: Dictionary=harvest_state(peer)
@@ -1255,30 +1162,21 @@ func _tick_harvests(delta: float) -> void:
         job.combo_clock=float(job.combo_clock)+delta
         job.feedback_time=maxf(0.0,float(job.feedback_time)-delta)
         if float(job.feedback_time)<=0.0: job.feedback=""
-        _tick_harvest_move(peer,job,animal,delta)
+        _tick_harvest_move(peer,job,animal)
 
-## Clock-driven parts of a move: setting fat and the crocodile's reflex bite.
-## Both judge the blade where the host last saw it, so standing still in the
-## jaw zone is exactly as dangerous as swiping through it.
-func _tick_harvest_move(peer: int, job: Dictionary, animal, delta: float) -> void:
+## The crocodile's reflex bite judges the blade where the host last saw it, so
+## resting in the jaw zone is exactly as dangerous as swiping through it.
+func _tick_harvest_move(peer: int, job: Dictionary, animal) -> void:
+    if not job.quirks.has("chomp"): return
     var id: int=int(job.id)
-    if int(job.move)==HarvestPattern.MOVE_SCRAPE:
-        job.scrape_left=float(job.scrape_left)-delta
-        if float(job.scrape_left)<=0.0:
-            var left: float=0.0
-            for value in job.fat: left+=maxf(0.0,float(value))
-            if left>0.0: _harvest_penalty(animal,job,int(round(left*35.0)),"fat_left",Vector2(.5,.5))
-            _finish_harvest_step(peer,job,animal)
-            return
-    if job.quirks.has("chomp") and int(job.move)!=HarvestPattern.MOVE_YANK:
-        var period: float=float(job.tuning.jaw_period)
-        var time: float=float(job.move_time)
-        if HarvestPattern.jaw_state(id,time,period)==2 and HarvestPattern.in_jaw(job.blade,HarvestPattern.jaw_side(id)):
-            var cycle: int=HarvestPattern.jaw_cycle(id,time,period)
-            if cycle!=int(job.chomp_cycle):
-                job.chomp_cycle=cycle
-                _harvest_penalty(animal,job,70,"chomp",job.blade)
-                _send_harvest_state(peer,true)
+    var period: float=float(job.tuning.jaw_period)
+    var time: float=float(job.move_time)
+    if HarvestPattern.jaw_state(id,time,period)==2 and HarvestPattern.in_jaw(job.blade,HarvestPattern.jaw_side(id)):
+        var cycle: int=HarvestPattern.jaw_cycle(id,time,period)
+        if cycle!=int(job.chomp_cycle):
+            job.chomp_cycle=cycle
+            _harvest_penalty(animal,job,70,"chomp",job.blade)
+            _send_harvest_state(peer,true)
 
 func _harvest_focus_valid(peer: int, job: Dictionary) -> bool:
     var hunter=players.get(peer)
@@ -1309,6 +1207,206 @@ func _apply_harvest_state(data: Dictionary, epoch: int, sequence: int) -> void:
     var hunter=local_hunter()
     if hunter: hunter.harvest_target=int(data.get("id",0)) if bool(data.get("active",false)) else 0
 
+## --- Camp hide cleaner -------------------------------------------------------
+## A cleaning job borrows one raw hide from the hunter's bag for one drum
+## session. Cancelling gives the very same hide back; finishing swaps it for the
+## cleaned hide, graded by CleaningPattern from what was sliced and what landed.
+func is_cleaning(peer: int) -> bool:
+    return clean_jobs.has(peer) if is_host() else peer==local_id() and bool(local_clean_state.get("active",false))
+
+func is_busy(peer: int) -> bool:
+    return is_harvesting(peer) or is_cleaning(peer)
+
+func clean_state(peer: int) -> Dictionary:
+    if not is_host(): return local_clean_state.duplicate(true) if peer==local_id() else {}
+    if not clean_jobs.has(peer): return clean_views.get(peer,{}).duplicate(true)
+    var job: Dictionary=clean_jobs[peer]
+    var item: LootDefinition=job.item
+    var clean: float=CleaningPattern.cleanliness(int(job.dirt),int(job.junk))
+    return {"token":int(job.token),"item":String(item.id),"kind":String(job.kind),"seed":int(job.seed),"difficulty":float(job.difficulty),"fatty":bool(job.fatty),
+        "time":float(job.time),"duration":float(job.duration),"done":int(job.done),"cracked":int(job.cracked),"dirt":int(job.dirt),"junk":int(job.junk),"cleaned":int(job.cleaned),
+        "clean":clean,"raw_stars":item.stars,"stars":CleaningPattern.final_stars(item.stars,clean),"raw_value":item.sell_value,"value":AnimalCatalog.cleaned_hide(item,clean).sell_value,
+        "feedback":String(job.feedback),"fx":int(job.fx),"fx_pos":Vector2(job.fx_pos),"combo":int(job.combo),"active":true,"blade":Vector2(job.blade)}
+
+## The most valuable raw hide in the bag goes into the drum first.
+func _raw_hide_index(inventory) -> int:
+    var best: int=-1
+    for index in inventory.items.size():
+        var item: LootDefinition=inventory.items[index]
+        if item.raw and (best<0 or item.stars>inventory.items[best].stars): best=index
+    return best
+
+func _can_clean(peer: int) -> bool:
+    if not is_host() or phase!="lobby" or not players.has(peer): return false
+    var hunter=players[peer]
+    return hunter.world_ready and hunter.health>0 and hunter.seat_index<0 and _at_stall(hunter,"cleaner")
+
+func _start_clean(peer: int) -> void:
+    if clean_jobs.has(peer) or harvest_jobs.has(peer) or not players.has(peer): return
+    var hunter=players[peer]
+    if not _can_clean(peer): tell(peer,"CLEAN_UNAVAILABLE");return
+    var index: int=_raw_hide_index(hunter.inventory)
+    if index<0: tell(peer,"CLEAN_NOTHING");return
+    var item: LootDefinition=hunter.inventory.items[index]
+    hunter.inventory.items.remove_at(index)
+    hunter.inventory.changed.emit();_send_inventory(peer)
+    var animal: AnimalDefinition=AnimalCatalog.animal_for_loot(item.base_id)
+    var difficulty: float=animal.harvest_difficulty() if animal else 0.0
+    var fatty: bool=animal!=null and animal.harvest_quirks.has("fat")
+    clean_token+=1
+    var seed: int=clean_token*7919+peer*31+item.stars
+    var pieces: Array=CleaningPattern.pieces(seed,difficulty,fatty)
+    clean_jobs[peer]={"token":clean_token,"item":item,"kind":String(animal.id) if animal else "rabbit","seed":seed,"difficulty":difficulty,"fatty":fatty,"pieces":pieces,
+        "time":0.0,"duration":CleaningPattern.duration(pieces),"done":0,"cracked":0,"dirt":0,"junk":CleaningPattern.junk_count(pieces),"cleaned":0,
+        "feedback":"","feedback_time":0.0,"fx":0,"fx_pos":Vector2(.5,.5),"combo":0,"best_combo":0,"combo_clock":9.0,
+        "blade":Vector2(.5,.5),"bt":0,"speed":0.0,"focus_grace":.75,"epoch":world_epoch}
+    clean_views.erase(peer)
+    hunter.cleaning=true
+    hunter.command["harvest"]=true;hunter.command["direction"]=Vector3.ZERO;hunter.command["drive"]=Vector2.ZERO
+    hunter.command["jump"]=false;hunter.command["revive"]=0;hunter.revive_target=0
+    hunter.velocity.x=0;hunter.velocity.z=0
+    _send_clean_state(peer,true)
+
+## A flick through anything in the air: junk is cleaned off, stones chip the
+## blade and the hide itself gets cut. The host also probes slightly older
+## positions so a lagging client still hits what it saw under its knife.
+func _clean_blade(peer: int, point: Vector2, stamp: int=0) -> void:
+    if not clean_jobs.has(peer): return
+    var job: Dictionary=clean_jobs[peer]
+    if int(job.epoch)!=world_epoch: return
+    if not _can_clean(peer): _cancel_clean(peer);return
+    var motion: Array=_blade_motion(job,point,stamp)
+    if motion.is_empty() or float(job.speed)<CleaningPattern.MIN_SPEED: return
+    var hit: bool=false
+    for index in job.pieces.size():
+        if int(job.done)&(1<<index): continue
+        var piece: Dictionary=job.pieces[index]
+        var reach: float=float(CleaningPattern.RADIUS[int(piece.kind)])+.01
+        for probe in CleaningPattern.LAG_PROBES:
+            var time: float=float(job.time)-float(probe)
+            if not CleaningPattern.airborne(piece,time): continue
+            var at: Vector2=CleaningPattern.position(piece,time)
+            if HarvestPattern.segment_distance(motion[0],motion[1],HarvestPattern.metric(at))>reach: continue
+            _clean_hit(job,index,int(piece.kind),at)
+            hit=true
+            break
+    if hit: _send_clean_state(peer,true)
+
+func _clean_hit(job: Dictionary, index: int, kind: int, at: Vector2) -> void:
+    var bit: int=1<<index
+    match kind:
+        CleaningPattern.STONE:
+            job.done=int(job.done)|bit;job.dirt=int(job.dirt)+CleaningPattern.DIRT_STONE;job.combo=0
+            _harvest_fx(job,"clang",at)
+        CleaningPattern.PELT:
+            job.done=int(job.done)|bit;job.dirt=int(job.dirt)+CleaningPattern.DIRT_PELT;job.combo=0
+            _harvest_fx(job,"tear",at)
+        _:
+            _harvest_combo(job)
+            if kind==CleaningPattern.JUNK_SINEW and not int(job.cracked)&bit:
+                job.cracked=int(job.cracked)|bit
+                _harvest_fx(job,"chop",at)
+                return
+            job.done=int(job.done)|bit;job.cleaned=int(job.cleaned)+1
+            _harvest_fx(job,["flesh","fat","burr","sinew"][kind],at)
+
+func _tick_cleans(delta: float) -> void:
+    if not is_host(): return
+    for peer in clean_views.keys():
+        clean_views[peer].remaining=float(clean_views[peer].remaining)-delta
+        if float(clean_views[peer].remaining)<=0:
+            clean_views.erase(peer);_send_clean_state(peer,true)
+    for peer in clean_jobs.keys():
+        var job: Dictionary=clean_jobs[peer]
+        if int(job.epoch)!=world_epoch or not _can_clean(peer):
+            _cancel_clean(peer);continue
+        job.focus_grace=maxf(0.0,float(job.focus_grace)-delta)
+        if not _clean_focus_valid(peer) and float(job.focus_grace)<=0.0:
+            _cancel_clean(peer);continue
+        job.time=float(job.time)+delta
+        job.combo_clock=float(job.combo_clock)+delta
+        job.feedback_time=maxf(0.0,float(job.feedback_time)-delta)
+        if float(job.feedback_time)<=0.0: job.feedback=""
+        # Junk nobody sliced falls back onto the hide and stays there.
+        var splashed: bool=false
+        for index in job.pieces.size():
+            var bit: int=1<<index
+            if int(job.done)&bit or not CleaningPattern.landed(job.pieces[index],float(job.time)): continue
+            job.done=int(job.done)|bit
+            if CleaningPattern.is_junk(int(job.pieces[index].kind)):
+                job.dirt=int(job.dirt)+CleaningPattern.DIRT_MISSED;job.combo=0
+                _harvest_fx(job,"missed",Vector2(CleaningPattern.position(job.pieces[index],float(job.time)).x,.92))
+                splashed=true
+        if float(job.time)>=float(job.duration): _finish_clean(peer)
+        elif splashed: _send_clean_state(peer,true)
+
+func _clean_focus_valid(peer: int) -> bool:
+    var hunter=players.get(peer)
+    if not is_instance_valid(hunter): return false
+    if hunter.local_player: return hunter.control_enabled and hunter.cleaning
+    return bool(hunter.command.get("harvest",false)) and Time.get_ticks_msec()-int(hunter.command.get("time",0))<=500
+
+func _finish_clean(peer: int) -> void:
+    if not clean_jobs.has(peer): return
+    var job: Dictionary=clean_jobs[peer]
+    var finished: Dictionary=clean_state(peer)
+    var result: LootDefinition=AnimalCatalog.cleaned_hide(job.item,float(finished.clean))
+    _release_clean(peer,result if result else job.item)
+    finished["active"]=false;finished["feedback"]="complete";finished["fx"]=int(finished.fx)+1;finished["fx_pos"]=Vector2(.5,.45)
+    finished["result"]=String(result.id) if result else "";finished["remaining"]=2.5
+    clean_views[peer]=finished
+    _send_clean_state(peer,true)
+
+## Leaving the drum, for any reason, always gives the bag its hide back.
+func _cancel_clean(peer: int, publish: bool=true) -> void:
+    if not clean_jobs.has(peer):
+        if players.has(peer): players[peer].cleaning=false
+        return
+    var finished: Dictionary=clean_state(peer)
+    _release_clean(peer,clean_jobs[peer].item)
+    if publish:
+        finished["active"]=false;finished["feedback"]="cancelled";finished["remaining"]=1.2
+        clean_views[peer]=finished
+        _send_clean_state(peer,true)
+
+func _release_clean(peer: int, item: LootDefinition) -> void:
+    clean_jobs.erase(peer)
+    if not players.has(peer): return
+    var hunter=players[peer]
+    hunter.cleaning=false;hunter.command["harvest"]=false
+    # The slot was freed when the raw hide went in, so the hide always fits back.
+    hunter.inventory.items.append(item)
+    hunter.inventory.changed.emit()
+    _send_inventory(peer)
+
+func _clear_cleans() -> void:
+    for peer in clean_jobs.keys(): _cancel_clean(peer,false)
+    clean_jobs.clear();clean_views.clear();local_clean_state.clear()
+    clean_received_sequence=-1
+
+func _send_clean_state(peer: int, reliable: bool) -> void:
+    if mode!="host" or peer==local_id() or not _peer_ready(peer): return
+    clean_sequence+=1
+    var data: Dictionary=clean_state(peer)
+    if reliable: _clean_changed.rpc_id(peer,data,world_epoch,clean_sequence)
+    else: _clean_progress.rpc_id(peer,data,world_epoch,clean_sequence)
+
+@rpc("authority","call_remote","reliable",0)
+func _clean_changed(data: Dictionary, epoch: int, sequence: int) -> void:
+    _apply_clean_state(data,epoch,sequence)
+
+@rpc("authority","call_remote","unreliable_ordered",1)
+func _clean_progress(data: Dictionary, epoch: int, sequence: int) -> void:
+    _apply_clean_state(data,epoch,sequence)
+
+func _apply_clean_state(data: Dictionary, epoch: int, sequence: int) -> void:
+    if mode!="client" or epoch!=world_epoch or local_loaded_epoch!=epoch or sequence<=clean_received_sequence: return
+    clean_received_sequence=sequence
+    local_clean_state=data.duplicate(true)
+    if not local_clean_state.is_empty(): local_clean_state["received_at"]=Time.get_ticks_msec()/1000.0
+    var hunter=local_hunter()
+    if hunter: hunter.cleaning=bool(data.get("active",false))
+
 func animal_died() -> void:
     if not is_host(): return
     var corpses: Array=[]
@@ -1326,7 +1424,7 @@ func animal_died() -> void:
 func _can_revive(helper, target) -> bool:
     if phase=="loading" or not is_instance_valid(helper) or not is_instance_valid(target): return false
     if helper==target or helper.health<=0 or target.health>0 or helper.seat_index>=0: return false
-    if is_harvesting(helper.peer_id): return false
+    if is_busy(helper.peer_id): return false
     if not helper.world_ready or not target.world_ready: return false
     var point: Vector3=target.get_node("ReviveInteraction").interaction_position()
     if helper.global_position.distance_to(point)>3: return false

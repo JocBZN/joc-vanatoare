@@ -455,3 +455,23 @@ Verificări rulate local (Godot 4.7.2 console din Downloads):
 - Nu s-a făcut commit/push. Cealaltă sesiune Claude din CMD avea modificări necomise în același repo; nu au fost atinse în afara fișierelor de mai sus.
 
 Limite: fără compensare de latență (albinele/cusăturile mobile pot părea decalate pe conexiuni proaste); WAN nevalidat; balansul valorilor (uzuri, viteze) e o primă trecere, nejucată de oameni.
+
+### Teren = doar tăieturi; mașină de curățat blănuri în tabără — 6 octombrie 2026 (sesiune Claude Code desktop)
+
+Cerere: tăieturile fruit ninja au plăcut; răzuirea și smulgerea nu. Fluxul trebuie să aibă sens: pe teren tai blana și o iei, iar în bază o mașină de curățat pielea, tot cu o mecanică interesantă.
+
+- Teren: răzuirea și smulgerea au fost scoase complet (cod, stare, texte, teste). Jupuirea e numai valuri de tăieturi (2 la iepure … 11 la crocodilul străvechi, `HarvestPattern.total_steps`), cu trucurile pe specie păstrate. Rezultatul este o **blană crudă** `<loot>__r<stele>` (`AnimalCatalog.raw_hide`, `LootDefinition.raw`), vândută la 40% (`RAW_VALUE`).
+- Tabără: `world/camp/hide_cleaner.gd` (nou, procedural, plasat în `world/lobby/lobby.tscn` la (11.5, 0, -1), orientat spre foc) — **mașina de curățat blănuri**. Tamburul aruncă în arcuri carne/seu/scaieți/tendoane (de tăiat din zbor) și pietre + blana însăși (de ferit). `data/cleaning_pattern.gd` (nou) e programul determinist al salvelor; curățenia sub 85% / 60% costă 1 / 2 stele (`final_stars`). Rezultatul: `<loot>__s<stele>` la prețul întreg (`AnimalCatalog.cleaned_hide`).
+- Host (`core/network_session.gd`): joburi `clean_jobs` paralele cu cele de jupuire (`clean_start`/`clean_cancel`, `_clean_blade` cu sondare în trecut pentru latență, `_tick_cleans`, RPC-uri `_clean_changed`/`_clean_progress`, `is_cleaning`/`is_busy`); blana crudă e împrumutată din ghiozdan și pusă înapoi la orice întrerupere. `_blade_motion` e comun jupuirii și curățării. `Hunter.cleaning` + `busy()` blochează mișcarea/tragerea/viewmodel-ul ca la jupuire.
+- UI: `ui/knife_panel.gd` (nou, bază comună: card, cuțit virtual, urmă, popup-uri, combo, ceas extrapolat) și `ui/arcade_kit.gd` (nou, sunete procedurale/desen comun); `ui/harvest/harvest_panel.gd` rescris peste bază; `ui/cleaning/cleaning_panel.gd` (nou, centrat). `game/main.gd`: interacțiunea `cleaner`, `_begin_clean`/`_update_clean`/`_cancel_clean`. Texte RO/EN noi (`CLEAN_*`, `LOOT_RAW`, `HARVEST_RAW_*`), cele vechi de răzuire/smulgere scoase.
+- Teste: `tests/verify_cleaning.gd` (nou, 59 verificări, inclus în `run_headless_tests.ps1`), `harvest_bot.gd` (teren + mașină), `verify_harvest.gd`, `verify_swamp.gd`, `network_peer.gd` (fază nouă `clean`: client1 curăță prin rețea reală), `preview_harvest.gd`, `preview_cleaning.gd` (nou).
+
+Verificări rulate local (Godot 4.7.2):
+
+- Import headless pentru clasele noi (`CleaningPattern`, `ArcadeKit`, `KnifePanel`): exit 0.
+- `run_headless_tests.ps1`: zece suite, **702 verificări, 0 eșecuri** (harvest 204, cleaning 59, swamp 51), raport `tests/results/headless_20261006_130655_26bd1b`. Botul curăță perfect (≥85%) toate cele 10 specii.
+- `run_network_tests.ps1 -Map forest`: host 58 / client1 54 / client2 48 / client3 55 / extra 3, **218 verificări, 0 eșecuri**, `host_err.log`/`client1_err.log` goale; client1 primește `rabbit_pelt__r5` pe teren și `rabbit_pelt__s5` din mașină prin rețea. Raport `tests/results/run_20261006_130745_42ce76`; codul de ieșire 1 al scriptului rămâne problema veche. Swamp prin rețea nerulat.
+- Preview grafic `preview_cleaning.gd` (lup, urs): mașina în tabără cu promptul, bucăți în zbor, rezultat ★★★★★ — inspectate vizual.
+- Fără commit/push la acest lot până la cererea utilizatorului.
+
+Limite: echilibrul (număr de bucăți, viteze, pragurile 85/60%, 40% pentru crud) e o primă trecere nejucată de oameni; compensarea de latență există doar la mașină; WAN nevalidat.

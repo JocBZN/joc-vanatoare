@@ -24,7 +24,7 @@ extends Resource
 @export_range(.8, 1.0) var harvest_final_period_scale: float = .92
 @export_range(.7, 1.0) var harvest_final_window_scale: float = .84
 ## The species' skinning twist, see HarvestPattern: slippery, ticks, shell,
-## thick, fat, wiggle, twitch, bees, chomp.
+## thick, wiggle, twitch, bees, chomp. "fat" only matters at the camp cleaner.
 @export var harvest_quirks: PackedStringArray = PackedStringArray()
 
 ## Tension rises only with successful work, so misses or changing helpers cannot
@@ -61,11 +61,6 @@ func harvest_tuning(completed: int, required: int = 0) -> Dictionary:
         "min_speed":lerpf(.9,1.5,hard),
         "directional":difficulty>=.5,
         "seam_hp":2 if harvest_quirks.has("shell") or harvest_quirks.has("thick") else 1,
-        "sweet_width":lerpf(.34,.13,hard),
-        "wobble":lerpf(0.0,.09,difficulty)+pressure*.03,
-        "fat_count":3+int(round(difficulty*2.0)),
-        "fat_radius":lerpf(.10,.075,difficulty),
-        "scrape_time":lerpf(7.5,5.0,hard),
         "twitch_period":lerpf(3.4,2.4,difficulty),
         "jaw_period":lerpf(3.6,2.6,difficulty),
         "hazards":2+int(round(difficulty*1.5)),

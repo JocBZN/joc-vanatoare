@@ -1,26 +1,20 @@
 extends RefCounted
-## Plays the skinning routine for tests and previews, through the real host API.
+## Plays the knife mini-games for tests and previews, through the real host API.
 ##
-## Planning is pure: it reads the replicated harvest state and returns blade
-## samples (with the sender clock step that sets their speed), clicks, or a
-## request to let time pass. Callers deliver them through whatever path they
-## exercise: _accept_input, the network, or the host functions directly.
+## Planning is pure: it reads the replicated state and returns blade samples
+## (with the sender clock step that sets their speed) or a request to let time
+## pass. Callers deliver them through whatever path they exercise:
+## _accept_input, the network, or the host functions directly.
 ##
-## Modes: "perfect" hits every centre, "sloppy" cuts near the seam ends and
-## releases at the edge of the green, "ruin" snags, lets fat set and rips flaps.
+## Field modes: "perfect" hits every seam centre, "sloppy" cuts near the seam
+## ends, "ruin" snags every seam thirty times first.
+## Cleaner modes: "perfect" slices every piece of junk and dodges stones and the
+## hide, "lazy" lets everything fall, "reckless" slices stones and the hide too.
 
 const HOVER_MS: int=300
 const FLICK_MS: int=12
 const HOVER_STEP: float=.04
 const FLICK_REACH: float=.07
-
-## Ops for one unit of work on the current move.
-static func next_ops(state: Dictionary, blade: Vector2, mode: String="perfect") -> Array:
-    if not bool(state.get("active",false)): return []
-    match int(state.get("move",0)):
-        HarvestPattern.MOVE_SLASH: return _slash(state,blade,mode)
-        HarvestPattern.MOVE_SCRAPE: return _scrape(state,blade,mode)
-    return _yank(state,blade,mode)
 
 static func quirks(state: Dictionary) -> PackedStringArray:
     return PackedStringArray(state.get("quirks",PackedStringArray()))
@@ -31,8 +25,8 @@ static func unsafe(state: Dictionary) -> bool:
     var time: float=float(state.get("move_time",0))
     var q: PackedStringArray=quirks(state)
     for probe in [0.0,.2]:
-        if q.has("twitch") and int(state.move)==HarvestPattern.MOVE_SLASH and HarvestPattern.spasm(id,time+probe,float(state.twitch_period))>0: return true
-        if q.has("chomp") and int(state.move)!=HarvestPattern.MOVE_YANK and HarvestPattern.jaw_state(id,time+probe,float(state.jaw_period))>0: return true
+        if q.has("twitch") and HarvestPattern.spasm(id,time+probe,float(state.twitch_period))>0: return true
+        if q.has("chomp") and HarvestPattern.jaw_state(id,time+probe,float(state.jaw_period))>0: return true
     return false
 
 static func hover(from: Vector2, to: Vector2) -> Array:
@@ -44,28 +38,18 @@ static func hover(from: Vector2, to: Vector2) -> Array:
 static func _norm(point: Vector2) -> Vector2:
     return Vector2(point.x/HarvestPattern.ASPECT,point.y)
 
-static func _bugs(state: Dictionary) -> PackedVector2Array:
-    var q: PackedStringArray=quirks(state)
-    var id: int=int(state.id);var step: int=int(state.step);var time: float=float(state.move_time)
-    var all: PackedVector2Array=HarvestPattern.ticks(id,step,time,int(state.hazards)) if q.has("ticks") else HarvestPattern.bees(id,step,time,int(state.hazards)) if q.has("bees") else PackedVector2Array()
-    var alive:=PackedVector2Array()
-    for i in all.size():
-        if not int(state.get("dead",0))&(1<<i): alive.append(HarvestPattern.metric(all[i]))
-    return alive
-
-static func _clear_of_bugs(state: Dictionary, a: Vector2, b: Vector2, margin: float) -> bool:
-    for bug in _bugs(state):
-        if HarvestPattern.segment_distance(a,b,bug)<=HarvestPattern.HAZARD_RADIUS+margin: return false
-    return true
-
-static func _wait(state: Dictionary, blade: Vector2) -> Array:
-    # Park the knife in the middle of the hide, clear of any jaw, then wait.
+static func _wait(blade: Vector2) -> Array:
+    # Park the knife in the middle of the board, clear of any jaw, then wait.
     var ops: Array=hover(blade,Vector2(.5,.5)) if blade.distance_to(Vector2(.5,.5))>.01 else []
     ops.append({"kind":"wait"})
     return ops
 
-static func _slash(state: Dictionary, blade: Vector2, mode: String) -> Array:
-    if unsafe(state): return _wait(state,blade)
+# ------------------------------------------------------------------ field ---
+
+## Ops for one seam of the current slash wave.
+static func next_ops(state: Dictionary, blade: Vector2, mode: String="perfect") -> Array:
+    if not bool(state.get("active",false)): return []
+    if unsafe(state): return _wait(blade)
     var id: int=int(state.id)
     var q: PackedStringArray=quirks(state)
     var time: float=float(state.move_time)
@@ -98,65 +82,82 @@ static func _slash(state: Dictionary, blade: Vector2, mode: String) -> Array:
                 ops.append({"kind":"blade","p":_norm(start),"dt":HOVER_MS*4})
             ops.append({"kind":"blade","p":_norm(finish),"dt":FLICK_MS})
             return ops
-    return _wait(state,blade)
+    return _wait(blade)
 
-static func _scrape(state: Dictionary, blade: Vector2, mode: String) -> Array:
-    if mode=="ruin" or unsafe(state): return _wait(state,blade)
-    var radius: float=float(state.fat_radius)
-    var blobs: PackedVector2Array=HarvestPattern.fat(int(state.id),int(state.step),int(state.fat_count),radius)
-    var health: Array=state.fat
-    for i in blobs.size():
-        if float(health[i])<=0.0: continue
-        var centre: Vector2=HarvestPattern.metric(blobs[i])
-        var left: Vector2=centre-Vector2(radius*.7,0);var right: Vector2=centre+Vector2(radius*.7,0)
-        if not _clear_of_bugs(state,left,right,.05): continue
-        var ops: Array=hover(blade,_norm(left))
-        var strokes: int=int(ceil((float(health[i])+.01)/(HarvestPattern.SCRAPE_RATE*left.distance_to(right))))
-        for k in strokes: ops.append({"kind":"blade","p":_norm(right if k%2==0 else left),"dt":20})
-        return ops
-    return _wait(state,blade)
+static func _bugs(state: Dictionary) -> PackedVector2Array:
+    var q: PackedStringArray=quirks(state)
+    var id: int=int(state.id);var step: int=int(state.step);var time: float=float(state.move_time)
+    var all: PackedVector2Array=HarvestPattern.ticks(id,step,time,int(state.hazards)) if q.has("ticks") else HarvestPattern.bees(id,step,time,int(state.hazards)) if q.has("bees") else PackedVector2Array()
+    var alive:=PackedVector2Array()
+    for i in all.size():
+        if not int(state.get("dead",0))&(1<<i): alive.append(HarvestPattern.metric(all[i]))
+    return alive
 
-static func _yank(state: Dictionary, blade: Vector2, mode: String) -> Array:
-    var id: int=int(state.id)
-    var flap: Dictionary=HarvestPattern.yank(id,int(state.step))
-    if not bool(state.get("grabbed",false)):
-        var ops: Array=hover(blade,flap.ring)
-        ops.append({"kind":"click","p":flap.ring})
-        return ops
-    var width: float=float(state.sweet_width)
-    var target: float=HarvestPattern.YANK_SWEET
-    if mode=="sloppy": target+=width*.42
-    if mode=="ruin": target=HarvestPattern.YANK_RIP+.08
-    var wobble: float=float(state.wobble)
-    if quirks(state).has("twitch") and HarvestPattern.spasm(id,float(state.move_time),float(state.twitch_period))==2: wobble+=.22
-    var raw: float=target-HarvestPattern.yank_wobble(id,float(state.move_time),wobble)
-    var point: Vector2=HarvestPattern.yank_point(flap.ring,flap.dir,raw)
-    var ops: Array=hover(blade,point)
-    ops.append({"kind":"click","p":point})
-    return ops
+static func _clear_of_bugs(state: Dictionary, a: Vector2, b: Vector2, margin: float) -> bool:
+    for bug in _bugs(state):
+        if HarvestPattern.segment_distance(a,b,bug)<=HarvestPattern.HAZARD_RADIUS+margin: return false
+    return true
 
-## Plays the current move to completion. `blade_sink(point, stamp)` delivers a
-## sample, `click_sink(value)` a click, `wait_sink(seconds)` advances host time
-## and `read()` returns the latest state. Stops as soon as the step changes.
-static func play_step(read: Callable, blade_sink: Callable, click_sink: Callable, wait_sink: Callable, clock: Dictionary, mode: String="perfect") -> void:
+# ---------------------------------------------------------------- cleaner ---
+
+## Ops for one slice at the camp cleaner, or a short wait for the next volley.
+static func clean_ops(state: Dictionary, blade: Vector2, mode: String="perfect") -> Array:
+    if not bool(state.get("active",false)): return []
+    if mode=="lazy": return [{"kind":"wait"}]
+    var all: Array=CleaningPattern.pieces(int(state.seed),float(state.difficulty),bool(state.fatty))
+    var time: float=float(state.time)
+    var done: int=int(state.done)
+    for index in all.size():
+        var piece: Dictionary=all[index]
+        if done&(1<<index) or not CleaningPattern.airborne(piece,time): continue
+        var kind: int=int(piece.kind)
+        if CleaningPattern.is_junk(kind)==(mode=="reckless"): continue
+        # Only slice what is well inside the board and not about to land.
+        var at: Vector2=CleaningPattern.position(piece,time)
+        if at.y>.8 or at.x<.05 or at.x>.95 or float(piece.t)+CleaningPattern.flight(piece)-time<.05: continue
+        var centre: Vector2=HarvestPattern.metric(at)
+        for turn in 8:
+            var direction:=Vector2.from_angle(float(turn)*PI/8.0)
+            var start: Vector2=centre-direction*.09
+            var finish: Vector2=centre+direction*.09
+            if mode=="perfect" and not _clear_of_hazards(all,done,time,start,finish): continue
+            var ops: Array=hover(blade,_norm(start))
+            ops.append({"kind":"blade","p":_norm(finish),"dt":FLICK_MS})
+            return ops
+    return [{"kind":"wait"}]
+
+static func _clear_of_hazards(all: Array, done: int, time: float, a: Vector2, b: Vector2) -> bool:
+    for index in all.size():
+        var piece: Dictionary=all[index]
+        if done&(1<<index) or CleaningPattern.is_junk(int(piece.kind)): continue
+        for probe in CleaningPattern.LAG_PROBES:
+            var t: float=time-float(probe)
+            if not CleaningPattern.airborne(piece,t): continue
+            var reach: float=float(CleaningPattern.RADIUS[int(piece.kind)])+.04
+            if HarvestPattern.segment_distance(a,b,HarvestPattern.metric(CleaningPattern.position(piece,t)))<=reach: return false
+    return true
+
+# ---------------------------------------------------------------- running ---
+
+## Plays one field wave (or, with `cleaning`, one whole cleaner session) to the
+## end. `blade_sink(point, stamp)` delivers a sample, `wait_sink(seconds)`
+## advances host time and `read()` returns the latest state.
+static func play_step(read: Callable, blade_sink: Callable, wait_sink: Callable, clock: Dictionary, mode: String="perfect", cleaning: bool=false) -> void:
     var state: Dictionary=read.call()
     if not bool(state.get("active",false)): return
-    var round_index: int=int(state.round)
+    var round_index: int=int(state.get("round",0))
     if int(clock.get("token",-1))!=int(state.token):
         # A fresh job starts from wherever the host last saw this hunter's blade.
         clock.token=int(state.token);clock.blade=Vector2(state.get("blade",Vector2(.5,.5)))
-    for attempt in 400:
+    for attempt in 4000:
         state=read.call()
-        if not bool(state.get("active",false)) or int(state.round)!=round_index: return
-        for op in next_ops(state,Vector2(clock.get("blade",Vector2(.5,.5))),mode):
-            match String(op.kind):
-                "wait": wait_sink.call(.1)
-                "blade":
-                    clock.stamp=int(clock.get("stamp",1000))+int(op.dt)
-                    clock.blade=op.p
-                    blade_sink.call(op.p,int(clock.stamp))
-                "click":
-                    clock.click=maxi(int(clock.get("click",0)),int(state.get("clicks",0)))+1
-                    click_sink.call("%d:%d:%d:%.5f:%.5f" % [int(state.id),int(state.token),int(clock.click),Vector2(op.p).x,Vector2(op.p).y])
+        if not bool(state.get("active",false)) or int(state.get("round",0))!=round_index: return
+        var plan: Array=clean_ops(state,Vector2(clock.blade),mode) if cleaning else next_ops(state,Vector2(clock.blade),mode)
+        for op in plan:
+            if String(op.kind)=="wait": wait_sink.call(.05 if cleaning else .1)
+            else:
+                clock.stamp=int(clock.get("stamp",1000))+int(op.dt)
+                clock.blade=op.p
+                blade_sink.call(op.p,int(clock.stamp))
             var now: Dictionary=read.call()
-            if not bool(now.get("active",false)) or int(now.round)!=round_index: return
+            if not bool(now.get("active",false)) or int(now.get("round",0))!=round_index: return

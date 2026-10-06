@@ -27,7 +27,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
     cooldown_left = maxf(0.0, cooldown_left - delta)
     recoil = move_toward(recoil, 0.0, delta * 0.8)
-    if hunter.harvest_target>0 or hunter.harvest_input_guard or NetworkSession.is_harvesting(hunter.peer_id): return
+    if hunter.busy() or hunter.harvest_input_guard or NetworkSession.is_busy(hunter.peer_id): return
     if hunter.local_player and hunter.control_enabled and Input.is_action_just_pressed("reload"):
         NetworkSession.request_action("reload")
     if hunter.local_player and hunter.control_enabled:
@@ -43,7 +43,7 @@ func _physics_process(delta: float) -> void:
 func try_fire() -> bool:
     if not hunter.control_enabled or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED or cooldown_left > 0.0:
         return false
-    if not hunter.local_player or hunter.seat_index>=0 or hunter.health<=0 or hunter.revive_target>0 or hunter.harvest_target>0 or hunter.harvest_input_guard or NetworkSession.is_harvesting(hunter.peer_id): return false
+    if not hunter.local_player or hunter.seat_index>=0 or hunter.health<=0 or hunter.revive_target>0 or hunter.busy() or hunter.harvest_input_guard or NetworkSession.is_busy(hunter.peer_id): return false
     if hunter.inventory.reload_remaining>0: return false
     var camera: Camera3D=hunter.camera_rig.camera
     var center:=camera.get_viewport().get_visible_rect().size*.5

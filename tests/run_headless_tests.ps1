@@ -8,7 +8,7 @@ Set-Content -LiteralPath (Join-Path (Split-Path $taskRun -Parent) '.gdignore') -
 $taskOldSettings=$env:HUNT_SETTINGS_PATH
 $taskProcesses=@()
 try {
-    foreach($taskSuite in @('maps_predators','worlds_vehicle','forest','progression','revive_perspective','art_wildlife','swamp','animated_wildlife','harvest')) {
+    foreach($taskSuite in @('maps_predators','worlds_vehicle','forest','progression','revive_perspective','art_wildlife','swamp','animated_wildlife','harvest','cleaning')) {
         $env:HUNT_SETTINGS_PATH=Join-Path $taskRun ($taskSuite+'.cfg')
         $taskLog=Join-Path $taskRun ($taskSuite+'.log')
         $taskArgs=@('--headless','--max-fps','60','--path',('"'+$taskProject+'"'),'--log-file',('"'+$taskLog+'"'),'--quit-after','6000','--script',('res://tests/verify_'+$taskSuite+'.gd'))

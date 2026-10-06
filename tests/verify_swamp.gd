@@ -125,15 +125,14 @@ func run() -> void:
     session.set_physics_process(false)
     session.request_action("harvest_start",str(frog.animal_id))
     check(session.is_harvesting(1),"Swamp corpse begins a manual harvest")
-    # Frogs take two slippery slash waves and one yank, played through the host.
+    # Frogs take two slippery slash waves, played through the host.
     var bot=load("res://tests/harvest_bot.gd")
     var clock: Dictionary={}
-    for i in 3:
+    for i in 2:
         hunter.command={"harvest":true,"time":Time.get_ticks_msec()}
         if not bool(session.harvest_state(1).get("active",false)): break
         bot.play_step(func() -> Dictionary: return session.harvest_state(1),
             func(point: Vector2, stamp: int) -> void: session._harvest_blade(1,point,stamp),
-            func(value: String) -> void: session.request_action("harvest_click",value),
             func(seconds: float) -> void: hunter.command={"harvest":true,"time":Time.get_ticks_msec()};session._tick_harvests(seconds),
             clock)
         check(frog.harvest_completed==i+1,"manual Swamp step "+str(i+1)+" advances once")
@@ -147,8 +146,8 @@ func run() -> void:
     for stall in get_nodes_in_group("lobby_interactables"):
         if stall.interaction_kind=="sell": seller=stall
     session.jeep.reset_state(Transform3D(Basis.IDENTITY,seller.global_position+Vector3(4,.6,0)));hunter.global_position=seller.interaction_position()
-    var pristine: int=AnimalCatalog.loot(&"frog_hide__s5").sell_value
-    session.request_action("sell_trunk");check(hunter.inventory.coins==pristine and session.trunk.is_empty(),"seller pays owner for pristine Swamp loot")
+    var pristine: int=AnimalCatalog.loot(&"frog_hide__r5").sell_value
+    session.request_action("sell_trunk");check(hunter.inventory.coins==pristine and session.trunk.is_empty(),"seller pays owner for a pristine raw Swamp hide")
     var wallet: int=hunter.inventory.coins
     var fire=scene.world_router.active.get_node("Camp/GiantCampfire/Expedition")
     hunter.global_position=fire.global_position+Vector3(0,.5,3.4);session.request_action("start_hunt","forest");await loaded()

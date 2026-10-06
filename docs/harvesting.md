@@ -1,144 +1,115 @@
-# Jupuirea — rutina arcade
+# Jupuirea și curățarea blănii
 
-Jupuirea este mecanica principală a jocului. Un animal doborât nu produce nimic
-automat: rămâne cadavru până când un vânător îl lucrează, iar cât de curat îl
-lucrează decide direct cât valorează blana.
+Blana trece prin două etape, fiecare cu propriul mini-joc cu cuțitul:
 
-Nimic nu se ține apăsat. Mouse-ul mișcă un cuțit virtual peste piele, iar
-**viteza** decide tot: mișcat încet, cuțitul doar plutește (îl poți repoziționa
-peste orice); mișcat rapid, taie.
+1. **Pe teren** tai blana de pe animal → primești o **blană crudă**.
+2. **În tabără** o bagi în **mașina de curățat blănuri** → primești blana
+   curățată, la prețul întreg.
 
-## Cele trei mișcări
+Nimic nu se ține apăsat. Mouse-ul mișcă un cuțit virtual, iar **viteza**
+decide tot: mișcat încet, cuțitul doar plutește (îl poți repoziționa peste
+orice); mișcat rapid, taie.
 
-Apropie-te de cadavru și apasă `E`. Camera trece pe planul apropiat, apare
-cuțitul Gerber LMF, iar panoul din dreapta devine tabla de joc. Fiecare animal
-este o serie scurtă de pași, în ordinea:
+## 1. Pe teren: tăieturi-fulger
 
-1. **Tăieturi-fulger** (`MOVE_SLASH`) — pe piele apar 2–4 cusături. Treci rapid
-   peste fiecare, ca o lovitură de sabie (gen Fruit Ninja). Trecerea prin
-   segmentul auriu din centru este **PERFECT**; mai spre capete e doar „bine” și
-   strică puțin blana. Tăieturile la mai puțin de 0,8 s una de alta țin un
-   **COMBO** (doar cosmetic: text, sunet tot mai ascuțit). Un val de cusături
-   terminat = un pas.
-2. **Răzuiește grăsimea** (`MOVE_SCRAPE`, doar mistreț și urs) — bule de seu de
-   frecat rapid înainte-înapoi până dispar, contra cronometru. Grăsimea rămasă la
-   final se întărește și strică blana proporțional.
-3. **Smulge pielea** (`MOVE_YANK`, pașii finali) — praștie: click pe inel ca să
-   prinzi clapa, întinde-o pe direcția săgeții și dă click din nou în zona verde.
-   Prea puțin = **BOING** (clapa sare înapoi, reîncerci), prea mult = „prea tare”,
-   iar peste zona roșie pielea se **rupe** singură.
+Apropie-te de cadavru și apasă `E`. Pe piele apar 2–4 cusături. Treci rapid
+peste fiecare, ca o lovitură de sabie (gen Fruit Ninja). Trecerea prin segmentul
+auriu din centru este **PERFECT**; mai spre capete e doar „bine” și strică puțin
+blana. Tăieturile la mai puțin de 0,8 s una de alta țin un **COMBO** (cosmetic).
+Un val de cusături terminat = un pas; animalele mari au mai multe valuri.
 
-`E`, `Esc` sau `WASD` renunță oricând. Pașii terminați și stricăciunile rămân pe
-cadavru; valul în curs se reia de la început.
+`E`, `Esc` sau `WASD` renunță oricând. Valurile terminate și stricăciunile rămân
+pe cadavru; valul în curs se reia de la început.
 
-## Trucul fiecărui animal
+### Trucul fiecărui animal
 
-| Animal | Pași | Truc (`harvest_quirks`) |
+| Animal | Valuri | Truc (`harvest_quirks`) |
 |---|---|---|
-| Iepure | 3 | — (tutorial) |
-| Căprioară | 4 | **Căpușe** care se târăsc pe blană; tăiată, o căpușă face SPLAT |
-| Mistreț | 6 | **Piele groasă** (fiecare cusătură cere 2 tăieturi) + **grăsime** |
-| Lup | 8 | **Spasme**: „!” de avertizare, apoi corpul dă din picior — tăietura alunecă |
-| Urs | 10 | **Albine** în blana cu miere (AU!) + **grăsime** (2 răzuiri) |
-| Broască | 3 | **Alunecoasă**: toată pielea fuge încet de sub cuțit |
-| Țestoasă | 4 | **Carapace**: fiecare cusătură cere 2 tăieturi |
-| Șarpe | 6 | **Se zvârcolește**: cusăturile ondulează |
-| Crocodil | 10 | **Reflex de mușcătură** pe o latură + piele groasă |
-| Crocodil străvechi | 14 | Fălci + piele groasă + spasme |
+| Iepure | 2 | — (tutorial) |
+| Căprioară | 3 | **Căpușe** care se târăsc pe blană; tăiată, o căpușă face SPLAT |
+| Mistreț | 4 | **Piele groasă** (fiecare cusătură cere 2 tăieturi); mult seu la curățare |
+| Lup | 6 | **Spasme**: „!” de avertizare, apoi corpul dă din picior — tăietura alunecă |
+| Urs | 8 | **Albine** în blana cu miere (AU!); mult seu la curățare |
+| Broască | 2 | **Alunecoasă**: toată pielea fuge încet de sub cuțit |
+| Țestoasă | 3 | **Carapace**: fiecare cusătură cere 2 tăieturi |
+| Șarpe | 4 | **Se zvârcolește**: cusăturile ondulează |
+| Crocodil | 8 | **Reflex de mușcătură** pe o latură + piele groasă |
+| Crocodil străvechi | 11 | Fălci + piele groasă + spasme |
 
 Fălcile: o zonă roșie pe o latură; se deschid larg ca avertizare, apoi **HAP**.
 Dacă lama e în zonă în momentul mușcăturii, blana are de suferit (o singură dată
-pe mușcătură). Prima cusătură a fiecărui val e mereu în zona fălcilor, deci
-trebuie prinsă între mușcături.
+pe mușcătură). Prima cusătură a fiecărui val e mereu în zona fălcilor.
 
-## Dificultatea
+### Dificultatea pe teren
 
 O singură valoare per specie, `harvest_difficulty()` (0 la iepure/broască, 1 la
-crocodilul străvechi), derivată din `harvest_window`, plus aceeași curbă de
-presiune ca înainte (crește doar cu pașii terminați, nu cu timpul sau
-greșelile). `AnimalDefinition.harvest_tuning` scoate din ele tot:
+crocodilul străvechi), derivată din `harvest_window`, plus curba de presiune
+(crește doar cu valurile terminate). `harvest_tuning` scoate din ele: 2→4
+cusături, lungime .42→.25, centrul perfect .48→.24 din jumătate, viteză minimă
+.9→1.5 unități/s; de la dificultate .5 cusăturile au **săgeată** (taie doar în
+sensul ei); perioada spasmelor 3.4→2.4 s, a fălcilor 3.6→2.6 s.
 
-- număr de cusături 2→4, lungime .42→.25, centrul perfect .48→.24 din jumătate;
-- viteza minimă de tăiere .9→1.5 unități/s; de la dificultate .5 cusăturile au
-  **săgeată** (taie doar în sensul ei);
-- zona verde a smulgerii .34→.13, plus „tremurul” pielii (zona alunecă în timp,
-  deci eliberarea devine o problemă de sincronizare, nu doar de poziție);
-- grăsime 3→5 bule, timp 7.5→5 s; perioada spasmelor 3.4→2.4 s, a fălcilor 3.6→2.6 s.
+### Ce strică blana pe teren
 
-## Ce strică blana
+Uzura pe cadavru, în miimi (0–1000): tăietură spre capete 4–20, prea încet 10,
+pe dos 20, căpușă 35, spasm 40, albină 45, mușcătură 70. Uzura dă stelele blănii
+crude: 0–60 ★5, 61–220 ★4, 221–430 ★3, 431–680 ★2, peste 680 ★1.
 
-Scorul rămâne o singură valoare, **uzura** pe cadavru în miimi (0–1000):
+## 2. În tabără: mașina de curățat blănuri
 
-| Eveniment | Uzură |
-|---|---|
-| Tăietură perfectă / bulă curățată / smulgere perfectă | 0 |
-| Tăietură spre capete | 4–20 |
-| Prea încet (cuțitul se agață) | 10 |
-| Smulgere bună, dar nu perfectă | 10 |
-| BOING | 15 |
-| Pe dos (contra săgeții) | 20 |
-| Căpușă | 35 |
-| Grăsime întărită | până la 35 per bulă |
-| Spasm | 40 |
-| Albină | 45 |
-| Prea tare | 55 |
-| Mușcătură | 70 |
-| Pielea ruptă | 110 |
+Mașina stă în tabără, lângă taraba de vânzare, cu fața spre foc. Apasă `E`
+lângă ea: intră în tambur cea mai bună blană crudă din ghiozdan. Tamburul aruncă
+în aer, în arcuri, tot ce e lipit de blană:
 
-## Stele și preț
+- **de tăiat:** carne, seu, scaieți (căpușe la căprioară, miere la urs, noroi la
+  mistreț, alge la animalele de mlaștină) și **tendoane** (cer două tăieturi, de
+  la lup în sus);
+- **de ferit:** **pietre** (CLANG, cuțitul se ciobește) și **blana însăși** când
+  sare din tambur (o tai = murdărie dublă).
 
-Neschimbate:
+Ce nu tai cade înapoi pe blană. **Curățenia** = 1 − murdărie/bucăți de tăiat;
+sub 85% pierzi o stea, sub 60% două (niciodată sub o stea). Animalele grele aduc
+mai multe bucăți (10 → 28), salve mai dese, mai multe pietre și blana care sare
+mai des; mistrețul și ursul aruncă mai ales seu.
 
-| Uzură | Stele | Valoare |
+`E` / `Esc` / `WASD` oprește mașina; blana se întoarce în ghiozdan, tot crudă.
+
+## Preț
+
+| Stele | Curățată | Crudă (40%) |
 |---|---|---|
-| 0–60 | ★★★★★ | 150% |
-| 61–220 | ★★★★☆ | 120% |
-| 221–430 | ★★★☆☆ | 100% |
-| 431–680 | ★★☆☆☆ | 50% |
-| peste 680 | ★☆☆☆☆ | 10% |
+| ★★★★★ | 150% | 60% |
+| ★★★★☆ | 120% | 48% |
+| ★★★☆☆ | 100% | 40% |
+| ★★☆☆☆ | 50% | 20% |
+| ★☆☆☆☆ | 10% | 4% |
 
-Calitatea este bătută în `sell_value` la minare (`<loot>__s<stele>`), deci se
+Obiecte: blană crudă `<loot>__r<stele>`, curățată `<loot>__s<stele>`; ambele se
 păstrează prin ghiozdan, portbagaj, serializare, reconectare și vânzare.
 
 ## Autoritate și date
 
 Clientul trimite doar **poziția brută a lamei** (`blade`) și **ceasul propriu**
-al eșantionului (`bt`, ms) prin fluxul normal de input, la ~20 Hz. Viteza se
-măsoară pe ceasul expeditorului, ca jitter-ul de rețea să nu transforme o
-tăietură rapidă într-una „prea lentă”. Click-urile merg pe canalul fiabil ca
-acțiune `harvest_click` = `id:token:nr:x:y`; numărul click-ului doar crește, iar
-un click la peste .5 unități de lama cunoscută e respins (nu se poate teleporta).
+al eșantionului (`bt`, ms) prin fluxul normal de input, la ~20 Hz; viteza se
+măsoară pe ceasul expeditorului. Host-ul regenerează toată geometria din
+`HarvestPattern` (cusături, căpușe, albine, fălci) și `CleaningPattern` (salvele
+tamburului) din semințe deterministe și decide fiecare tăietură. La mașină,
+host-ul verifică și pozițiile de acum 0,06–0,18 s, ca un client cu latență să
+nimerească ce vedea sub cuțit. Starea trimisă rămâne sub un MTU.
 
-Host-ul regenerează singur toată geometria din `HarvestPattern` (cusături,
-căpușe, albine, fălci, grăsime, clapă) din `animal_id` + pas + timpul mișcării,
-și decide fiecare tăietură — clientul nu raportează niciodată un rezultat.
-Starea trimisă conține doar contoarele vii și reglajele mișcării curente, ca să
-rămână sub un MTU. Fiecare eveniment vizibil incrementează `fx`, iar panoul îl
-afișează o singură dată.
-
-Validările de sesiune sunt cele dinainte: token, `world_epoch`, distanța de
-2.8 m, fără obstacole, `damage_version`, focus; întreruperile eliberează
-cadavrul; un cadavru lucrat e protejat de expirare.
-
-## Prezentare
-
-- Panoul: piele cu blană/solzi, cusături cusute cu centrul auriu și săgeți,
-  urmă luminoasă a cuțitului când taie, popup-uri arcade (PERFECT!, ZVÂC!, CRAC!,
-  SPLAT!, AU! ALBINĂ!, HAP!, BOING!, FLOP!, RRRRUPT!), insignă de COMBO, tremurul
-  tablei la spasme și lovituri, sunete procedurale (șuierat, BOING, FLOP, zumzet
-  de albine, răzuire).
-- 3D: cuțitul urmărește lama și se apasă în piele doar când taie; cusăturile
-  acceptate apar ca tăieturi pe piele (și alunecă la broască/șarpe); mâna liberă
-  trage clapa în timpul smulgerii. Fără `Tween` și `GPUParticles3D`.
+Jobul de curățare împrumută blana crudă din ghiozdan pe durata sesiunii:
+anularea, plecarea de lângă mașină, închiderea controalelor, deconectarea sau
+schimbarea hărții o pun înapoi neschimbată.
 
 ## Teste
 
-`tests/harvest_bot.gd` joacă rutina din starea replicată (perfect, neglijent sau
-distructiv) și e folosit de `verify_harvest.gd`, `verify_swamp.gd`,
-`network_peer.gd` și `preview_harvest.gd` (`-- --animal=bear` pentru capturi).
+`tests/harvest_bot.gd` joacă ambele mini-jocuri din starea replicată și e folosit
+de `verify_harvest.gd`, `verify_cleaning.gd`, `verify_swamp.gd`,
+`network_peer.gd` (inclusiv curățare prin rețea reală) și de `preview_harvest.gd`
+/ `preview_cleaning.gd` (`-- --hide=bear_pelt__r5` pentru capturi).
 
 ## Limite cunoscute
 
-Fără compensare de latență: host-ul judecă eșantionul cu ceasul lui de mișcare,
-deci pe conexiuni foarte proaste albinele și cusăturile mobile pot părea ușor
-decalate. WAN-ul nu a fost validat. Un singur vânător lucrează un cadavru.
+Compensarea de latență există doar la mașină (sondare în trecut), nu și la
+cusăturile mobile de pe teren. WAN-ul nu a fost validat. Un singur vânător
+lucrează un cadavru; mașina o pot folosi mai mulți deodată, fiecare cu blana lui.

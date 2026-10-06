@@ -1,20 +1,18 @@
 class_name HarvestPattern
 extends RefCounted
-## Deterministic skinning "moves" shared by host and clients.
+## Deterministic field-skinning geometry shared by host and clients.
 ##
-## Skinning is a short arcade routine instead of one long held drag:
-##   SLASH  — flick the knife across stitched seams, Fruit-Ninja style.
-##   SCRAPE — scrub fat blobs off the hide against a clock.
-##   YANK   — click the flap, stretch it like a slingshot, click to let it fly.
-## Every species adds its own twist (quirk): ticks, bees, spasms, a snapping jaw…
+## Field skinning is a run of slash waves: flick the knife across stitched seams,
+## Fruit-Ninja style, until the hide is cut free. Every species adds its own
+## twist (quirk): ticks, bees, spasms, a snapping jaw, seams that won't sit still.
+## The raw hide is then cleaned back at camp, see CleaningPattern.
 ##
 ## The host judges every blade sample against this geometry and the client only
 ## redraws it, so both sides must derive identical shapes from the same seed.
 ## Every function here is pure: seeded generators and explicit time only.
 
+## Seed salt of the slash geometry; kept so existing corpses keep their seams.
 const MOVE_SLASH: int = 0
-const MOVE_SCRAPE: int = 1
-const MOVE_YANK: int = 2
 ## Hide space is normalised 0..1 on both axes, but distances, speeds and
 ## crossings are measured in metric space where the hide is ASPECT wide and 1
 ## tall, so a diagonal swipe means the same on screen, on the host and in 3D.
@@ -24,12 +22,6 @@ const ASPECT: float = 1.75
 const HOVER_SPEED: float = .45
 ## Successful cuts closer together than this keep the combo counter running.
 const COMBO_WINDOW: float = .8
-const YANK_REACH: float = .40
-const YANK_SWEET: float = .70
-const YANK_RIP: float = 1.2
-const GRAB_RADIUS: float = .11
-## Fat health removed per metric unit of blade travel over a blob.
-const SCRAPE_RATE: float = 1.5
 const HAZARD_RADIUS: float = .05
 const JAW_EDGE: float = .24
 const SPASM_SECONDS: float = .55
@@ -40,28 +32,12 @@ const CHOMP_WARNING: float = .80
 static func metric(point: Vector2) -> Vector2:
     return Vector2(point.x*ASPECT,point.y)
 
+## Slash waves per species: 2 for a rabbit up to 11 for the ancient crocodile.
 static func total_steps(strokes: int) -> int:
-    return maxi(3,clampi(strokes,2,16))
+    var total: int=maxi(3,clampi(strokes,2,16))
+    return maxi(2,total-(1 if total<=4 else 2 if total<=10 else 3))
 
-## Splits a species' workload into slash waves, fat scrapes and closing yanks.
-## Bigger animals gain steps in every move they use, never just one.
-static func plan(strokes: int, quirks: PackedStringArray = PackedStringArray()) -> Array:
-    var total: int=total_steps(strokes)
-    var yanks: int=1 if total<=4 else 2 if total<=10 else 3
-    var scrapes: int=0
-    if quirks.has("fat"): scrapes=1 if total<=8 else 2
-    return [maxi(1,total-yanks-scrapes),scrapes,yanks]
-
-static func move_of(completed: int, strokes: int, quirks: PackedStringArray = PackedStringArray()) -> int:
-    var split: Array=plan(strokes,quirks)
-    if completed<int(split[0]): return MOVE_SLASH
-    if completed<int(split[0])+int(split[1]): return MOVE_SCRAPE
-    return MOVE_YANK
-
-static func moves_of(move: int, strokes: int, quirks: PackedStringArray = PackedStringArray()) -> int:
-    return int(plan(strokes,quirks)[clampi(move,0,2)])
-
-## Control points come from a generator seeded by body, move and global step,
+## Control points come from a generator seeded by body, salt and global step,
 ## so a resumed corpse rebuilds exactly what the previous hunter was working on.
 static func _rng(seed_value: int, move: int, step: int) -> RandomNumberGenerator:
     var rng:=RandomNumberGenerator.new()
@@ -170,38 +146,3 @@ static func jaw_cycle(seed_value: int, time: float, period: float) -> int:
 
 static func in_jaw(point: Vector2, side: int) -> bool:
     return point.x<JAW_EDGE if side<0 else point.x>1.0-JAW_EDGE
-
-## Fat blobs to scrub off before they set.
-static func fat(seed_value: int, step: int, count: int, radius: float) -> PackedVector2Array:
-    var rng:=_rng(seed_value,MOVE_SCRAPE,step)
-    var result:=PackedVector2Array()
-    var tries: int=0
-    while result.size()<count and tries<120:
-        tries+=1
-        var point:=Vector2(rng.randf_range(.16,.84),rng.randf_range(.22,.78))
-        var clear: bool=true
-        for other in result:
-            if metric(point).distance_to(metric(other))<radius*2.3: clear=false;break
-        if clear: result.append(point)
-    return result
-
-## Where the flap is grabbed and which way it has to be ripped.
-static func yank(seed_value: int, step: int) -> Dictionary:
-    var rng:=_rng(seed_value,MOVE_YANK,step)
-    var ring:=Vector2(rng.randf_range(.40,.60),rng.randf_range(.40,.60))
-    var angle: float=float(rng.randi_range(0,7))*PI*.25+rng.randf_range(-.2,.2)
-    return {"ring":ring,"dir":Vector2(cos(angle),sin(angle))}
-
-static func yank_tension(grab: Vector2, blade: Vector2, direction: Vector2) -> float:
-    return clampf((metric(blade)-metric(grab)).dot(direction)/YANK_REACH,0.0,1.5)
-
-## The hide fights back: heavy animals make the tension wobble around the
-## player's hand, so a clean release is a timing call, not just a position.
-static func yank_wobble(seed_value: int, time: float, amount: float) -> float:
-    var phase: float=float(absi(seed_value)%11)
-    return (sin(time*5.3+phase)*.7+sin(time*8.9+phase*.5)*.3)*amount
-
-## Normalised point at a given yank tension along the pull direction.
-static func yank_point(ring: Vector2, direction: Vector2, tension: float) -> Vector2:
-    var point: Vector2=metric(ring)+direction*YANK_REACH*tension
-    return Vector2(point.x/ASPECT,point.y)

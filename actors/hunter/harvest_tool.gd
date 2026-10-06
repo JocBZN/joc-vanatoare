@@ -1,8 +1,7 @@
 extends Node3D
 ## Close-up skinning rig. The knife follows the player's own blade over the hide
-## in real time, every seam the host accepts opens as a gash on the 3D hide, and
-## the free hand drags the flap during the yank. Only the very last peel is a
-## canned, host-acknowledged animation.
+## in real time and every seam the host accepts opens as a gash on the 3D hide.
+## Only the very last peel is a canned, host-acknowledged animation.
 ##
 ## Project convention: no Tween and no GPUParticles3D. Motion is computed per
 ## frame and debris is a handful of cheap meshes that expire on their own.
@@ -125,22 +124,14 @@ func observe(state: Dictionary) -> void:
     var required: int=maxi(2,int(state.get("required",2)))
     _fur.set_shader_parameter("progress",float(completed)/required)
     _fur.set_shader_parameter("damage",clampf(float(state.get("wear",0))/1000.0,0,1))
-    _stage=int(state.get("move",0))
     _interactive=bool(state.get("active",false))
     if int(state.get("step",-1))!=_clock_step:
         _clock_step=int(state.get("step",-1));_clock=float(state.get("move_time",0));_drawn_opened=0
-    # How much of the current move is done: seams opened or fat scraped away.
-    _opened=0.0
-    if _stage==HarvestPattern.MOVE_SLASH:
-        var hp: Array=state.get("hp",[])
-        var cut: int=0
-        for value in hp: cut+=1 if int(value)<=0 else 0
-        _opened=float(cut)/maxf(1.0,float(hp.size()))
-    elif _stage==HarvestPattern.MOVE_SCRAPE:
-        var fat: Array=state.get("fat",[])
-        var left: float=0.0
-        for value in fat: left+=maxf(0.0,float(value))
-        _opened=1.0-left/maxf(1.0,float(fat.size()))
+    # How much of the current wave is done: the share of seams already opened.
+    var hp: Array=state.get("hp",[])
+    var cut: int=0
+    for value in hp: cut+=1 if int(value)<=0 else 0
+    _opened=float(cut)/maxf(1.0,float(hp.size()))
     # Each finished step peels a little more of the hide away from the carcass.
     _peel=clampf(float(completed)/float(required),0,1)
     _fur.set_shader_parameter("peel",_peel)
@@ -148,14 +139,13 @@ func observe(state: Dictionary) -> void:
     var key: String="%s:%s:%s" % [state.get("id",0),state.get("token",0),state.get("fx",0)]
     if key==_last_stroke or feedback.is_empty(): return
     _last_stroke=key;_feedback=feedback
-    var bad: bool=feedback in ["snag","wrong_way","spasm","splat","sting","chomp","fat_left","boing","overpull","rip"]
+    var bad: bool=feedback in ["snag","wrong_way","spasm","splat","sting","chomp"]
     _stroke_duration=FINISH_SECONDS if feedback=="complete" else STROKE_SECONDS
     _stroke_left=_stroke_duration if feedback=="complete" else 0.0
-    _kick=.9 if feedback in ["complete","chomp","rip"] else .7 if bad else .35
+    _kick=.9 if feedback in ["complete","chomp"] else .7 if bad else .35
     _kick_seed=float(int(state.get("fx",0))%7)
-    if feedback in ["grab","fumble"]: return
     _sound.stream=_miss_sound if bad else _cut_sound;_sound.play()
-    _burst(14 if feedback in ["complete","flop_perfect","flop","rip"] else 9 if bad else 5,bad,Vector2(state.get("fx_pos",Vector2(.5,.5))))
+    _burst(14 if feedback=="complete" else 9 if bad else 5,bad,Vector2(state.get("fx_pos",Vector2(.5,.5))))
 
 func _process(delta: float) -> void:
     if not visible: return
@@ -198,26 +188,16 @@ func _trace_pose(delta: float) -> void:
     _knife_hand.position=_knife_hand.position.lerp(contact+Vector3(.022,-.016+jitter,.028+press),clampf(delta*18.0,0,1))
     var tilt: float=clampf(_blade.x-.5,-.5,.5)
     _knife_hand.rotation=Vector3(-.22 if cutting else -.05,.18*tilt,-.34-.10*tilt)
-    var lift: float=_peel*.05
-    if _stage==HarvestPattern.MOVE_YANK and bool(_state.get("grabbed",false)):
-        # The free hand has the flap: it follows the pull and lifts the hide with it.
-        var flap: Dictionary=HarvestPattern.yank(id,int(_state.get("step",0)))
-        var tension: float=HarvestPattern.yank_tension(flap.ring,_blade,flap.dir)
-        var held: Vector3=_work_point+_hide_point(_blade)
-        _support_hand.position=_support_hand.position.lerp(held+Vector3(-.03,.01,.06+tension*.08),clampf(delta*12.0,0,1))
-        _support_hand.rotation=Vector3(-.45-tension*.5,0,.25)
-        lift+=tension*.10
-    else:
-        # Otherwise it keeps the hide taut just behind the blade.
-        var hold: Vector3=_work_point+_hide_point(Vector2(clampf(_blade.x-.16,0,1),clampf(_blade.y-.10,0,1)))
-        _support_hand.position=_support_hand.position.lerp(hold+Vector3(-.04,.01,.05+_peel*.09),clampf(delta*10.0,0,1))
-        _support_hand.rotation=Vector3(-.30-_peel*.35,0,.18)
+    # The free hand keeps the hide taut just behind the blade.
+    var hold: Vector3=_work_point+_hide_point(Vector2(clampf(_blade.x-.16,0,1),clampf(_blade.y-.10,0,1)))
+    _support_hand.position=_support_hand.position.lerp(hold+Vector3(-.04,.01,.05+_peel*.09),clampf(delta*10.0,0,1))
+    _support_hand.rotation=Vector3(-.30-_peel*.35,0,.18)
     _surface.position=_work_point;_ribbon.position=_work_point
-    _fur.set_shader_parameter("lift",lift)
+    _fur.set_shader_parameter("lift",_peel*.05)
     _fur.set_shader_parameter("cut",_drawn_opened)
     _fur.set_shader_parameter("finish",_feedback=="complete" and _stroke_left>0)
     _spawn_clock-=delta
-    if cutting and _stage!=HarvestPattern.MOVE_YANK and _spawn_clock<=0:
+    if cutting and _spawn_clock<=0:
         _spawn_clock=.07
         _burst(1,false,_blade)
 
@@ -225,7 +205,6 @@ func _trace_pose(delta: float) -> void:
 ## same live position the panel draws it, so frog and snake cuts slide too.
 func _rebuild_ribbon() -> void:
     _ribbon_mesh.clear_surfaces()
-    if _stage!=HarvestPattern.MOVE_SLASH: return
     var hp: Array=_state.get("hp",[])
     var quirks: PackedStringArray=PackedStringArray(_state.get("quirks",PackedStringArray()))
     var id: int=int(_state.get("id",0))

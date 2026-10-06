@@ -147,7 +147,7 @@ func host_test() -> void:
     check(await wait_until(func(): return all_marked("harvest"),15),"remote cuts and exclusive corpse claim finish")
     check(not session.animals.has(harvested_id) and reviver.inventory.items.size()==1,"host awards one manually recovered remote pelt")
     if not reviver.inventory.items.is_empty():
-        check(reviver.inventory.items[0].id==&"rabbit_pelt__s5" and reviver.inventory.loot_value()==15,"pristine quality value replicated through authoritative inventory")
+        check(reviver.inventory.items[0].id==&"rabbit_pelt__r5" and reviver.inventory.loot_value()==6,"raw hide quality replicated through authoritative inventory")
     check(predator_victim.inventory.items.is_empty() and session.loot.size()==drops_before,"contested and replayed cuts award no extra loot")
     check(session.animals.is_empty(),"last corpse leaves an empty authoritative wildlife roster")
     session.spawn_clock=8
@@ -168,6 +168,22 @@ func host_test() -> void:
     session.request_action("return_lobby")
     check(await wait_until(func(): return session.phase=="lobby",30),"four peers return through loading to camp")
     check(session.trunk.size()==3 and session.forest==null,"return keeps owned cargo and unloads forest")
+    var machine
+    for stall in get_nodes_in_group("lobby_interactables"):
+        if stall.interaction_kind=="cleaner": machine=stall
+    check(machine!=null,"camp has the hide cleaner on the host")
+    var cleaner_peer
+    for p in session.players.values():
+        if p.player_name=="client1": cleaner_peer=p
+    cleaner_peer.inventory.items.clear();cleaner_peer.inventory.items.append(AnimalCatalog.loot(&"rabbit_pelt__r5"))
+    cleaner_peer.global_position=machine.interaction_position()+Vector3.UP*.1
+    session._send_inventory(cleaner_peer.peer_id)
+    await frames(20)
+    write_phase("clean")
+    check(await wait_until(func(): return all_marked("clean"),60),"remote hide cleaning finishes")
+    check(cleaner_peer.inventory.items.size()==1 and cleaner_peer.inventory.items[0].id==&"rabbit_pelt__s5","host swaps the remote raw hide for a cleaned one")
+    check(not session.is_cleaning(cleaner_peer.peer_id) and not cleaner_peer.cleaning,"remote cleaner job released")
+    cleaner_peer.inventory.items.clear();session._send_inventory(cleaner_peer.peer_id)
     var seller
     for stall in get_nodes_in_group("lobby_interactables"):
         if stall.interaction_kind=="sell": seller=stall
@@ -365,7 +381,6 @@ func client_test() -> void:
         var queue: Array=[]
         var settle_fx: int=-1
         var settle_until: int=0
-        var previous_cut: String=""
         var deadline: int=Time.get_ticks_msec()+20000
         while session.is_harvesting(session.local_id()) and Time.get_ticks_msec()<deadline:
             var state: Dictionary=session.harvest_state(session.local_id())
@@ -382,16 +397,11 @@ func client_test() -> void:
                 if op.kind=="blade":
                     clock.stamp=int(clock.get("stamp",1000))+int(op.dt);clock.blade=op.p
                     packet["blade"]=op.p;packet["bt"]=int(clock.stamp)
-                elif op.kind=="click":
-                    clock.click=maxi(int(clock.get("click",0)),int(state.get("clicks",0)))+1
-                    previous_cut="%d:%d:%d:%.5f:%.5f" % [int(state.id),int(state.token),int(clock.click),Vector2(op.p).x,Vector2(op.p).y]
-                    session.request_action("harvest_click",previous_cut)
             session.send_input(packet)
             await frames(1)
-        check(await wait_until(func(): return local_hunter.inventory.items.size()==1,3),"remote manual cuts deliver one pelt")
+        check(await wait_until(func(): return local_hunter.inventory.items.size()==1,3),"remote manual cuts deliver one raw hide")
         if not local_hunter.inventory.items.is_empty():
-            check(local_hunter.inventory.items[0].id==&"rabbit_pelt__s5" and local_hunter.inventory.loot_value()==15,"remote quality ID and value match host")
-        session.request_action("harvest_click",previous_cut)
+            check(local_hunter.inventory.items[0].id==&"rabbit_pelt__r5" and local_hunter.inventory.loot_value()==6,"remote raw hide ID and value match host")
         session.request_action("harvest_start",str(body_id))
         await frames(8)
         check(local_hunter.inventory.items.size()==1,"remote completion replay cannot duplicate recovered skin")
@@ -408,6 +418,35 @@ func client_test() -> void:
     check(await wait_until(func(): return phase()=="deposit"),"deposit phase")
     session.request_action("deposit")
     check(await wait_until(func(): return session.local_hunter().inventory.items.is_empty()),"own bag updated by server")
+    check(await wait_until(func(): return phase()=="clean",40),"cleaning phase")
+    if role=="client1":
+        session.set_physics_process(false)
+        var cleaner_hunter=session.local_hunter()
+        check(await wait_until(func(): return cleaner_hunter.inventory.items.size()==1 and cleaner_hunter.inventory.items[0].raw,5),"raw hide replicated to the client bag")
+        session.request_action("clean_start")
+        check(await wait_until(func(): return session.is_cleaning(session.local_id()),4),"remote player receives private cleaner state")
+        var drum_bot=load("res://tests/harvest_bot.gd")
+        var drum_clock: Dictionary={"blade":Vector2(.5,.5)}
+        var drum_deadline: int=Time.get_ticks_msec()+50000
+        while session.is_cleaning(session.local_id()) and Time.get_ticks_msec()<drum_deadline:
+            # Plan against the host clock extrapolated to now, then send the
+            # whole slice at once so it lands before the piece moves on.
+            var drum: Dictionary=session.clean_state(session.local_id())
+            drum["time"]=float(drum.time)+maxf(0,Time.get_ticks_msec()/1000.0-float(drum.get("received_at",Time.get_ticks_msec()/1000.0)))
+            var sent: bool=false
+            for op in drum_bot.clean_ops(drum,Vector2(drum_clock.blade)):
+                if op.kind!="blade": continue
+                drum_clock.stamp=int(drum_clock.get("stamp",1000))+int(op.dt);drum_clock.blade=op.p
+                cleaner_hunter.input_sequence+=1
+                session.send_input({"seq":cleaner_hunter.input_sequence,"direction":Vector3.ZERO,"drive":Vector2.ZERO,"yaw":0,"pitch":0,"harvest":true,"blade":op.p,"bt":int(drum_clock.stamp)})
+                sent=true
+            if not sent:
+                cleaner_hunter.input_sequence+=1
+                session.send_input({"seq":cleaner_hunter.input_sequence,"direction":Vector3.ZERO,"drive":Vector2.ZERO,"yaw":0,"pitch":0,"harvest":true})
+            await frames(2 if sent else 1)
+        check(await wait_until(func(): return cleaner_hunter.inventory.items.size()==1 and cleaner_hunter.inventory.items[0].id==&"rabbit_pelt__s5",4),"remote cleaning returns a five-star cleaned hide")
+        session.set_physics_process(true)
+    mark("clean")
     check(await wait_until(func(): return phase()=="sell1"),"sale phase")
     if role=="client1": session.request_action("sell_trunk")
     check(await wait_until(func(): return phase()=="enter"),"passenger phase")
