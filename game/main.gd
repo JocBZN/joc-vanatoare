@@ -232,11 +232,11 @@ func interact_nearby() -> void:
     elif nearby.interaction_kind=="expedition":
         map_menu.open()
         _set_capture(false);hud.hide()
-    else: _open_shop(nearby.interaction_kind)
+    else: _open_shop(nearby.interaction_kind,nearby.greet_customer() if nearby.has_method("greet_customer") else "")
 
-func _open_shop(kind: String) -> void:
+func _open_shop(kind: String, quote: String="") -> void:
     if is_instance_valid(minimap): minimap.close_detail()
-    shop.open_for(kind,inventory,kind)
+    shop.open_for(kind,inventory,kind,quote)
     _set_capture(false)
     prompt.hide()
 

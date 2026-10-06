@@ -482,6 +482,12 @@ func _action(peer: int, kind: String, value: String) -> void:
             if _at_stall(p,"backpacks"): inv.buy_backpack(StringName(value))
         "sell":
             if _at_stall(p,"sell"): inv.sell_all()
+        "sell_stash":
+            if _at_stall(p,"sell"): inv.sell_stash()
+        "stash_deposit":
+            if _at_stall(p,"storage"): inv.stash_deposit()
+        "stash_withdraw":
+            if _at_stall(p,"storage"): inv.stash_withdraw(StringName(value))
         "pickup":
             var id:=int(value)
             if loot.has(id) and loot[id].distance_from(p.global_position)<=2.7:
@@ -641,13 +647,17 @@ func _handle_load_failure(peer: int,epoch: int) -> void:
     if phase=="loading" and WorldCatalog.is_hunt(world_id): _begin_loading("lobby")
     elif peer!=1 and mode=="host": multiplayer.multiplayer_peer.disconnect_peer(peer)
 
+## The Mammoth base fills the north edge of the camp, so hunters may walk up to its back wall.
+const LOBBY_NORTH_LIMIT: float=-21.0
+
 func constrain_to_lobby(body: Node3D, vehicle: bool=false) -> void:
     if phase!="lobby": return
     var limit_x: float=18 if vehicle else 20
     var limit_z: float=17 if vehicle else 19
+    var north: float=-limit_z if vehicle else LOBBY_NORTH_LIMIT
     var before: Vector3=body.global_position
     body.global_position.x=clampf(before.x,-limit_x,limit_x)
-    body.global_position.z=clampf(before.z,-limit_z,limit_z)
+    body.global_position.z=clampf(before.z,north,limit_z)
     if vehicle and body.global_position!=before:
         body.speed=0
         body.velocity=Vector3.ZERO

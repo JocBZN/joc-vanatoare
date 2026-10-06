@@ -17,6 +17,10 @@ var reload_remaining: float = 0.0
 const UPGRADE_TYPES = ["damage","rate","magazine"]
 const MAX_UPGRADE = 3
 var items: Array[LootDefinition] = []
+## Personal storage aboard the Mammoth base. Private like the rest of the
+## inventory, so it travels with the profile through expeditions and reconnects.
+var stored: Array[LootDefinition] = []
+const STASH_CAPACITY = 150
 
 
 func capacity() -> int:
@@ -226,10 +230,79 @@ func sell_all() -> int:
     _feedback("SOLD",{"n":earned})
     return earned
 
+func stash_used() -> int:
+    var total := 0
+    for item in stored:
+        total += item.space
+    return total
+
+
+func stash_value() -> int:
+    var total := 0
+    for item in stored:
+        total += item.sell_value
+    return total
+
+
+## Moves everything that fits from the backpack into storage. Host only.
+func stash_deposit() -> int:
+    if not NetworkSession.is_host():
+        NetworkSession.request_action("stash_deposit")
+        return 0
+    var moved := 0
+    var full := false
+    for i in range(items.size()-1,-1,-1):
+        if stash_used()+items[i].space>STASH_CAPACITY:
+            full=true
+            continue
+        stored.append(items[i])
+        items.remove_at(i)
+        moved+=1
+    changed.emit()
+    _feedback("STASH_FULL" if full and moved==0 else "STASH_STORED" if moved>0 else "STASH_NOTHING",{"n":moved})
+    return moved
+
+
+## Takes stored loot back into the backpack, only `id` when given. Host only.
+func stash_withdraw(id: StringName=&"") -> int:
+    if not NetworkSession.is_host():
+        NetworkSession.request_action("stash_withdraw",String(id))
+        return 0
+    var moved := 0
+    var full := false
+    for i in range(stored.size()-1,-1,-1):
+        if id!=&"" and stored[i].id!=id: continue
+        if used_space()+stored[i].space>capacity():
+            full=true
+            continue
+        items.append(stored[i])
+        stored.remove_at(i)
+        moved+=1
+    changed.emit()
+    _feedback("FULL_BAG" if full and moved==0 else "STASH_TAKEN" if moved>0 else "STASH_NOTHING",{"n":moved})
+    return moved
+
+
+func sell_stash() -> int:
+    if not NetworkSession.is_host():
+        NetworkSession.request_action("sell_stash")
+        return 0
+    if stored.is_empty():
+        _feedback("STASH_NOTHING")
+        return 0
+    var earned := stash_value()
+    stored.clear()
+    coins += earned
+    changed.emit()
+    _feedback("SOLD",{"n":earned})
+    return earned
+
 func export_state() -> Dictionary:
     var ids: Array=[]
     for item in items: ids.append(String(item.id))
-    return {"coins":coins,"bag":String(backpack_id),"weapon":String(equipped_weapon_id),"items":ids,"owned":owned_weapons.duplicate(),"upgrades":weapon_upgrades.duplicate(true),"magazines":magazines.duplicate(),"reload":reload_remaining,"loadout":[String(loadout[0]),String(loadout[1])],"slot":active_slot}
+    var stash: Array=[]
+    for item in stored: stash.append(String(item.id))
+    return {"coins":coins,"bag":String(backpack_id),"weapon":String(equipped_weapon_id),"items":ids,"stored":stash,"owned":owned_weapons.duplicate(),"upgrades":weapon_upgrades.duplicate(true),"magazines":magazines.duplicate(),"reload":reload_remaining,"loadout":[String(loadout[0]),String(loadout[1])],"slot":active_slot}
 
 func _feedback(key: String, values: Dictionary={}) -> void:
     var owner_peer: int=get_parent().peer_id if get_parent() is Hunter else 1
@@ -253,4 +326,8 @@ func apply_state(data: Dictionary) -> void:
     for id in data.items:
         var item=AnimalCatalog.loot(StringName(id))
         if item: items.append(item)
+    stored.clear()
+    for id in data.get("stored",[]):
+        var item=AnimalCatalog.loot(StringName(id))
+        if item: stored.append(item)
     changed.emit()

@@ -16,7 +16,7 @@ Prototip 3D PC în Godot/GDScript: vânătoare co-op pentru un host și până l
 
 Bucla: pregătești echipamentul în tabăra nocturnă → E la foc → hostul alege Forest sau Swamp → încărcare comună → vânătoare/colectare/transport cu jeep → întoarcere în tabără → vânzare și upgrade-uri.
 
-- Tabără cu foc, corturi, trei tarabe (arme, ghiozdane, vânzare) și jeep.
+- Tabără cu foc, corturi, mașina de curățat blănuri, jeep și **Mamutul**: o bază-mașină absurdă, cu trei niveluri. Are Arsenal, Ghiozdane, Debara (depozit personal) și ghișeu de vânzare, fiecare cu un NPC care strigă replici RO/EN. Cele trei tarabe vechi au fost înlocuite; detalii în docs/base.md.
 - Două expediții înregistrate în WorldCatalog: Forest și Blackwater Marsh, fiecare aproximativ 1200 × 1200 m, cu teren determinist și vegetație gestionată pe sectoare.
 - Pădure: iepure, căprioară, mistreț, lup, urs. Primele două fug; celelalte urmăresc și atacă.
 - Mlaștină: broască, țestoasă, șarpe, crocodil, crocodil uriaș; apă traversabilă, noroi care încetinește, podețe, colibă, turn și bârlog cu gardian. Detalii și valori în docs/swamp.md.
@@ -36,6 +36,7 @@ Bucla: pregătești echipamentul în tabăra nocturnă → E la foc → hostul a
 | core/locale_settings.gd | Autoload: traduceri, preferințe, profil și identitate anonimă |
 | world/world_router.gd | Scene și încărcare etapizată, progres și schimbarea hărții |
 | world/lobby/, world/forest/, world/swamp/ | Tabără, teren și lumi separate |
+| world/camp/mega_base.gd, shop_counter.gd, actors/npc/shopkeeper.gd, data/npc_catalog.gd | Baza-mașină Mamutul, ghișeele ei și echipajul de NPC-uri |
 | actors/hunter/ | Mișcare, camere, corp, armă first person |
 | systems/combat/, systems/inventory/ | Combat și inventar/progresie/serializare |
 | actors/animals/ | AI, modele și animații; AI rulează pe host |
@@ -475,3 +476,27 @@ Verificări rulate local (Godot 4.7.2):
 - Fără commit/push la acest lot până la cererea utilizatorului.
 
 Limite: echilibrul (număr de bucăți, viteze, pragurile 85/60%, 40% pentru crud) e o primă trecere nejucată de oameni; compensarea de latență există doar la mașină; WAN nevalidat.
+
+### Mamutul — baza-mașină cu etaje, NPC-uri și debara — 6 octombrie 2026 (sesiune Claude Code cloud)
+
+Cerere: o mașină mare și absurdă, construită de la zero, low-poly ca jocul, care să țină loc de bază. Trebuie să aibă mai multe etaje „crazy”, storage, NPC-uri pentru vânzarea mărfurilor, magazin de ghiozdane și de arme, iar NPC-urile să zică ceva la mișto, de exemplu „Hai să cumperi de aici în rasa ta”.
+
+Decizie de scop, luată fără întrebare separată și de confirmat cu utilizatorul: Mamutul este **staționar**, parcat în tabără. Condusul unei baze cu vânători pe etaje cere platforme mobile replicate; este propus ca etapă următoare.
+
+Implementare (detalii complete în `docs/base.md`):
+- `world/camp/mega_base.gd` (`MegaBase`, nou) construiește procedural camionul-monstru: patru axe cu roți uriașe; Bazarul la 3,4 m; un autobuz școlar galben ca etaj 2, la 6,8 m; acoperișul la 10,2 m, cu jacuzzi, rață uriașă, șezlong, grătar, terasă, antenă, catarg cu far, moară de vânt, flamingo, pitic și neon „MAMUTUL”; cabină cu capotă, bară cromată, faruri, claxoane și coșuri care fumegă. Urcarea se face pe o schelă cu rampe în zig-zag (20–25°) și palieri. Geometria statică este comasată pe culori (~60 de batch-uri toon), cu colizioane cutie/cilindru pe layer-ul World. Plasat în `world/lobby/lobby.tscn` la (0, 0, −16).
+- `world/camp/shop_counter.gd` (`ShopCounter`, nou, subclasă `LobbyInteractable`): ghișeele `weapons`, `backpacks`, `sell` (drive-through la sol, cu loc de parcare pentru jeep în dreapta) și `storage` (nou, adăugat în enum-ul `interaction_kind`). Hostul validează în continuare prin `_at_stall`, cu distanța 3D, deci pe etajul corect.
+- `actors/npc/shopkeeper.gd` (`Shopkeeper`) și `data/npc_catalog.gd` (`NpcCatalog`), noi: cinci NPC-uri low-poly procedurale — Gică Pistolică (Arsenal), Tanti Rucsandra (Ghiozdane), Nea Fane Blănaru (Vânzare), Moș Debara (Debara) și Nea Nelu, șoferul, pe acoperiș. Au 34 de replici RO/EN; prima replică a lui Gică este exact fraza cerută. Comportamentul este local și cosmetic: NPC-ul se întoarce spre vânător, gesticulează, iar replica apare într-un balon cu fundal. La E, replica apare și ca citat în capul magazinului.
+- Debara: `HunterInventory.stored` (150 spații), privată și serializată prin ID-uri în state, deci păstrată la travel și reconectare cât timp hostul rulează. Acțiunile host `stash_deposit`, `stash_withdraw` (tot sau un ID) și `sell_stash` sunt permise numai la ghișeele corecte. `ShopUI` are vederea „storage” și butonul „Vinde și ce ai în debara”.
+- Tabără: `world/camp/camp.tscn` a pierdut tarabele vechi (Shops), resursele rămase fără referințe, brazii 18–20/25–26 și gardurile 19–30 din arcul nordic. Corturile 01/02 au fost mutate lângă foc. `MegaBase` adaugă două segmente de gard spre capetele camionului. `NetworkSession.constrain_to_lobby`: limita nordică pentru vânători este acum `LOBBY_NORTH_LIMIT` = −21; jeep-ul rămâne la ±17.
+- `GameArt.dress_scene` sare peste mesh-urile cu meta `styled` (baza și NPC-urile își păstrează paleta).
+- Fișiere modificate: `art/game_art.gd`, `core/network_session.gd`, `data/localization/{ro,en}.json` (+63 chei, ordinea existentă păstrată), `game/main.gd`, `systems/inventory/hunter_inventory.gd`, `ui/shop/shop_ui.gd`, `world/camp/camp.tscn`, `world/interactables/lobby_interactable.gd`, `world/lobby/lobby.tscn`, `tests/{network_peer.gd,run_headless_tests.ps1,verify_progression.gd}`, `docs/{architecture.md,play_guide.md}`. Fișiere noi: cele patru scripturi de mai sus, `tests/verify_base.gd`, `tests/preview_base.gd`, `docs/base.md` și `docs/base_*.png` (9 capturi).
+
+Verificări rulate local în această sesiune: container Linux cloud, Godot 4.7.2 oficial descărcat din GitHub Releases. Scripturile `.ps1` nu rulează aici; s-au folosit echivalente bash cu aceleași argumente pentru Godot.
+- Import headless: exit 0, fără erori.
+- Baza înainte de modificări, aceleași zece suite: **702 checks, 0 failures**.
+- După modificări, unsprezece suite headless, inclusiv `base`: **745 checks, 0 failures** (maps_predators 42, worlds_vehicle 45, forest 56, progression 57, revive_perspective 37, art_wildlife 48, swamp 51, animated_wildlife 103, harvest 204, cleaning 59, base 43). După ultimele retușuri vizuale, `verify_base.gd` a fost rerulat: 43/0. Prima rulare a suitei noi a avut ID-uri de loot greșite în test (`boar_hide`/`bear_hide`); au fost corectate în `boar_pelt`/`bear_pelt`. Pragul de batch-uri a crescut de la <60 la <90 după adăugarea decorului de pe acoperiș.
+- ENet real, host + 3 clienți + al cincilea refuzat. Forest: host 63 / client1 57 / client2 49 / client3 56 / extra 3 = **228 checks, 0 failures**. Swamp: tot **228 checks, 0 failures**. `_err.log` este curat pe toate rolurile. Sunt incluse faza nouă `storage` și „stored loot survives reconnect”.
+- Capturi reale prin `tests/preview_base.gd`, cu Xvfb + OpenGL3 software (llvmpipe), Compatibility. Toate cele nouă au fost inspectate vizual și sunt salvate în `docs/base_*.png`. Forward+ pe GPU real și FPS-ul nu au fost măsurate aici.
+
+Limite și reluare: Mamutul nu se conduce. NPC-urile nu au audio. Echilibrul (150 spații de debara) este o primă valoare. Jocul nu a fost jucat interactiv de un om în această sesiune: urcarea pe rampe este verificată prin simularea hostului, nu cu mouse/tastatură. Pe Windows trebuie rulat `run_headless_tests.ps1`, acum cu suita `base`, și testul de rețea. Commit local pe branch-ul `claude/absurd-vehicle-game-a1mq0h`; push-ul a fost refuzat de GitHub (403: Claude nu are acces la repo pentru această organizație). Trebuie refăcut după reconectarea GitHub / instalarea aplicației Claude.

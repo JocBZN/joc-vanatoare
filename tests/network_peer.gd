@@ -183,6 +183,19 @@ func host_test() -> void:
     check(await wait_until(func(): return all_marked("clean"),60),"remote hide cleaning finishes")
     check(cleaner_peer.inventory.items.size()==1 and cleaner_peer.inventory.items[0].id==&"rabbit_pelt__s5","host swaps the remote raw hide for a cleaned one")
     check(not session.is_cleaning(cleaner_peer.peer_id) and not cleaner_peer.cleaning,"remote cleaner job released")
+    var storage
+    for stall in get_nodes_in_group("lobby_interactables"):
+        if stall.interaction_kind=="storage": storage=stall
+    check(storage!=null and storage.interaction_position().y>3.0,"storage counter is upstairs in the Mammoth base")
+    cleaner_peer.global_position=storage.interaction_position()+Vector3.UP*.1
+    await frames(20)
+    write_phase("storage")
+    var stash_seen: Dictionary={"stored":false}
+    check(await wait_until(func():
+        if cleaner_peer.inventory.stored.size()==1 and cleaner_peer.inventory.items.is_empty(): stash_seen.stored=true
+        return all_marked("storage"),30),"remote storage round trip finishes")
+    check(stash_seen.stored,"host stored the remote hunter's hide on request")
+    check(cleaner_peer.inventory.items.size()==1 and cleaner_peer.inventory.stored.is_empty(),"remote hunter took the hide back out")
     cleaner_peer.inventory.items.clear();session._send_inventory(cleaner_peer.peer_id)
     var seller
     for stall in get_nodes_in_group("lobby_interactables"):
@@ -255,6 +268,7 @@ func host_test() -> void:
     reconnect_inventory.buy_weapon(&"scrap_blaster")
     reconnect_inventory.buy_upgrade(&"scrap_blaster","damage")
     reconnect_inventory.coins=17
+    reconnect_inventory.stored.append(AnimalCatalog.loot(&"wolf_pelt__s4"))
     session._send_inventory(reconnect_peer)
     session.players[reconnect_peer].take_damage(999)
     await frames(20)
@@ -267,6 +281,8 @@ func host_test() -> void:
     for id in session.players:
         if session.identities[id]==reconnect_profile: restored=session.players[id].inventory.coins==17
     check(restored,"wallet restored within live host session")
+    for id in session.players:
+        if session.identities[id]==reconnect_profile: check(session.players[id].inventory.stored.size()==1 and session.players[id].inventory.stored[0].id==&"wolf_pelt__s4","stored loot survives reconnect")
     for id in session.players:
         if session.identities[id]==reconnect_profile: check(session.players[id].health==0,"reconnecting does not revive a downed hunter")
     check(await wait_until(func(): return session.players.values().all(func(p): return p.world_ready),30),"late join finishes forest before host ends test")
@@ -447,6 +463,14 @@ func client_test() -> void:
         check(await wait_until(func(): return cleaner_hunter.inventory.items.size()==1 and cleaner_hunter.inventory.items[0].id==&"rabbit_pelt__s5",4),"remote cleaning returns a five-star cleaned hide")
         session.set_physics_process(true)
     mark("clean")
+    check(await wait_until(func(): return phase()=="storage",40),"storage phase")
+    if role=="client1":
+        var keeper_hunter=session.local_hunter()
+        session.request_action("stash_deposit")
+        check(await wait_until(func(): return keeper_hunter.inventory.stored.size()==1 and keeper_hunter.inventory.items.is_empty(),5),"private storage replicated to its owner")
+        session.request_action("stash_withdraw","")
+        check(await wait_until(func(): return keeper_hunter.inventory.items.size()==1 and keeper_hunter.inventory.stored.is_empty(),5),"stored hide comes back into the bag")
+    mark("storage")
     check(await wait_until(func(): return phase()=="sell1"),"sale phase")
     if role=="client1": session.request_action("sell_trunk")
     check(await wait_until(func(): return phase()=="enter"),"passenger phase")

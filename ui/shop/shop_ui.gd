@@ -9,6 +9,7 @@ var is_open: bool = false
 var _root: Control
 var _title: Label
 var _subtitle: Label
+var _quote: Label
 var _summary: Label
 var _rows: VBoxContainer
 var _message: Label
@@ -41,9 +42,11 @@ func _input(event: InputEvent) -> void:
         close()
         get_viewport().set_input_as_handled()
 
-func open_for(shop_kind: String, source: HunterInventory, title: String) -> void:
+func open_for(shop_kind: String, source: HunterInventory, title: String, quote: String="") -> void:
     inventory = source
     kind = shop_kind
+    _quote.text = quote
+    _quote.visible = quote != ""
     _selected_index=0
     _preview_path=""
     is_open = true
@@ -97,6 +100,10 @@ func _build_layout() -> void:
     _close_button = _button(tr("CLOSE"))
     header.add_child(_close_button)
     _close_button.pressed.connect(close)
+    _quote = _label("", 16, Color("ffd88a"))
+    _quote.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _quote.hide()
+    column.add_child(_quote)
     _subtitle = _label("", 15, Color("b4bfae"))
     column.add_child(_subtitle)
     _summary = _label("", 17, Color("eebc62"))
@@ -133,6 +140,8 @@ func _refresh() -> void:
     match kind:
         "trunk":
             _build_trunk_rows()
+        "storage":
+            _build_storage_rows()
         "sell", "inventory":
             _subtitle.text = tr("SELL_DESC" if kind == "sell" else "INVENTORY_DESC")
             _build_loot_rows()
@@ -164,6 +173,10 @@ func _build_loot_rows() -> void:
         var cargo_button:=_button(LocaleSettings.text("SELL_TRUNK",{"n":own_value}))
         cargo_button.pressed.connect(func() -> void: NetworkSession.request_action("sell_trunk"))
         _rows.add_child(cargo_button)
+        var stash_button:=_button(LocaleSettings.text("SELL_STASH",{"n":inventory.stash_value()}))
+        stash_button.disabled=inventory.stored.is_empty()
+        stash_button.pressed.connect(func() -> void: NetworkSession.request_action("sell_stash"))
+        _rows.add_child(stash_button)
         _rows.add_child(_label(tr("PARK_TO_SELL"),13,Color("b4bfae")))
 
 func _build_catalog(column: VBoxContainer) -> void:
@@ -371,3 +384,30 @@ func _build_trunk_rows() -> void:
         var definition:=AnimalCatalog.loot(StringName(item.kind))
         var button:=_row("%s × %d" % [definition.localized_name(),group.n],LocaleSettings.text("OWNER",{"name":item.owner})+"  ·  "+str(definition.sell_value*group.n),tr("MY_BAG") if item.mine else item.owner)
         button.disabled=true
+
+func _build_storage_rows() -> void:
+    _subtitle.text=tr("STORAGE_DESC")
+    _summary.text=LocaleSettings.text("STASH_SUMMARY",{"used":inventory.stash_used(),"cap":HunterInventory.STASH_CAPACITY,"value":inventory.stash_value(),"bag_used":inventory.used_space(),"bag_cap":inventory.capacity()})
+    var put:=_button(tr("STASH_DEPOSIT_ALL"))
+    put.disabled=inventory.items.is_empty()
+    put.pressed.connect(func() -> void: NetworkSession.request_action("stash_deposit"))
+    _rows.add_child(put)
+    var take:=_button(tr("STASH_WITHDRAW_ALL"))
+    take.disabled=inventory.stored.is_empty()
+    take.pressed.connect(func() -> void: NetworkSession.request_action("stash_withdraw",""))
+    _rows.add_child(take)
+    var counts: Dictionary={}
+    var definitions: Dictionary={}
+    for item in inventory.stored:
+        counts[item.id]=int(counts.get(item.id,0))+1
+        definitions[item.id]=item
+    if counts.is_empty():
+        var empty:=_label(tr("STASH_EMPTY_LIST"),19,Color("b4bfae"))
+        empty.custom_minimum_size.y=120
+        _rows.add_child(empty)
+    for id: StringName in counts:
+        var definition: LootDefinition=definitions[id]
+        var quantity: int=counts[id]
+        var button:=_row("%s × %d" % [definition.localized_name(),quantity],LocaleSettings.text("LOOT_DETAIL",{"space":definition.space*quantity,"value":definition.sell_value*quantity}),tr("STASH_TAKE"))
+        button.disabled=inventory.used_space()+definition.space>inventory.capacity()
+        button.pressed.connect(NetworkSession.request_action.bind("stash_withdraw",String(id)))

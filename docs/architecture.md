@@ -18,7 +18,8 @@ Toate RPC-urile au aceeași cale stabilă: `/root/NetworkSession`.
 | WorldRouter / LoadingScreen | Scene separate, încărcare threaded și teren construit în etape, progres real, interfață EN/RO |
 | HuntingJeep | RigidBody3D cu Jolt, patru suspensii raycast, forțe de tracțiune/frânare și replicare a transformării |
 | EquipmentPreview | SubViewport cu World3D propriu, lumină, cameră, model normalizat, rotire cu mouse-ul și zoom |
-| ShopUI / CampMenu | Carousel 3D, upgrade-uri, portbagaj cu proprietari, setări, host/join/leave; MapMenu pornește expediția la foc |
+| ShopUI / CampMenu | Carousel 3D, upgrade-uri, portbagaj cu proprietari, debara personală, citatul NPC-ului, setări, host/join/leave; MapMenu pornește expediția la foc |
+| MegaBase / ShopCounter / Shopkeeper | Baza-mașină „Mamutul” din tabără: etaje, schelă, ghișee validate prin `_at_stall`, NPC-uri cosmetice locale. Detalii: [base.md](base.md) |
 
 ```text
 Main
@@ -177,3 +178,5 @@ La doborâre și în jeep camera este externă; preferința rămâne salvată pe
 
 
 Etapa 09: WorldRouter acceptă lobby/forest/swamp. Fauna se alege per map_id, iar NetworkSession folosește WorldCatalog.is_hunt pentru timeout, acknowledgements, populate și replicare. Căile Players/Wildlife/Loot/Jeep și RPC-urile rămân stabile la schimbarea scenei. Referința internă NetworkSession.forest poate indica ForestMap sau SwampMap (subclasă), pentru compatibilitate cu sistemele de loot, spawn și vehicul. Mlaștina are scene proprii și nu adaugă scenery în lobby.
+
+Etapa Mamutul: tarabele de pânză sunt înlocuite de `MegaBase` (world/camp/mega_base.gd), un camion-bază cu trei niveluri, procedural și static. Ghișeele weapons/backpacks/sell/storage sunt `ShopCounter`. Autoritatea rămâne la host prin `_at_stall`, cu distanță 3D, deci pe etajul corect. Debaraua este `HunterInventory.stored`, privată și serializată prin ID-uri, cu acțiunile `stash_deposit`, `stash_withdraw` și `sell_stash`. NPC-urile (`Shopkeeper`) și animațiile bazei rulează local, fără RPC-uri noi. Limita nordică a taberei pentru vânători este `NetworkSession.LOBBY_NORTH_LIMIT` = −21. Detalii: [base.md](base.md).

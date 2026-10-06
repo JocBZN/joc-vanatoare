@@ -188,7 +188,8 @@ static func dress_scene(root: Node3D,kind: String="prop") -> void:
     if kind in ["weapon","backpack"]: refine_scene(root,root.scene_file_path.get_file().get_basename())
     elif kind=="vehicle": refine_scene(root,"jeep")
     for mesh in root.find_children("*","MeshInstance3D",true,false):
-        if not mesh.mesh or mesh.name.begins_with("Sight"): continue
+        # "styled" meshes (the Mammoth base and its crew) already carry their final toon palette.
+        if not mesh.mesh or mesh.name.begins_with("Sight") or mesh.has_meta("styled"): continue
         for surface in mesh.mesh.get_surface_count():
             var base: Material=mesh.get_active_material(surface)
             if base is ShaderMaterial:

@@ -53,6 +53,8 @@ Renunță la țintele doborâte sau urcate în jeep și pot alege alt vânător 
 Numele, poziția și viața animalelor sunt sincronizate pentru toți jucătorii.
 La zero viață, animalul lasă o singură pradă; **E** o pune în ghiozdan dacă ai spațiu.
 Vinde la taraba de schimb și cumpără arme și ghiozdane mai mari. Începi cu pistolul ruginit și zero monede.
+
+**Mamutul** (actualizare): tarabele sunt acum în baza-mașină de la nordul taberei. Urcă pe schela din stânga. La etajul 1 (Bazar) sunt Arsenalul lui Gică Pistolică și Ghiozdanele Tantei Rucsandra. La etajul 2 este Debaraua lui Moș Debara, depozitul tău personal. Pe acoperiș sunt jacuzzi-ul și Nea Nelu. Nea Fane cumpără prada la ghișeul drive-through de la sol, unde poți parca jeep-ul pentru portbagaj. Detalii: [base.md](base.md).
 Lada decorativă din tabără nu mai oferă loot gratuit; banii provin din vânzarea prăzii.
 
 | Animal | Viață | Pondere la spawn | Comportament | Loot: spații / monede |

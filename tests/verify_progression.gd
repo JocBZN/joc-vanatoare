@@ -24,7 +24,7 @@ func run() -> void:
     check(scene.world_router.active_id=="lobby" and session.forest==null,"lobby scenery separate from forest")
     p.global_position=Vector3(35,1,-80)
     session.constrain_to_lobby(p)
-    check(p.global_position.x<=20 and p.global_position.z>=-19,"hunter cannot bypass lobby boundary")
+    check(p.global_position.x<=20 and p.global_position.z>=session.LOBBY_NORTH_LIMIT,"hunter cannot bypass lobby boundary")
     session.jeep.global_position=Vector3(0,1,-55);session.jeep.speed=12
     session.constrain_to_lobby(session.jeep,true)
     check(session.jeep.global_position.z>=-17 and session.jeep.speed==0,"jeep also waits in lobby")
