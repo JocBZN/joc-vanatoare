@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"ancient_bear"
+display_name = "ANIMAL_ANCIENT_BEAR"
+model_path = "res://actors/animals/models/ancient_bear.tscn"
+max_health = 2800
+spawn_weight = 0.0
+aggressive = true
+attack_damage = 42
+walk_speed = 1.9
+run_speed = 7.4
+aggro_range = 46.0
+pursuit_range = 220.0
+aggro_memory = 45.0
+height = 4.4
+max_slope = 42.0
+length = 7.2
+width = 2.9
+loot_id = &"ancient_bear_pelt"
+boss = true
+trophies = Array[StringName]([&"ancient_bear_claw", &"ancient_bear_claw", &"ancient_bear_claw", &"ancient_bear_fang", &"ancient_bear_fang", &"ancient_amber"])
+harvest_strokes = 16
+harvest_period = 1.7
+harvest_window = 0.14
+harvest_quirks = PackedStringArray("bees", "fat", "thick", "twitch")

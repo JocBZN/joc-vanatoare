@@ -51,14 +51,19 @@ func label(text: String,size: int,color: Color) -> Label:
     result.add_theme_color_override("font_color",color)
     return result
 
+## The cover is opaque, so the 3D world behind it is not drawn while a map is
+## being built: on a weak GPU that frame time goes to the build instead.
 func begin(id: String) -> void:
     target=id;value=0;root_control.show();refresh()
+    get_viewport().disable_3d=true
 
 func update_progress(amount: float) -> void:
     value=maxf(value,clampf(amount,0,1))
     refresh()
 
-func finish() -> void: root_control.hide()
+func finish() -> void:
+    root_control.hide()
+    get_viewport().disable_3d=false
 
 func refresh() -> void:
     if not is_node_ready(): return

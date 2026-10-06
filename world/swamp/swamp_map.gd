@@ -4,6 +4,8 @@ extends ForestMap
 const SWAMP_SEED=28641
 const WATER_LEVEL: float=0.0
 const POIS=[Vector2(110,-155),Vector2(-155,-100),Vector2(170,-330)]
+## Raised boardwalks (start, end), shared by the landmarks and the map.
+const WALKS=[[Vector2(20,24),Vector2(20,-165)],[Vector2(20,-155),Vector2(112,-155)],[Vector2(-5,-95),Vector2(-155,-100)]]
 var plant_meshes: Dictionary={}
 
 func _ready() -> void:
@@ -17,8 +19,8 @@ func set_seed(value: int) -> void:
     super.set_seed(value)
     noise.frequency=.008
 
-## Wetland core and POIs stay exactly as before; low wooded hills rise only well past the
-## marsh's working radius, where the swamp hunt never needed flat ground anyway.
+## Wetland core and POIs stay exactly as before; low wooded islands dot the
+## open marsh further out, and real hills rise toward the edge of the map.
 func height_at(x: float,z: float) -> float:
     var point:=Vector2(x,z)
     var height: float=noise.get_noise_2d(x,z)*1.55+sin(x*.023+cos(z*.016))*.47-.22
@@ -32,15 +34,16 @@ func height_at(x: float,z: float) -> float:
     var warp_z: float=z+warp_noise.get_noise_2d(x*0.5+500.0,z*0.5+500.0)*80.0
     var ridge: float=1.0-absf(ridge_noise.get_noise_2d(warp_x,warp_z))
     ridge=pow(clampf(ridge,0.0,1.0),2.2)
-    var margin_fade: float=smoothstep(400.0,560.0,point.length())
-    return wetland+ridge*region*margin_fade*34.0
+    var margin_fade: float=smoothstep(SIZE*.31,SIZE*.45,point.length())
+    var islands: float=smoothstep(220.0,420.0,point.length())
+    return wetland+ridge*region*(margin_fade*34.0+islands*9.0)+rim_at(x,z)
 
 func water_level_at(_point: Vector3) -> float: return WATER_LEVEL
 func water_depth(point: Vector3) -> float:
     if absf(point.x) > SIZE * .5 or absf(point.z) > SIZE * .5: return 0.0
     return maxf(0.0, WATER_LEVEL - height_at(point.x, point.z))
 func route_clear(point: Vector2,margin: float=3.2) -> bool:
-    for segment in [[Vector2(20,24),Vector2(20,-165)],[Vector2(20,-155),Vector2(112,-155)],[Vector2(-5,-95),Vector2(-155,-100)]]:
+    for segment in WALKS:
         var a: Vector2=segment[0];var b: Vector2=segment[1]
         var nearest: Vector2=a+(b-a)*clampf((point-a).dot(b-a)/(b-a).length_squared(),0,1)
         if point.distance_to(nearest)<margin: return true
@@ -53,7 +56,7 @@ func animal_spawn(entry: AnimalDefinition,point: Vector3) -> Vector3:
     var best:=point
     for i in 20:
         var p:=point+Vector3(sin(i*2.4),0,cos(i*2.4))*i*3
-        p.x=clampf(p.x,-580,580);p.z=clampf(p.z,-580,580)
+        p.x=clampf(p.x,-LIMIT+10,LIMIT-10);p.z=clampf(p.z,-LIMIT+10,LIMIT-10)
         var h:=height_at(p.x,p.z)
         if entry.aquatic and h<.15: best=p;break
         # Dry-land species also need the new hilly margins to stay within their own climbing limit.
@@ -80,23 +83,24 @@ func _terrain() -> void:
     water_material=ShaderMaterial.new();water_material.shader=load("res://world/swamp/swamp_water.gdshader")
     _configure_water_material(.55, .22)
     var water:=MeshInstance3D.new();water.name="Water"
-    var plane:=PlaneMesh.new();plane.size=Vector2(SIZE,SIZE);plane.subdivide_width=256;plane.subdivide_depth=256
+    var plane:=PlaneMesh.new();plane.size=Vector2(SIZE,SIZE);plane.subdivide_width=320;plane.subdivide_depth=320
     water.mesh=plane;water.material_override=water_material;water.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF;add_child(water)
 
 func _trees() -> void:
     var rng:=RandomNumberGenerator.new();rng.seed=SWAMP_SEED
     var chunks: Dictionary={}
-    for i in 3900:
-        if i%500==0:
-            build_progress.emit(.62+.16*i/3900.0);await get_tree().process_frame
+    var span: float=SIZE*.5-15
+    for i in 15000:
+        if i%1500==0:
+            build_progress.emit(.62+.16*i/15000.0);await get_tree().process_frame
             if cancelled or not is_inside_tree(): return
-        var x:=rng.randf_range(-585,585);var z:=rng.randf_range(-585,585)
+        var x:=rng.randf_range(-span,span);var z:=rng.randf_range(-span,span)
         if Vector2(x,z).length()<34 or absf(x-sin(z*.008)*28)<8 or route_clear(Vector2(x,z),4.4): continue
         var near_poi:=false
         for poi in POIS:
             if Vector2(x,z).distance_to(poi)<15: near_poi=true
         if near_poi: continue
-        var point:=Vector3(x,height_at(x,z),z);trees.append(point)
+        var point:=Vector3(x,height_at(x,z),z);_add_tree(point)
         var kind: int=1 if rng.randf()<.34 else 0
         var key:=Vector3i(floori(x/64),floori(z/64),kind)
         if not chunks.has(key): chunks[key]=[]

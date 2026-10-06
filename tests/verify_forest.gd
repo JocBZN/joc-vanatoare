@@ -83,14 +83,15 @@ func verify() -> void:
     check(session.trunk.size()==1 and session.trunk[0].owner==session.identities[2],"other cargo untouched by sale")
     check(other.inventory.coins==0,"other wallet stays individual")
     session.jeep.linear_velocity=Vector3.ZERO
-    for peer in [1,2]:
-        session.players[peer].global_position=session.jeep.global_position+Vector3(2,0,0)
-        check(session.jeep.enter(peer),"jeep seat "+str(peer))
-    for peer in [3,4]:
-        var passenger=session._spawn_player(peer,"Passenger")
-        passenger.global_position=session.jeep.global_position
-        check(session.jeep.enter(peer),"jeep seat "+str(peer))
-    check(session.jeep.occupants.size()==4 and not session.jeep.occupants.has(0),"four occupied seats")
+    session.players[2].global_position=session.jeep.global_position+Vector3(2,0,0)
+    check(session.jeep.enter(2),"a hunter takes the wheel")
+    session.players[1].global_position=session.jeep.global_position+Vector3(2,0,0)
+    check(not session.jeep.enter(1) and session.players[1].seat_index<0,"the wheel is the only seat")
+    for peer in [1,3,4]:
+        var rider=session.players[peer] if session.players.has(peer) else session._spawn_player(peer,"Rider")
+        rider.global_position=session.jeep.exit_point(1)
+        session._action(peer,"climb","board")
+        check(rider.seat_index<0 and session.jeep.carries(rider.global_position),"hunter %d climbs aboard on foot" % peer)
     session.jeep.linear_velocity=Vector3(0,0,10)
     check(not session.jeep.exit_seat(2),"cannot exit moving jeep")
     session.jeep.linear_velocity=Vector3.ZERO

@@ -9,7 +9,7 @@ extends CanvasLayer
 ## host judges every sample; a panel only draws and predicts.
 signal cancel_requested
 
-const COAT_COLORS: Dictionary={&"rabbit":Color("86705c"),&"deer":Color("b27b4e"),&"boar":Color("5a4940"),&"wolf":Color("737977"),&"bear":Color("493d32"),&"frog":Color("63794b"),&"turtle":Color("635a36"),&"snake":Color("7a7953"),&"crocodile":Color("666747"),&"ancient_crocodile":Color("464f3a")}
+const COAT_COLORS: Dictionary={&"rabbit":Color("86705c"),&"deer":Color("b27b4e"),&"boar":Color("5a4940"),&"wolf":Color("737977"),&"bear":Color("493d32"),&"frog":Color("63794b"),&"turtle":Color("635a36"),&"snake":Color("7a7953"),&"crocodile":Color("666747"),&"ancient_crocodile":Color("464f3a"),&"ancient_bear":Color("4f4338"),&"albino_crocodile":Color("e9d6cd")}
 
 var state: Dictionary={}
 var active: bool=false

@@ -28,7 +28,7 @@ func build() -> void:
     await swamp.build()
     if swamp.cancelled or not is_inside_tree(): return
     _landmarks();_fireflies()
-    for entry: AnimalDefinition in AnimalCatalog.SWAMP_ANIMALS:
+    for entry: AnimalDefinition in AnimalCatalog.SWAMP_ANIMALS+[AnimalCatalog.boss_for("swamp")]:
         retained_assets.append(load(entry.model_path));build_progress.emit(.9)
         await get_tree().process_frame
         if swamp.cancelled or not is_inside_tree(): return

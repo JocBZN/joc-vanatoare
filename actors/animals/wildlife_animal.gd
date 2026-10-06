@@ -55,7 +55,8 @@ func _ready() -> void:
     motion_clock=animal_id*.713
     avoid_side=1.0 if animal_id%2==0 else -1.0
     collision_layer = 4
-    collision_mask = 1
+    # Wildlife walks around the truck, not through it.
+    collision_mask = 1|16
     add_to_group("wildlife")
     model = load(definition.model_path).instantiate()
     add_child(model)
@@ -84,12 +85,16 @@ func _ready() -> void:
     label.outline_size=10
     label.modulate=Color("f2d49f") if definition.aggressive else Color("cae4c4")
     label.visibility_range_end=75
+    if definition.boss:
+        label.font_size=46;label.modulate=Color("ffd35a");label.outline_modulate=Color("3a1d05");label.visibility_range_end=160
+        # Above the firs on the bear's back and the croc's harpoon.
+        label.position.y=definition.height+(2.4 if definition.id==&"ancient_bear" else 1.6)
     add_child(label)
     LocaleSettings.changed.connect(_localize)
     _localize()
     _animate("Idle")
     var skeletons:=model.find_children("*","Skeleton3D",true,false)
-    if not skeletons.is_empty() and definition.id in [&"rabbit",&"deer",&"boar",&"wolf",&"bear"]:
+    if not skeletons.is_empty() and definition.id in [&"rabbit",&"deer",&"boar",&"wolf",&"bear",&"ancient_bear"]:
         motion=load("res://actors/animals/animal_motion.gd").new()
         skeletons[0].add_child(motion);motion.configure(self)
 
@@ -125,7 +130,8 @@ func _resolve_clips() -> void:
 
 func _dress_model() -> void:
     for mesh in model.find_children("*","MeshInstance3D",true,false):
-        if not mesh.mesh: continue
+        # Boss pieces (moss, crystals, harpoon...) keep their own toon colours.
+        if not mesh.mesh or mesh.has_meta("styled"): continue
         # The source rabbit's alpha fur cards are photographic; the skinned body remains.
         if definition.id==&"rabbit" and str(mesh.name).to_lower()=="fur": mesh.hide();continue
         for surface in mesh.mesh.get_surface_count():
@@ -138,10 +144,14 @@ func _dress_model() -> void:
                 if base.albedo_texture: material.set_shader_parameter("coat",_painted_coat(base.albedo_texture))
                 var tint: Color=base.albedo_color
                 if definition.id==&"bear" and base.albedo_texture: tint=Color("98623c")
+                elif definition.id==&"ancient_bear": tint=Color("5a4838")
+                elif definition.id==&"albino_crocodile": tint=Color("f6e4dc")
                 elif definition.id==&"turtle": tint=Color("a2b18e")
                 elif definition.id in [&"crocodile",&"ancient_crocodile"]: tint=Color("768c65") if definition.id==&"crocodile" else Color("657952")
                 material.set_shader_parameter("tint",tint)
                 material.set_shader_parameter("back_darkening",.06)
+                # The albino keeps only a ghost of the crocodile's markings.
+                material.set_shader_parameter("lift",.9 if definition.id==&"albino_crocodile" else 0.0)
                 painted_materials[key]=material
             mesh.material_override=null
             mesh.set_surface_override_material(surface,painted_materials[key])
@@ -219,7 +229,7 @@ func _physics_process(delta: float) -> void:
             next_state="Attack"
             behavior="Attack"
             if attack_clock<=0 and attack_windup<0:
-                attack_clock=1.5;attack_windup=.38 if definition.id!=&"bear" else .55
+                attack_clock=1.5;attack_windup=.6 if definition.boss else .55 if definition.id==&"bear" else .38
                 attack_victim=prey.peer_id
                 attack_sequence+=1
                 if animation and clips.has("Attack"): _animate("Attack",true)
@@ -237,7 +247,9 @@ func _physics_process(delta: float) -> void:
         if wander_clock<=0:
             wander_clock=rng.randf_range(2,5)
             heading=Vector3(sin(rng.randf()*TAU),0,cos(rng.randf()*TAU)) if rng.randf()<.7 else Vector3.ZERO
-            if global_position.distance_to(home)>22: heading=(home-global_position).normalized()
+            # Bosses keep a long leash and now and then wander off to a new haunt.
+            if definition.boss and rng.randf()<.08: _roam()
+            if global_position.distance_to(home)>(70.0 if definition.boss else 22.0): heading=(home-global_position).normalized()
         if heading.length_squared()>.01:
             next_state="Walk";behavior="Patrol";look_target=global_position+heading*10
         else:
@@ -254,8 +266,8 @@ func _physics_process(delta: float) -> void:
         velocity.y=0;global_position.y=lerpf(global_position.y,-.08,1-exp(-9*delta))
     move_and_slide()
     if heading.length_squared()>.01: rotation.y=lerp_angle(rotation.y,atan2(-heading.x,-heading.z),1-exp(-7*delta))
-    global_position.x=clampf(global_position.x,-590,590)
-    global_position.z=clampf(global_position.z,-590,590)
+    global_position.x=clampf(global_position.x,-ForestMap.LIMIT,ForestMap.LIMIT)
+    global_position.z=clampf(global_position.z,-ForestMap.LIMIT,ForestMap.LIMIT)
     _animate(next_state)
 
 func _melee_range() -> float:
@@ -278,11 +290,11 @@ func _pursuit_target(nearest, distance: float):
 func _avoid_obstacle(direction: Vector3) -> Vector3:
     var origin:=global_position+Vector3.UP*maxf(.65,definition.height*.5)
     var space:=get_world_3d().direct_space_state
-    var query:=PhysicsRayQueryParameters3D.create(origin,origin+direction*2.4,1,[get_rid()])
+    var query:=PhysicsRayQueryParameters3D.create(origin,origin+direction*maxf(2.4,definition.length*.6),1|16,[get_rid()])
     if space.intersect_ray(query).is_empty(): return direction
     for angle in [.75*avoid_side,-.75*avoid_side,1.3*avoid_side,-1.3*avoid_side]:
         var candidate:=direction.rotated(Vector3.UP,float(angle))
-        query.to=origin+candidate*2.4
+        query.to=origin+candidate*maxf(2.4,definition.length*.6)
         if space.intersect_ray(query).is_empty():
             avoid_side=1.0 if angle>0 else -1.0
             return candidate
@@ -344,7 +356,22 @@ func take_damage(amount: int, source: Vector3, source_peer: int=0) -> bool:
         velocity=Vector3.ZERO
         _animate("Die")
         NetworkSession.animal_died()
+        if definition.boss: NetworkSession.boss_defeated(self)
     return true
+
+## Host: a boss picks a new haunt 150-320 m away, on dry ground or in water to suit it.
+func _roam() -> void:
+    var map=NetworkSession.forest
+    if not is_instance_valid(map): return
+    for attempt in 8:
+        var angle: float=rng.randf()*TAU
+        var point: Vector3=home+Vector3(sin(angle),0,cos(angle))*rng.randf_range(150,320)
+        point.x=clampf(point.x,-ForestMap.LIMIT+40,ForestMap.LIMIT-40);point.z=clampf(point.z,-ForestMap.LIMIT+40,ForestMap.LIMIT-40)
+        var wet: bool=map.water_depth(point)>.3
+        if definition.aquatic!=wet: continue
+        if not definition.aquatic and map.slope_at(point.x,point.z)>definition.max_slope: continue
+        home=point
+        return
 
 func snapshot() -> Dictionary:
     return {"attack_sequence":attack_sequence,"look":look_target,"behavior":behavior,"pace":movement_speed,"pitch":body_pitch,"clock":motion_clock,"id":animal_id,"kind":String(definition.id),"p":global_position,"r":rotation.y,"hp":health,"dead":dead,"state":state,"harvested":harvested,"harvest_owner":harvest_owner,"harvest_completed":harvest_completed,"harvest_mistakes":harvest_mistakes,"harvest_wear":harvest_wear}
@@ -384,6 +411,12 @@ func _finish_attack(delta: float) -> void:
     attack_windup-=delta
     if attack_windup>0: return
     attack_windup=-1
+    if definition.boss:
+        # A boss's swipe or death roll hits everyone in reach, not just its target.
+        for hunter in NetworkSession.players.values():
+            if _eligible(hunter) and global_position.distance_to(hunter.global_position)<_melee_range()+.8 and _can_see(hunter):
+                hunter.take_damage(definition.attack_damage)
+        return
     var victim=NetworkSession.players.get(attack_victim)
     if _eligible(victim) and global_position.distance_to(victim.global_position)<_melee_range()+.3 and _can_see(victim):
         victim.take_damage(definition.attack_damage)

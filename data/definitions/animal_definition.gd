@@ -18,6 +18,10 @@ extends Resource
 @export var length: float=0
 @export var width: float=0
 @export var loot_id: StringName
+## A map boss: spawned on its own clock anywhere on the map (at most two alive),
+## never culled for being far away, and it drops `trophies` where it falls.
+@export var boss: bool = false
+@export var trophies: Array[StringName] = []
 @export_range(2, 16) var harvest_strokes: int = 2
 @export_range(1.0, 4.0) var harvest_period: float = 2.6
 @export_range(.08, .5) var harvest_window: float = .34

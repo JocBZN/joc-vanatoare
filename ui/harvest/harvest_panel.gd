@@ -86,7 +86,7 @@ func _draw_fur(area: Rect2, kind: String, coat: Color) -> void:
         _fur_kind=kind;_fur=PackedVector2Array()
         var rng:=RandomNumberGenerator.new();rng.seed=hash(kind)
         for i in 150: _fur.append(Vector2(rng.randf(),rng.randf()))
-    var scaly: bool=kind in ["frog","turtle","snake","crocodile","ancient_crocodile"]
+    var scaly: bool=kind in ["frog","turtle","snake","crocodile","ancient_crocodile","albino_crocodile"]
     for i in _fur.size():
         var p: Vector2=_to_board(_fur[i])
         var shade: Color=coat.lightened(.12) if i%2==0 else coat.darkened(.55)

@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+[ext_resource type="PackedScene" path="res://assets/animals/swamp/crocodile.glb" id="1"]
+[ext_resource type="Script" path="res://actors/animals/boss_dress.gd" id="2"]
+[node name="Model" type="Node3D"]
+script = ExtResource("2")
+kind = "albino_crocodile"
+grow = 2.2
+[node name="Crocodile" parent="." instance=ExtResource("1")]
+scale = Vector3(2.2, 2.2, 2.2)

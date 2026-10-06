@@ -8,11 +8,22 @@ const SWAMP_ANIMALS: Array[Resource] = [
     preload("res://data/animals/frog.tres"), preload("res://data/animals/turtle.tres"),
     preload("res://data/animals/snake.tres"), preload("res://data/animals/crocodile.tres"), preload("res://data/animals/ancient_crocodile.tres")
 ]
-const LOOT_IDS = [&"rabbit_pelt", &"deer_pelt", &"boar_pelt", &"wolf_pelt", &"bear_pelt", &"boar_tusk", &"frog_hide", &"turtle_shell", &"snake_skin", &"crocodile_hide", &"ancient_crocodile_hide"]
+## One boss per map, spawned on its own clock (see NetworkSession._tick_bosses).
+const BOSSES: Array[Resource] = [
+    preload("res://data/animals/ancient_bear.tres"), preload("res://data/animals/albino_crocodile.tres")
+]
+const LOOT_IDS = [&"rabbit_pelt", &"deer_pelt", &"boar_pelt", &"wolf_pelt", &"bear_pelt", &"boar_tusk", &"frog_hide", &"turtle_shell", &"snake_skin", &"crocodile_hide", &"ancient_crocodile_hide",
+    &"ancient_bear_pelt", &"ancient_bear_claw", &"ancient_bear_fang", &"ancient_amber",
+    &"albino_crocodile_hide", &"albino_croc_tooth", &"croc_gastrolith", &"ancient_harpoon"]
+## Boss trophies: dropped where the boss falls, picked up like any loot.
+const TROPHY_IDS = [&"ancient_bear_claw", &"ancient_bear_fang", &"ancient_amber", &"albino_croc_tooth", &"croc_gastrolith", &"ancient_harpoon"]
 static var quality_loot: Dictionary = {}
 static func population(map_id: String) -> Array[Resource]: return SWAMP_ANIMALS if map_id=="swamp" else ANIMALS
+static func boss_for(map_id: String) -> AnimalDefinition: return BOSSES[1] if map_id=="swamp" else BOSSES[0]
+## Every species that can appear: both populations and the bosses.
+static func all_animals() -> Array[Resource]: return ANIMALS+SWAMP_ANIMALS+BOSSES
 static func animal(id: StringName) -> AnimalDefinition:
-    for entry: AnimalDefinition in ANIMALS+SWAMP_ANIMALS:
+    for entry: AnimalDefinition in all_animals():
         if entry.id == id:
             return entry
     return null
@@ -82,7 +93,7 @@ static func cleaned_hide(raw: LootDefinition,clean: float) -> LootDefinition:
 
 ## The species a hide came from, for drawing what the cleaner throws off it.
 static func animal_for_loot(base_id: StringName) -> AnimalDefinition:
-    for entry: AnimalDefinition in ANIMALS+SWAMP_ANIMALS:
+    for entry: AnimalDefinition in all_animals():
         if entry.loot_id==base_id: return entry
     return null
 
@@ -105,7 +116,7 @@ static func star_multiplier(stars: int) -> float:
 static func harvested_loot(base_id: StringName,mistakes: int,required: int=0) -> LootDefinition:
     if base_id not in LOOT_IDS: return null
     if required<=0:
-        for entry: AnimalDefinition in ANIMALS+SWAMP_ANIMALS:
+        for entry: AnimalDefinition in all_animals():
             if entry.loot_id==base_id:
                 required=entry.harvest_strokes
                 break

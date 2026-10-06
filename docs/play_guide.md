@@ -1,3 +1,11 @@
+# Actualizare — pe jos pe camion, hărți mari, boși, HUD nou
+
+- **Pe camion se merge pe jos.** Volanul e singurul loc. Ceilalți urcă pe scara de frânghie (E, din dreapta-spate: direct pe terasă) și se plimbă liber pe terasă, pe verandă și în căsuță în timp ce camionul merge; ochesc și trag de oriunde. Între verandă și terasă e scara de lemn (E). Coborârea pe sol se face cu camionul oprit. Detalii: [base.md](base.md).
+- **Fără NPC-uri** pe camion: geamurile, depozitul și atelierul funcționează la fel.
+- **Hărțile au 2,4 × 2,4 km**, cu dealuri la margine. Mergeți cu camionul.
+- **Boși:** Ursul Străvechi (Pădurea) și Crocodilul Albinos de Apă Sărată (Mlaștina). Se trezesc la întâmplare pe hartă, maximum doi deodată, lovesc pe toată lumea din jur și lasă 6–7 trofee scumpe plus o blană foarte valoroasă. Detalii: [bosses.md](bosses.md).
+- **HUD nou**, minimal și rotunjit: viața stânga jos, arma (sau vitezometrul la volan) dreapta jos, bara de boss sus, comenzi care dispar singure. **Minimapul** se rotește cu camera și arată relieful; **M** deschide harta mare cu pictograma fiecărui animal și coroane deasupra boșilor. Detalii: [hud.md](hud.md).
+
 # Etapa 09 — Mlaștină disponibilă
 
 La foc: E → Forest / Swamp → Start expedition (host). Detalii în [swamp.md](swamp.md). La întoarcere se păstrează ghiozdanele și cargo-ul cu proprietari individuali.
@@ -6,7 +14,7 @@ La foc: E → Forest / Swamp → Start expedition (host). Detalii în [swamp.md]
 
 Joc 3D co-op incremental pentru PC: un host și trei prieteni, conectare directă prin IP.
 Interfață English / Română, lobby nocturn cu foc uriaș, arme cu sunet,
-pădure de 1,2 × 1,2 km, cinci animale animate și jeep cu patru locuri.
+pădure de 1,2 × 1,2 km, cinci animale animate și jeep cu patru locuri (istoric: acum 2,4 km și camionul-bază, vezi actualizarea de sus).
 Magazin 3D rotativ, șase arme și upgrade-uri separate pentru damage, cadență și încărcător.
 Lobby și pădure în scene separate, loading comun și jeep cu suspensie fizică pe patru roți.
 First person / third person din meniu, cătare fizică și lunetă în first person.
@@ -54,7 +62,7 @@ Numele, poziția și viața animalelor sunt sincronizate pentru toți jucătorii
 La zero viață, animalul lasă o singură pradă; **E** o pune în ghiozdan dacă ai spațiu.
 Vinde la taraba de schimb și cumpără arme și ghiozdane mai mari. Începi cu pistolul ruginit și zero monede.
 
-**Stejarul Călător** (actualizare): tabăra e acum doar focul, iar baza e camionul parcat lângă el. La geamurile trunchiului cumperi arme (Gică), ghiozdane (Tanti Rucsandra) și vinzi pradă (Nea Fane). Când camionul e parcat, urci rampa din spate în căsuță: acolo sunt depozitul personal al lui Moș Debara și mașina de curățat blănuri. La volan (E la ușa cabinei) alegi harta, iar Tab o redeschide. Din terasă (E la scara de frânghie) tragi în timp ce altcineva conduce. Detalii: [base.md](base.md).
+**Stejarul Călător** (actualizare): tabăra e acum doar focul, iar baza e camionul parcat lângă el. La geamurile trunchiului cumperi arme, ghiozdane și vinzi pradă. Când camionul e parcat, urci rampa din spate în căsuță: acolo sunt depozitul personal și mașina de curățat blănuri. La volan (E la ușa cabinei) alegi harta, iar Tab o redeschide. Pe terasă (E la scara de frânghie) te plimbi și tragi în timp ce altcineva conduce. Detalii: [base.md](base.md).
 Lada decorativă din tabără nu mai oferă loot gratuit; banii provin din vânzarea prăzii.
 
 | Animal | Viață | Pondere la spawn | Comportament | Loot: spații / monede |
@@ -130,7 +138,7 @@ Inventarul cumpărat, upgrade-urile și banii revin la reconectare la **același
 
 ## Jeep și portbagaj
 
-Apropie-te de lateralul jeep-ului și apasă **E**. Primul loc liber este ocupat; locul 1 este șoferul.
+Apropie-te de ușa cabinei și apasă **E** pentru volan (singurul loc). Ceilalți urcă pe camion pe jos, pe scări (vezi actualizarea de sus).
 Camera urmărește jeep-ul fără să se încline odată cu suspensia; mouse-ul permite privirea în jur.
 **W** accelerează, **S** frânează înainte de marșarier, **A/D** virează, **Space** frânează.
 Frânează înainte să cobori; nu poți ieși când viteza depășește 2 m/s.

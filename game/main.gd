@@ -5,21 +5,11 @@ var inventory: HunterInventory
 @onready var shop: ShopUI = $ShopUI
 @onready var menu: CampMenu = $CampMenu
 @onready var hud: Control = $HUD/Root
-@onready var view_label: Label = $HUD/Root/ViewMode
 @onready var crosshair: Control = $HUD/Root/Crosshair
-@onready var cursor_hint: Label = $HUD/Root/CursorHint
-@onready var wallet_label: Label = $HUD/Root/Stats/Wallet
-@onready var bag_label: Label = $HUD/Root/Stats/Bag
-@onready var prompt: Panel = $HUD/Root/InteractionPrompt
-@onready var prompt_label: Label = $HUD/Root/InteractionPrompt/Title
-@onready var toast: Label = $HUD/Root/Toast
-@onready var health_label: Label = $HUD/Root/AnimalHealth
-@onready var hit_indicator: Label = $HUD/Root/HitIndicator
-@onready var health_bar_fill: ColorRect = $HUD/Root/Vitals/HealthBarFill
-@onready var health_number: Label = $HUD/Root/Vitals/HealthNumber
-@onready var slot_panels: Array[Panel] = [$HUD/Root/Vitals/Slot1,$HUD/Root/Vitals/Slot2]
-@onready var slot_names: Array[Label] = [$HUD/Root/Vitals/Slot1/Slot1Name,$HUD/Root/Vitals/Slot2/Slot2Name]
-@onready var slot_ammo: Array[Label] = [$HUD/Root/Vitals/Slot1/Slot1Ammo,$HUD/Root/Vitals/Slot2/Slot2Ammo]
+## The drawn HUD (ui/hud/hud_view.gd): vitals, weapon, prompt, toasts, boss bar.
+var hud_view
+## The animal under the crosshair, for the HUD's target readout.
+var target_animal: WildlifeAnimal
 var harvest_panel
 var cleaning_panel
 var _clean_pending_time: float=0
@@ -29,17 +19,12 @@ var _harvest_focus_hunter: Hunter
 var _harvest_pending_time: float=0
 var _harvest_ignored_id: int=0
 var nearby: LobbyInteractable
-var _toast_time: float = 0
-var _hit_time: float = 0
 var _menu_camera: Camera3D
 var world_router: WorldRouter
 var loading_screen: LoadingScreen
 var map_menu
 var minimap
-var _slot_active_style: StyleBoxFlat
-var _slot_inactive_style: StyleBoxFlat
 var _last_seat: int=-1
-const MAX_HEALTH: int = 100
 
 func _ready() -> void:
     for name_value in ["Players","Wildlife","Loot"]:
@@ -73,18 +58,10 @@ func _ready() -> void:
     _harvest_camera=Camera3D.new();_harvest_camera.name="HarvestCamera";add_child(_harvest_camera)
     _harvest_camera.near=.05;_harvest_camera.fov=67;_harvest_camera.far=900
     _harvest_tool=load("res://actors/hunter/harvest_tool.gd").new();_harvest_camera.add_child(_harvest_tool)
+    hud_view=load("res://ui/hud/hud_view.gd").new();hud_view.name="HudView";hud_view.main=self
+    hud.add_child(hud_view);hud.move_child(hud_view,0)
+    minimap=load("res://ui/hud/minimap.gd").new();minimap.name="Minimap";hud.add_child(minimap)
     _bind_player()
-    _slot_active_style=StyleBoxFlat.new()
-    _slot_active_style.bg_color=Color(0.13,0.16,0.105,0.96)
-    _slot_active_style.border_color=Color(0.8,0.63,0.36,1)
-    _slot_active_style.set_border_width_all(2)
-    _slot_active_style.set_corner_radius_all(8)
-    _slot_inactive_style=StyleBoxFlat.new()
-    _slot_inactive_style.bg_color=Color(0.055,0.08,0.071,0.78)
-    _slot_inactive_style.border_color=Color(0.3,0.33,0.26,1)
-    _slot_inactive_style.set_border_width_all(1)
-    _slot_inactive_style.set_corner_radius_all(8)
-    minimap=load("res://ui/hud/minimap.gd").new();hud.add_child(minimap)
     _localize();_open_menu()
 
 func prepare_world(id: String,epoch: int,map_seed: int=0) -> void:
@@ -101,7 +78,6 @@ func _world_prepared(epoch: int) -> void:
 
 func commit_world() -> void:
     loading_screen.finish()
-    _toast_time=0
     _bind_player()
     menu.resume()
 
@@ -122,8 +98,8 @@ func _bind_player() -> void:
     if not is_instance_valid(hunter): return
     if shop.is_open: shop.close()
     inventory=hunter.inventory
-    if not hunter.camera_rig.aim_changed.is_connected(_on_aim_changed): hunter.camera_rig.aim_changed.connect(_on_aim_changed)
     if not hunter.combat.hit.is_connected(_on_hit): hunter.combat.hit.connect(_on_hit)
+    if not hunter.combat.fired.is_connected(_on_fired): hunter.combat.fired.connect(_on_fired)
     if not inventory.changed.is_connected(_update_hud): inventory.changed.connect(_update_hud)
     if not inventory.feedback.is_connected(_show_feedback): inventory.feedback.connect(_show_feedback)
     if DisplayServer.get_name()!="headless": inventory.debug_unlock_all() # DEBUG: convenience for interactive play; skipped headless so economy tests stay exact
@@ -134,45 +110,17 @@ func _process(delta: float) -> void:
     _update_harvest(delta)
     _update_clean(delta)
     if NetworkSession.phase=="loading" or NetworkSession.local_loaded_epoch!=NetworkSession.world_epoch: return
-    _toast_time=maxf(0,_toast_time-delta)
-    _hit_time=maxf(0,_hit_time-delta)
     if not is_instance_valid(hunter):
         hud.hide()
         return
-    toast.visible=_toast_time>0 and not shop.is_open and not menu.is_open and not map_menu.is_open
-    hit_indicator.visible=_hit_time>0 and hunter.control_enabled
     crosshair.visible=hunter.control_enabled and not hunter.busy() and hunter.seat_index!=0 and hunter.health>0 and not (hunter.camera_rig.is_first_person() and hunter.camera_rig.aiming)
     _update_nearby()
     _update_target()
-    cursor_hint.text=tr("HARVEST_CANCEL_HINT" if harvest_panel.is_open() or cleaning_panel.is_open() else "CURSOR_HINT")
-    var driving:=hunter.seat_index==0
     _watch_seat()
-    $HUD/Root/Controls.text=tr("DOWNED_HELP" if hunter.health<=0 else "DRIVING" if driving else "PASSENGER" if hunter.seat_index>0 else "HARVEST_CONTROLS" if hunter.busy() else "CONTROLS")
-    $HUD/Root/Header/Status.text=NetworkSession.status_text()
-    if hunter.health<=0: view_label.text=tr("DOWNED")
-    elif driving: view_label.text="%d km/h" % roundi(absf(NetworkSession.jeep.speed)*3.6)
-    else: _on_aim_changed(hunter.camera_rig.aiming)
-    _update_vitals()
-
-func _update_vitals() -> void:
-    if not is_instance_valid(inventory): return
-    var fraction: float=clampf(float(hunter.health)/float(MAX_HEALTH),0.0,1.0)
-    health_bar_fill.size.x=304.0*fraction
-    health_bar_fill.color=Color(0.82,0.24,0.18,1).lerp(Color(0.45,0.78,0.4,1),fraction)
-    health_number.text="%d / %d" % [maxi(0,hunter.health),MAX_HEALTH]
-    for i in 2:
-        var id: StringName=inventory.loadout[i]
-        var active: bool=inventory.active_slot==i
-        slot_panels[i].add_theme_stylebox_override("panel",_slot_active_style if active else _slot_inactive_style)
-        slot_names[i].text=tr(EquipmentCatalog.weapon(id).display_name)
-        if active:
-            slot_ammo[i].text=LocaleSettings.text("RELOADING",{"n":"%.1f" % inventory.reload_remaining}) if inventory.reload_remaining>0 else LocaleSettings.text("AMMO",{"n":inventory.ammunition(),"cap":inventory.magazine_capacity(id)})
-        else:
-            slot_ammo[i].text="%d / %d" % [int(inventory.magazines.get(String(id),0)),inventory.magazine_capacity(id)]
 
 func _update_nearby() -> void:
     nearby=null
-    if is_instance_valid(harvest_panel) and (harvest_panel.is_open() or cleaning_panel.is_open()): prompt.hide();return
+    if is_instance_valid(harvest_panel) and (harvest_panel.is_open() or cleaning_panel.is_open()): return
     var nearest: float=INF
     var seated: bool=is_instance_valid(hunter) and hunter.seat_index>=0
     for candidate in [] if seated else get_tree().get_nodes_in_group("lobby_interactables"):
@@ -181,27 +129,16 @@ func _update_nearby() -> void:
         if distance<=candidate.interaction_range and distance<nearest:
             nearby=candidate
             nearest=distance
-    prompt.visible=(nearby!=null or hunter.seat_index>=0) and hunter.control_enabled and hunter.health>0
-    var harvest_prompt: bool=nearby!=null and nearby.interaction_kind=="harvest" and hunter.seat_index<0
-    prompt.offset_top=-150 if harvest_prompt else -132
-    prompt_label.offset_top=8 if harvest_prompt else 10
-    prompt_label.offset_bottom=62 if harvest_prompt else 42
-    prompt_label.add_theme_font_size_override("font_size",16 if harvest_prompt else 20)
-    prompt_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART if harvest_prompt else TextServer.AUTOWRAP_OFF
-    if hunter.seat_index>=0: prompt_label.text="[ E ]  "+tr("jeep_exit" if hunter.seat_index==0 else "terrace_exit")
-    elif nearby: prompt_label.text=nearby.localized_name() if nearby.interaction_kind=="revive" else "[ E ]  "+nearby.localized_name()
 
 func _update_target() -> void:
-    health_label.hide()
+    target_animal=null
     if not hunter.control_enabled or hunter.seat_index==0 or hunter.busy(): return
     var camera:=hunter.camera_rig.camera
     var center:=get_viewport().get_visible_rect().size*.5
     var origin:=camera.project_ray_origin(center)
     var result:=hunter.combat.ray(origin,origin+camera.project_ray_normal(center)*110)
     if not result.is_empty() and result.collider is WildlifeAnimal and not result.collider.dead:
-        var a: WildlifeAnimal=result.collider
-        health_label.text=LocaleSettings.text("ANIMAL_HP",{"name":tr(a.definition.display_name),"hp":a.health,"max":a.definition.max_health})
-        health_label.show()
+        target_animal=result.collider
 
 func _unhandled_input(event: InputEvent) -> void:
     if shop.is_open or menu.is_open or map_menu.is_open or NetworkSession.phase=="loading" or NetworkSession.local_loaded_epoch!=NetworkSession.world_epoch: return
@@ -222,6 +159,9 @@ func _unhandled_input(event: InputEvent) -> void:
         elif event.is_action_pressed("minimap_detail") and is_instance_valid(minimap):
             minimap.toggle_detail()
             get_viewport().set_input_as_handled()
+        elif event is InputEventMouseButton and event.pressed and is_instance_valid(minimap) and minimap.detail and event.button_index in [MOUSE_BUTTON_WHEEL_UP,MOUSE_BUTTON_WHEEL_DOWN]:
+            minimap.zoom_full(1 if event.button_index==MOUSE_BUTTON_WHEEL_UP else -1)
+            get_viewport().set_input_as_handled()
 
 func interact_nearby() -> void:
     if is_instance_valid(harvest_panel) and harvest_panel.is_open(): _cancel_harvest();return
@@ -232,12 +172,12 @@ func interact_nearby() -> void:
     if nearby is LootPickup: NetworkSession.request_action("pickup",str(nearby.network_id))
     elif nearby.interaction_kind=="test_loot": NetworkSession.request_action("test_loot")
     elif nearby.interaction_kind=="jeep": NetworkSession.request_action("enter")
-    elif nearby.interaction_kind=="terrace": NetworkSession.request_action("enter","terrace")
+    elif nearby.interaction_kind in ["board","alight","ladder_up","ladder_down"]: NetworkSession.request_action("climb",nearby.interaction_kind)
     elif nearby.interaction_kind=="revive": return
     elif nearby.interaction_kind=="harvest": _begin_harvest(nearby.get_parent() as WildlifeAnimal)
     elif nearby.interaction_kind=="cleaner": _begin_clean()
     elif nearby.interaction_kind=="expedition": open_map_menu()
-    else: _open_shop(nearby.interaction_kind,nearby.greet_customer() if nearby.has_method("greet_customer") else "")
+    else: _open_shop(nearby.interaction_kind)
 
 ## The expedition map: from the truck's wheel (Tab, or straight away when the
 ## host takes the wheel in camp) or beside the campfire.
@@ -253,11 +193,10 @@ func _watch_seat() -> void:
     _last_seat=seat
     if seat==0 and NetworkSession.phase=="lobby" and NetworkSession.is_host() and hunter.control_enabled: open_map_menu()
 
-func _open_shop(kind: String, quote: String="") -> void:
+func _open_shop(kind: String) -> void:
     if is_instance_valid(minimap): minimap.close_detail()
-    shop.open_for(kind,inventory,kind,quote)
+    shop.open_for(kind,inventory,kind)
     _set_capture(false)
-    prompt.hide()
 
 func _on_shop_closed() -> void:
     if not menu.is_open and NetworkSession.phase!="loading" and NetworkSession.local_loaded_epoch==NetworkSession.world_epoch: _set_capture(true)
@@ -284,33 +223,29 @@ func _on_continue() -> void:
 
 func _localize() -> void:
     if not is_node_ready(): return
-    if is_instance_valid(inventory): _update_hud()
-    cursor_hint.text=tr("CURSOR_HINT")
     $Cinematic/Effect.visible=LocaleSettings.cinematic
     $Cinematic/Effect.material.set_shader_parameter("glow_strength",.55 if world_router.active_id=="lobby" else .08)
-    if is_instance_valid(hunter): _on_aim_changed(hunter.camera_rig.aiming)
+    if is_instance_valid(hud_view): hud_view.queue_redraw()
 
+## The drawn HUD reads the inventory every frame; this only nudges a redraw.
 func _update_hud() -> void:
-    if not is_instance_valid(inventory): return
-    wallet_label.text=LocaleSettings.text("HUD_COINS",{"n":inventory.coins})
-    bag_label.text=LocaleSettings.text("HUD_BAG",{"used":inventory.used_space(),"cap":inventory.capacity(),"value":inventory.loot_value()})
+    if is_instance_valid(hud_view): hud_view.queue_redraw()
 
 func _show_feedback(message: String) -> void:
     if is_instance_valid(map_menu) and map_menu.is_open: map_menu.show_message(message)
-    toast.text=message
-    _toast_time=3.5
+    if is_instance_valid(hud_view): hud_view.toast(message)
 
 func _on_hit(damage: int) -> void:
-    hit_indicator.text="× %d" % damage
-    _hit_time=.25
+    if is_instance_valid(hud_view): hud_view.hit(damage)
+    crosshair.flash()
+
+func _on_fired() -> void:
+    crosshair.kick()
 
 func _set_capture(captured: bool) -> void:
     if not captured: _cancel_harvest();_cancel_clean()
     if is_instance_valid(hunter): hunter.control_enabled=captured
     Input.mouse_mode=Input.MOUSE_MODE_CAPTURED if captured else Input.MOUSE_MODE_VISIBLE
-
-func _on_aim_changed(aiming: bool) -> void:
-    view_label.text=tr("LOBBY_HOST_HINT" if NetworkSession.is_host() else "WAIT_HOST") if NetworkSession.phase=="lobby" else tr("VIEW_AIM" if aiming else WorldCatalog.name_key(NetworkSession.world_id))
 
 func _begin_harvest(animal: WildlifeAnimal) -> void:
     if not is_instance_valid(animal) or not animal.dead or animal.harvested: return
@@ -379,7 +314,7 @@ func _hold_harvest_focus(id: int) -> void:
     hunter.camera_rig.view_model.hide();hunter.camera_rig.scope_overlay.hide();hunter.visual.hide()
     _harvest_camera.current=true
     _harvest_tool.set_active(true)
-    prompt.hide();health_label.hide();crosshair.hide()
+    target_animal=null;crosshair.hide()
 
 func _harvest_surface_point(animal: WildlifeAnimal) -> Vector3:
     # Follow the posed torso rather than the upright collision box of a dead animal.

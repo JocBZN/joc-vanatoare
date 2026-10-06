@@ -7,19 +7,20 @@ Toate RPC-urile au aceeași cale stabilă: `/root/NetworkSession`.
 | --- | --- |
 | NetworkSession, autoload | ENet, înregistrare, roster, validare comenzi, faza lobby/loading/hunt, spawn, damage, muniție, tranzacții, loot, portbagaj, reconectare |
 | LocaleSettings, autoload | Traduceri EN/RO, volum, efecte, perspectivă și calitate Low/Medium/High și calitate Low/Medium/High și calitate Low/Medium/High și identitate anonimă per profil |
-| Main | Compune lumea, leagă HUD-ul de hunter-ul local și controlează ferestrele |
+| Main | Compune lumea, leagă HUD-ul desenat (`ui/hud/hud_view.gd`) și minimapul de hunter-ul local și controlează ferestrele |
 | Hunter / CameraRig | Mișcare simulată de host, predicție locală, interpolare pentru ceilalți, aim și echipament |
 | HunterCombat | Intenția de tragere; prezentarea sunetului, flash-ului, tracerelor și hit marker-ului |
 | HunterInventory | Portofel și ghiozdan individuale, capacitate, vânzare, arme deținute, trei ramuri de upgrade și încărcătoare; serializare prin ID-uri |
 | WorldCatalog / SwampMap | Expediții Forest și Swamp; seed 28641 pentru mlaștină, habitat uscat/acvatic, noroi, streaming și apă |
 | GameArt / art shaders | Scan-uri CC0, PBR, cache de mesh/materiale, impostors, vânt, apă și suprafețe |
-| ForestMap | Seed comun 10337, teren de 1200 m, drum, MultiMesh pe sectoare și coliziuni locale pentru trunchiuri |
-| WildlifeAnimal / AnimalCatalog | Definiții de specie, alegeri ponderate, AI numai pe host, animații și nume locale |
+| ForestMap | Seed comun 10337, teren de 2400 m dintr-o grilă indexată (grila `heights` rămâne pentru minimap), dealuri la margine, drum, MultiMesh pe sectoare și coliziuni locale pentru trunchiuri, căutate în găleți de 32 m |
+| WildlifeAnimal / AnimalCatalog | Definiții de specie, alegeri ponderate, AI numai pe host, animații și nume locale; boșii (`BOSSES`, `boss_dress.gd`), lovitura lor în arie și trofeele. Detalii: [bosses.md](bosses.md) |
 | WorldRouter / LoadingScreen | Scene separate, încărcare threaded și teren construit în etape, progres real, interfață EN/RO |
 | HuntingJeep | RigidBody3D cu Jolt, patru suspensii raycast, forțe de tracțiune/frânare și replicare a transformării |
 | EquipmentPreview | SubViewport cu World3D propriu, lumină, cameră, model normalizat, rotire cu mouse-ul și zoom |
-| ShopUI / CampMenu | Carousel 3D, upgrade-uri, portbagaj cu proprietari, debara personală, citatul NPC-ului, setări, host/join/leave; MapMenu pornește expediția la foc |
-| HuntingJeep („Stejarul Călător”) / ShopCounter / Shopkeeper | Camionul-bază: cabină + trunchi cu magazine, căsuță cu depozit și atelier, terasă cu 3 posturi de tragere; ghișee validate prin `_at_stall`, NPC-uri cosmetice locale. Detalii: [base.md](base.md) |
+| ShopUI / CampMenu | Carousel 3D, upgrade-uri, portbagaj cu proprietari, debara personală, setări, host/join/leave; MapMenu pornește expediția la foc sau de la volan |
+| HuntingJeep („Stejarul Călător”) / ShopCounter | Camionul-bază: cabină + trunchi cu magazine, căsuță cu depozit și atelier, terasă; un singur loc (volanul), ceilalți merg pe jos pe camion și sunt purtați de el (`Hunter._carry`); scări validate de host; ghișee validate prin `_at_stall`. Detalii: [base.md](base.md) |
+| HudView / Minimap | HUD desenat în cod (viață, armă sau vitezometru, bara de boss, notificări, prompt, comenzi) și minimapul cu relief, rotit după cameră, plus harta mare cu pictograme. Detalii: [hud.md](hud.md) |
 
 ```text
 Main
@@ -30,7 +31,7 @@ Main
 ├── Wildlife: animale create de host, replici pe clienți
 ├── Loot: pickup-uri create și șterse de host
 ├── HuntingJeep: model, coliziuni, faruri, cameră și interacțiuni
-├── Cinematic / HUD
+├── Cinematic / HUD: HudView, Crosshair, Minimap
 └── ShopUI / CampMenu / MapMenu / LoadingScreen
 ```
 
@@ -180,3 +181,5 @@ La doborâre și în jeep camera este externă; preferința rămâne salvată pe
 Etapa 09: WorldRouter acceptă lobby/forest/swamp. Fauna se alege per map_id, iar NetworkSession folosește WorldCatalog.is_hunt pentru timeout, acknowledgements, populate și replicare. Căile Players/Wildlife/Loot/Jeep și RPC-urile rămân stabile la schimbarea scenei. Referința internă NetworkSession.forest poate indica ForestMap sau SwampMap (subclasă), pentru compatibilitate cu sistemele de loot, spawn și vehicul. Mlaștina are scene proprii și nu adaugă scenery în lobby.
 
 Etapa Stejarul Călător: jeep-ul și tarabele au fost înlocuite de un singur vehicul-bază. `HuntingJeep` (același API: `enter`, `exit_seat`, `occupants`, `reset_state`, `recover`, snapshot) e acum un camion cu remorcă-trunchi, construit de `actors/vehicles/oak_truck_model.gd`. Locul 0 e volanul, locurile 1–3 sunt posturi de tragere pe terasă; `_shoot` acceptă locurile > 0 și refuză șoferul. Fără șofer, camionul se îngheață pe host (`parked`, replicat) și își coboară rampa, ca să se poată merge pe verandă și în căsuță. Când pornește, cei rămași pe el urcă automat pe posturi (`secure_riders`). `start_hunt` se acceptă de la volan sau lângă foc, iar locurile ocupate se păstrează prin călătorie (`travel_seats`). Camionul nu are layer-ul Hunters în mask. Tabăra e doar focul, cu decor cozy (`world/camp/cozy_camp.gd`). Debaraua (`HunterInventory.stored`) și mașina de curățat sunt în căsuță; curățarea merge și în expediție. Detalii: [base.md](base.md).
+
+Etapa „pe jos pe camion, hărți mari, boși, HUD nou”: NPC-urile au fost scoase (`actors/npc/`, `data/npc_catalog.gd`, citatul din magazin). Camionul are un singur loc, volanul (`SEATS`/`occupants` de lungime 1); posturile de pe terasă și `secure_riders` nu mai există. Cine stă pe camion e purtat de el: `Hunter._carry()` reaplică transformarea camionului de la cadrul trecut la cel curent înainte de mișcarea proprie, platforma încorporată e oprită pentru layer-ul 16, replica de pe client rulează înaintea vânătorilor (`process_physics_priority = -10`), iar snapshot-ul are poziția și orientarea locale (`lp`, `ly`), folosite la interpolare și la reconciliere în spațiul camionului. Acțiunea nouă `climb` (board/alight/ladder_up/ladder_down) mută hunterul pe scări, validată de host; `place_aboard()` păstrează lanțul de transport. Călătoria păstrează șoferul și pozițiile locale ale celor de pe camion (`travel_driver`, `travel_riders`). Hărțile au 2,4 km (`ForestMap.SIZE/LIMIT`), cu teren din grilă indexată. Boșii (`AnimalCatalog.BOSSES`) apar pe ceasul `boss_clock`, maximum doi deodată, și lasă trofee la moarte (`boss_defeated`). HUD-ul vechi din `main.tscn` a fost înlocuit de `ui/hud/hud_view.gd`, iar minimapul de un radar cu relief din `heights` (shader) și o hartă mare cu pictograme. Nu există RPC-uri noi; `climb` trece prin `_action`. Detalii: [base.md](base.md), [bosses.md](bosses.md), [hud.md](hud.md).

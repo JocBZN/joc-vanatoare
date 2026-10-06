@@ -15,7 +15,7 @@ const EVENTS: Dictionary={
     "complete":{"color":Color("ffd65c"),"sound":"complete","size":40,"text":"CLEAN_POP_COMPLETE"},
 }
 ## What the drum throws off each species, beyond plain flesh and fat.
-const BURR_SKIN: Dictionary={&"deer":"tick",&"bear":"honey",&"boar":"mud",&"frog":"algae",&"turtle":"algae",&"snake":"algae",&"crocodile":"algae",&"ancient_crocodile":"algae"}
+const BURR_SKIN: Dictionary={&"deer":"tick",&"bear":"honey",&"boar":"mud",&"frog":"algae",&"turtle":"algae",&"snake":"algae",&"crocodile":"algae",&"ancient_crocodile":"algae",&"ancient_bear":"honey",&"albino_crocodile":"algae"}
 
 var _pieces: Array=[]
 var _pieces_seed: int=-1

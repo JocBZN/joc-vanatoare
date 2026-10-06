@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"albino_crocodile"
+display_name = "ANIMAL_ALBINO_CROCODILE"
+model_path = "res://actors/animals/models/albino_crocodile.tscn"
+max_health = 3400
+spawn_weight = 0.0
+aggressive = true
+attack_damage = 48
+walk_speed = 1.5
+run_speed = 6.4
+aggro_range = 36.0
+pursuit_range = 200.0
+aggro_memory = 45.0
+height = 1.3
+length = 7.4
+width = 2.2
+aquatic = true
+loot_id = &"albino_crocodile_hide"
+boss = true
+trophies = Array[StringName]([&"albino_croc_tooth", &"albino_croc_tooth", &"albino_croc_tooth", &"albino_croc_tooth", &"croc_gastrolith", &"croc_gastrolith", &"ancient_harpoon"])
+harvest_strokes = 16
+harvest_period = 1.7
+harvest_window = 0.12
+harvest_quirks = PackedStringArray("chomp", "thick", "twitch")

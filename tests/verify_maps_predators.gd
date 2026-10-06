@@ -82,7 +82,7 @@ func run() -> void:
         health=hunter.health
         await frames(20)
         check(hunter.health==health,kind+" respects attack cooldown")
-        hunter.seat_index=1
+        hunter.seat_index=0
         await frames(2)
         check(a.target_peer==0,kind+" drops target seated in jeep")
         a.set_physics_process(false);session.remove_animal(a.animal_id)

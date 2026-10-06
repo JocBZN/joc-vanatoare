@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+[ext_resource type="PackedScene" path="res://assets/animals/stylized/bear.glb" id="1"]
+[ext_resource type="Script" path="res://actors/animals/boss_dress.gd" id="2"]
+[node name="Model" type="Node3D"]
+script = ExtResource("2")
+kind = "ancient_bear"
+grow = 2.2
+[node name="Bear" parent="." instance=ExtResource("1")]
+scale=Vector3(2.0631752,2.0631752,2.0631752)

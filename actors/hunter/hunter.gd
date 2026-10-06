@@ -42,6 +42,19 @@ var _shown_weapon: StringName
 var _shown_backpack: StringName
 var control_enabled: bool = false
 var combat: HunterCombat
+## Aboard the truck on foot: carried with it every physics frame, so a rider
+## walks, turns and shoots relative to the deck while somebody drives.
+var riding: bool=false
+## The truck pose this hunter's position was last consistent with.
+var _ride_from:=Transform3D.IDENTITY
+var _ride_frame: int=-10
+## Replicated truck-local position and yaw of a rider (from host snapshots).
+var ride_target:=Vector3.ZERO
+var ride_yaw: float=0.0
+var ride_target_valid: bool=false
+var _shown_local:=Vector3.ZERO
+var _shown_riding: bool=false
+var _arm_ignores_truck: bool=false
 
 var _gravity: float = float(ProjectSettings.get_setting("physics/3d/default_gravity"))
 var _stride_time: float = 0.0
@@ -52,6 +65,10 @@ func _ready() -> void:
     camera_rig.spring_arm.add_excluded_object(get_rid())
     # The camera also stops at the truck's walls when walking through the cottage.
     camera_rig.spring_arm.collision_mask=1|16
+    # Riding is handled explicitly (see _carry), so the truck must not also act
+    # as a built-in moving platform that adds its velocity a second time.
+    platform_floor_layers=0xFFFFFFFF & ~16
+    platform_on_leave=CharacterBody3D.PLATFORM_ON_LEAVE_DO_NOTHING
     spawn_position = global_position
     target_position = global_position
     camera_rig.enabled=local_player
@@ -103,37 +120,34 @@ func sample_input() -> Dictionary:
 func _physics_process(delta: float) -> void:
     if NetworkSession.phase=="loading" or not world_ready or (local_player and NetworkSession.local_loaded_epoch!=NetworkSession.world_epoch):
         velocity=Vector3.ZERO
+        riding=false;ride_target_valid=false
         return
     if local_player and not busy() and not Input.is_action_pressed("fire") and not Input.is_action_pressed("jump"):
         harvest_input_guard=false
     if local_player and control_enabled and not busy() and Input.is_action_just_pressed("reset_player"): NetworkSession.request_action("reset")
     if local_player and control_enabled and not busy() and not harvest_input_guard and Input.is_action_just_pressed("jump"): jump_pending=true
     if seat_index==0:
+        riding=false;_ride_frame=-10
         _update_visual(delta,0)
         $Visual/LeftLeg.rotation.x=-1.2
         $Visual/RightLeg.rotation.x=-1.2
         return
-    if seat_index>0:
-        # A terrace gunner stands at a post and turns with the aim; the truck carries him.
-        var yaw: float=camera_rig.rotation.y if local_player else float(command.get("yaw",visual.rotation.y)) if NetworkSession.is_host() else target_yaw
-        if not local_player and NetworkSession.is_host():
-            camera_rig.aiming=bool(command.get("aim",false));camera_rig.rotation.x=float(command.get("pitch",0))
-        visual.rotation=Vector3(0,lerp_angle(visual.rotation.y,yaw,1-exp(-turn_speed*delta)),0)
-        _update_visual(delta,0)
-        return
+    # The host moves every hunter, a client only its own living hunter; replicas follow snapshots.
+    var simulated: bool=NetworkSession.is_host() or (local_player and health>0)
+    if simulated: _carry()
     _life_pose()
     if health<=0:
         velocity.x=0;velocity.z=0
         if NetworkSession.is_host():
             velocity.y=0 if is_on_floor() else velocity.y-_gravity*delta
             move_and_slide()
-        else: global_position=global_position.lerp(target_position,1-exp(-12*delta))
+        else: _follow_replica(delta)
         return
-    if not NetworkSession.is_host() and not local_player:
-        global_position=global_position.lerp(target_position,1-exp(-12*delta))
-        visual.rotation.y=lerp_angle(visual.rotation.y,target_yaw,1-exp(-12*delta))
+    if not simulated:
+        _follow_replica(delta)
         _update_visual(delta,minf(velocity.length()/walk_speed,1))
         return
+    if local_player: _frame_camera()
     if busy():
         velocity.x=0;velocity.z=0;jump_pending=false;revive_target=0
         command["jump"]=false
@@ -163,9 +177,10 @@ func _physics_process(delta: float) -> void:
     elif data.get("jump",false): velocity.y=jump_speed*lerpf(1.0,.85,smoothstep(.15,1.15,contact_depth))
     command["jump"]=false
     move_and_slide()
-    NetworkSession.constrain_to_lobby(self)
-    global_position.x=clampf(global_position.x,-590,590)
-    global_position.z=clampf(global_position.z,-590,590)
+    if not riding:
+        NetworkSession.constrain_to_lobby(self)
+        global_position.x=clampf(global_position.x,-ForestMap.LIMIT,ForestMap.LIMIT)
+        global_position.z=clampf(global_position.z,-ForestMap.LIMIT,ForestMap.LIMIT)
     if not local_player:
         camera_rig.aiming=aiming;camera_rig.rotation.x=float(data.get("pitch",0))
     if aiming or data.get("first",false): visual.rotation.y=lerp_angle(visual.rotation.y,float(data.get("yaw",0)),1-exp(-turn_speed*delta))
@@ -173,8 +188,69 @@ func _physics_process(delta: float) -> void:
     _update_visual(delta,direction.length())
     if NetworkSession.is_host() and global_position.y < -20: respawn()
 
+## Carries a rider by exactly the truck's motion since the last physics frame
+## (translation and turn), before the hunter's own movement is applied.
+func _carry() -> void:
+    var truck=NetworkSession.jeep
+    var frame: int=Engine.get_physics_frames()
+    if not is_instance_valid(truck) or not truck.enabled:
+        riding=false;_ride_frame=-10;return
+    var now: Transform3D=truck.global_transform
+    if riding and _ride_frame==frame-1:
+        global_position=now*(_ride_from.affine_inverse()*global_position)
+        var turn: float=wrapf(now.basis.get_euler().y-_ride_from.basis.get_euler().y,-PI,PI)
+        visual.rotation.y+=turn
+        if local_player: camera_rig.rotation.y+=turn
+    _ride_from=now;_ride_frame=frame
+    riding=truck.carries(global_position)
+
+## Truck-local position of a rider, in the frame its world position matches.
+func ride_local() -> Vector3:
+    return _ride_from.affine_inverse()*global_position
+
+## Puts the hunter on the truck at `point` (world) without breaking the ride:
+## the next carry starts from the truck's current pose, whether this is called
+## from a network action between frames or from inside a physics frame.
+func place_aboard(point: Vector3) -> void:
+    global_position=point;velocity=Vector3.ZERO
+    var truck=NetworkSession.jeep
+    if not is_instance_valid(truck): return
+    _ride_from=truck.global_transform
+    _ride_frame=Engine.get_physics_frames()-(1 if Engine.is_in_physics_frame() else 0)
+    riding=truck.carries(point)
+
+## Replicas ride in truck space so they stay put on a moving deck.
+func _follow_replica(delta: float) -> void:
+    var weight: float=1-exp(-12*delta)
+    var truck=NetworkSession.jeep
+    if ride_target_valid and is_instance_valid(truck):
+        var frame: Transform3D=truck.global_transform
+        if not _shown_riding: _shown_local=frame.affine_inverse()*global_position;_shown_riding=true
+        _shown_local=_shown_local.lerp(ride_target,weight)
+        global_position=frame*_shown_local
+        visual.rotation.y=lerp_angle(visual.rotation.y,frame.basis.get_euler().y+ride_yaw,weight)
+        return
+    _shown_riding=false
+    global_position=global_position.lerp(target_position,weight)
+    visual.rotation.y=lerp_angle(visual.rotation.y,target_yaw,weight)
+
+## On the open terrace the camera ignores the truck, so it never snaps into the
+## railing; inside the cottage it still stops at the log walls.
+func _frame_camera() -> void:
+    var truck=NetworkSession.jeep
+    if not is_instance_valid(truck): return
+    var on_deck: bool=riding and ride_local().y>6.5
+    if on_deck==_arm_ignores_truck: return
+    _arm_ignores_truck=on_deck
+    if on_deck: camera_rig.spring_arm.add_excluded_object(truck.get_rid())
+    else: camera_rig.spring_arm.remove_excluded_object(truck.get_rid())
+
 func snapshot() -> Dictionary:
-    return {"id":peer_id,"name":player_name,"p":global_position,"v":velocity,"yaw":visual.rotation.y,"hp":health,"down":respawn_clock,"seat":seat_index,"weapon":String(inventory.equipped_weapon_id),"bag":String(inventory.backpack_id),"levels":inventory.weapon_upgrades.get(String(inventory.equipped_weapon_id),{}),"ammo":inventory.ammunition(),"reload":inventory.reload_remaining,"ready":world_ready,"spawn":spawn_position,"revive":revive_progress,"helper":revive_helper,"harvest_target":harvest_target,"cleaning":cleaning,"pitch":camera_rig.rotation.x,"aim":camera_rig.aiming}
+    var data: Dictionary={"id":peer_id,"name":player_name,"p":global_position,"v":velocity,"yaw":visual.rotation.y,"hp":health,"down":respawn_clock,"seat":seat_index,"weapon":String(inventory.equipped_weapon_id),"bag":String(inventory.backpack_id),"levels":inventory.weapon_upgrades.get(String(inventory.equipped_weapon_id),{}),"ammo":inventory.ammunition(),"reload":inventory.reload_remaining,"ready":world_ready,"spawn":spawn_position,"revive":revive_progress,"helper":revive_helper,"harvest_target":harvest_target,"cleaning":cleaning,"pitch":camera_rig.rotation.x,"aim":camera_rig.aiming}
+    if riding and seat_index<0:
+        data["lp"]=ride_local()
+        data["ly"]=wrapf(visual.rotation.y-_ride_from.basis.get_euler().y,-PI,PI)
+    return data
 
 func apply_snapshot(data: Dictionary) -> void:
     health=data.hp
@@ -187,6 +263,8 @@ func apply_snapshot(data: Dictionary) -> void:
     velocity=data.v
     target_position=data.p
     target_yaw=data.yaw
+    ride_target_valid=data.get("lp") is Vector3
+    if ride_target_valid: ride_target=data.lp;ride_yaw=float(data.get("ly",0))
     if health<=0:
         visual.rotation.y=target_yaw
         life_pose_downed=false
@@ -197,8 +275,16 @@ func apply_snapshot(data: Dictionary) -> void:
     inventory.weapon_upgrades[data.weapon]=data.get("levels",{}).duplicate()
     inventory.magazines[data.weapon]=int(data.get("ammo",8))
     inventory.reload_remaining=float(data.get("reload",0))
-    if local_player and seat_index<0 and global_position.distance_to(target_position)>.8:
-        global_position=global_position.lerp(target_position,.45) if global_position.distance_to(target_position)<4 else target_position
+    if local_player and seat_index<0 and health>0:
+        # Riders are reconciled in truck space: the replica truck lags the host's.
+        var truck=NetworkSession.jeep
+        var goal: Vector3=target_position
+        if ride_target_valid and is_instance_valid(truck): goal=(_ride_from if riding else truck.global_transform)*ride_target
+        var gap: float=global_position.distance_to(goal)
+        if gap>.8:
+            var fixed: Vector3=global_position.lerp(goal,.45) if gap<4 else goal
+            if ride_target_valid and is_instance_valid(truck): place_aboard(fixed)
+            else: global_position=fixed
     if inventory.equipped_weapon_id!=StringName(data.weapon) or inventory.backpack_id!=StringName(data.bag):
         inventory.equipped_weapon_id=StringName(data.weapon)
         inventory.backpack_id=StringName(data.bag)
@@ -213,12 +299,9 @@ func set_seat(index: int) -> void:
         visual.rotation.x=0
         visual.rotation.z=0
     camera_rig.enabled=local_player and index!=0 and not busy()
-    var truck=NetworkSession.jeep
-    if is_instance_valid(truck):
-        if index>0: camera_rig.spring_arm.add_excluded_object(truck.get_rid())
-        else: camera_rig.spring_arm.remove_excluded_object(truck.get_rid())
+    if index>=0: riding=false;_ride_frame=-10
     var menu_open: bool=NetworkSession.world!=null and NetworkSession.world.menu.is_open
-    if local_player and index!=0 and (was_seated or index>0) and not menu_open: camera_rig.camera.current=true
+    if local_player and index<0 and was_seated and not menu_open: camera_rig.camera.current=true
 
 func take_damage(amount: int) -> void:
     if not NetworkSession.is_host() or health<=0: return
@@ -244,7 +327,13 @@ func _update_visual(delta: float, movement_amount: float) -> void:
     visual.position.y = absf(sin(_stride_time)) * movement_amount * 0.035
 
 
+## Steps off the truck (or anywhere) to a world point.
+func respawn_at(point: Vector3) -> void:
+    riding=false;_ride_frame=-10
+    global_position=point;velocity=Vector3.ZERO
+
 func respawn() -> void:
+    riding=false;_ride_frame=-10
     global_position = spawn_position
     velocity = Vector3.ZERO
     visual.rotation = Vector3.ZERO

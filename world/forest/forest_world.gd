@@ -42,9 +42,10 @@ func build() -> void:
     forest.build_progress.connect(func(value: float) -> void: build_progress.emit(value*.85))
     await forest.build()
     if forest.cancelled or not is_inside_tree(): return
-    for index in AnimalCatalog.ANIMALS.size():
-        retained_assets.append(load(AnimalCatalog.ANIMALS[index].model_path))
-        build_progress.emit(.85+.14*(index+1)/float(AnimalCatalog.ANIMALS.size()))
+    var species: Array=AnimalCatalog.ANIMALS+[AnimalCatalog.boss_for("forest")]
+    for index in species.size():
+        retained_assets.append(load(species[index].model_path))
+        build_progress.emit(.85+.14*(index+1)/float(species.size()))
         await get_tree().process_frame
         if forest.cancelled or not is_inside_tree(): return
     await get_tree().physics_frame

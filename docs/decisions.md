@@ -50,3 +50,12 @@ Progresul este păstrat la reconectare în sesiunea vie a hostului; salvarea pe 
 ## Etapa 09 — Mlaștină
 
 La cererea utilizatorului, harta 2 este o mlaștină complet integrată în expediții. Întrebările opționale despre atmosferă/faună au rămas fără răspuns în timpul implementării; am folosit atmosferă cinematică cu ceață, apă și vegetație, plus broască → țestoasă → șarpe → crocodil → crocodil uriaș. Sursele externe sunt gratuite CC0. Nu au fost cumpărate pachete și nu a fost introdus Steam API. Modelele native ale speciilor mici rămân o bază jucabilă pentru viitorul polish realist.
+
+## Camionul pe jos, hărți mari, boși, HUD nou
+
+La cererea utilizatorului (6 octombrie 2026):
+- NPC-urile de pe camion au fost scoase de tot; magazinele și depozitul funcționează fără vânzători.
+- Pe terasă nu se mai stă la posturi fixe: cine e pe camion merge liber și e purtat de el în mers. Volanul e singurul loc. Scările sunt cu E; urcarea/coborârea de pe sol cere camionul aproape oprit, ca să nu se poată sări dintr-un camion în viteză.
+- Hărțile cresc de la 1200 × 1200 m la 2400 × 2400 m, cu aceeași densitate de copaci și dealuri la margine.
+- Câte un boss pe hartă (Ursul Străvechi, Crocodilul Albinos de Apă Sărată), spawn aleatoriu departe de echipă, maximum doi deodată, trofee multiple și scumpe. Valori alese: 2 800 / 3 400 HP, lovitură în arie 42 / 48, 6 / 7 trofee (2 820 / 3 400 monede) plus blana (1 400 / 1 800 de bază).
+- Minimap rotit după cameră, cu relief, și hartă mare (M) cu pictogramă pe specie și coroană pe boși. HUD minimal, desenat în cod, cu comenzi care dispar singure.

@@ -8,7 +8,6 @@ extends RefCounted
 
 const Toon:=preload("res://world/camp/toon_builder.gd")
 const CounterScript:=preload("res://world/camp/shop_counter.gd")
-const KeeperScript:=preload("res://actors/npc/shopkeeper.gd")
 const CleanerScript:=preload("res://world/camp/hide_cleaner.gd")
 
 const AXIS_Y: float=2.45
@@ -33,11 +32,11 @@ const DECK_X: float=1.6
 ## seam instead of catching the floor's edge.
 const RAMP_PIVOT:=Vector3(0,FLOOR_Y+.01,6.0)
 const RAMP_LENGTH: float=6.55
-## Shop windows cut into the left flank of the log: kind, keeper, centre z, awning colours.
+## Shop windows cut into the left flank of the log: kind, centre z, awning colours.
 const WINDOWS: Array=[
-    {"kind":"weapons","npc":"gica","z":-1.3,"slogan":"BASE_SLOGAN_WEAPONS","awning":[Color("6b7a3a"),Color("55622d")]},
-    {"kind":"backpacks","npc":"rucsandra","z":1.3,"slogan":"BASE_SLOGAN_BACKPACKS","awning":[Color("d9a33a"),Color("b8862a")]},
-    {"kind":"sell","npc":"fane","z":3.9,"slogan":"BASE_SLOGAN_SELL","awning":[Color("c9463a"),Color("efe3c4")]},
+    {"kind":"weapons","z":-1.3,"slogan":"BASE_SLOGAN_WEAPONS","awning":[Color("6b7a3a"),Color("55622d")]},
+    {"kind":"backpacks","z":1.3,"slogan":"BASE_SLOGAN_BACKPACKS","awning":[Color("d9a33a"),Color("b8862a")]},
+    {"kind":"sell","z":3.9,"slogan":"BASE_SLOGAN_SELL","awning":[Color("c9463a"),Color("efe3c4")]},
 ]
 
 const CAB:=Color("3f6b45")
@@ -71,7 +70,7 @@ const FLOWERS:=[Color("e0483e"),Color("f2c94c"),Color("5b8fd9"),Color("f2f0e6"),
 var body: RigidBody3D
 var t: Object
 var rng:=RandomNumberGenerator.new()
-var parts: Dictionary={"turns":[],"spins":[],"extra_spins":[],"puffs":[],"counters":{},"keepers":{},"labels":{}}
+var parts: Dictionary={"turns":[],"spins":[],"extra_spins":[],"puffs":[],"counters":{},"labels":{}}
 
 func build(target: RigidBody3D, wheels: Array, wheel_radius: float) -> Dictionary:
     body=target
@@ -178,7 +177,7 @@ func _log() -> void:
             # Bark ridges along each stave.
             t.box_at(center+Vector3(cos(angle),sin(angle),0)*.16,Vector3(width*.25,.05,length*.96),Vector3(0,0,angle-PI*.5),BARK_DARK)
     # Heartwood lining the far side of the hollow, seen through the windows,
-    # the floor the keepers stand on and plank walls between the three shops.
+    # the floor inside the hollow and plank walls between the three shops.
     for k in 9:
         var angle: float=-1.45+k*.3
         var center:=Vector3(cos(angle)*1.28,AXIS_Y+sin(angle)*1.28,(LOG_Z0+LOG_Z1)*.5)
@@ -248,13 +247,9 @@ func _shops() -> void:
         var point:=Marker3D.new();point.name="InteractionPoint";point.position=Vector3(-.75,0,0);counter.add_child(point)
         var title:=_make_label(40,Color("ffe3a3"));title.name="Title";title.position=Vector3(-.075,1.24,0);title.rotation.y=-PI*.5;counter.add_child(title)
         var slogan:=_make_label(20,Color("f1d6b0"));slogan.name="Slogan";slogan.position=Vector3(-.075,.96,0);slogan.rotation.y=-PI*.5;counter.add_child(slogan)
-        var keeper=KeeperScript.new();keeper.name="Keeper";keeper.npc_id=window.npc
-        keeper.position=Vector3(1.55,1.25,0);keeper.rotation.y=-PI*.5
-        keeper.tag_offset=Vector3(0,1.42,.9);keeper.bubble_offset=Vector3(0,2.0,1.6)
-        counter.add_child(keeper);counter.keeper=keeper
         body.add_child(counter)
-        parts.counters[window.kind]=counter;parts.keepers[window.npc]=keeper
-    # What each window shows behind its keeper.
+        parts.counters[window.kind]=counter
+    # What each window shows inside the hollow.
     t.box(Vector3(.95,1.6,-2.2),Vector3(1.02,2.95,-.4),PLANK_DARK)
     _display("res://actors/equipment/ak_rifle.tscn",Vector3(.85,2.55,-1.3),Vector3(0,PI,0),1.5,"weapon")
     _display("res://actors/equipment/nova_shotgun.tscn",Vector3(.85,2.15,-1.3),Vector3(0,PI,0),1.5,"weapon")
@@ -414,7 +409,7 @@ func _terrace() -> void:
             t.cylinder(Vector3(side*1.45,(roof_y+DECK_Y)*.5,z),.09,.09,DECK_Y-roof_y,BARK,Vector3.ZERO,6)
         t.cylinder(Vector3(side*1.45,(FLOOR_Y+DECK_Y)*.5,DECK_Z1-.15),.11,.11,DECK_Y-FLOOR_Y,BARK,Vector3.ZERO,6)
         t.rod(Vector3(side*1.45,FLOOR_Y+2.6,DECK_Z1-.15),Vector3(side*1.45,DECK_Y-.2,DECK_Z1-1.0),.05,BARK)
-    # Twig railing all round, with a gap where the ladder arrives.
+    # Twig railing all round, with a hatch where the ladder arrives.
     var top: float=DECK_Y+.95
     var corners: Array=[Vector3(-DECK_X,0,DECK_Z0),Vector3(DECK_X,0,DECK_Z0),Vector3(DECK_X,0,DECK_Z1),Vector3(-DECK_X,0,DECK_Z1)]
     for i in 4:
@@ -430,7 +425,7 @@ func _terrace() -> void:
             for k in posts+1:
                 var at: Vector3=from.lerp(to,float(k)/posts)
                 t.rod(at+Vector3(0,DECK_Y,0),at+Vector3(0,top+.05,0),.04,BARK)
-    # Ladder from the porch, gunner mats, lanterns, string lights and a pennant.
+    # Ladder from the porch, round rugs, lanterns, string lights and a pennant.
     for x in [.9,1.45]: t.rod(Vector3(x,FLOOR_Y,DECK_Z1+.05),Vector3(x,DECK_Y+1.0,DECK_Z1+.05),.04,BARK)
     var rung: float=FLOOR_Y+.3
     while rung<DECK_Y+.9:
@@ -471,7 +466,7 @@ func _porch() -> void:
     _label("GateName",Vector3(0,FLOOR_Y+1.87,LOG_Z1+.03),0.0,"BASE_NAME",34,Color("ffe3a3"))
     var lamp:=OmniLight3D.new();lamp.position=Vector3(0,FLOOR_Y+2.0,4.6);lamp.light_color=Color("ffc978")
     lamp.light_energy=1.3;lamp.omni_range=6.0;body.add_child(lamp)
-    # Rocking chair for Nelu, who used to drive and now supervises.
+    # An empty rocking chair with a folded blanket, for whoever is not driving.
     var chair:=Vector3(-1.2,FLOOR_Y,4.75)
     t.box(chair+Vector3(-.28,.42,-.28),chair+Vector3(.28,.5,.28),PLANK)
     t.box(chair+Vector3(.2,.5,-.28),chair+Vector3(.28,1.2,.28),PLANK)
@@ -479,8 +474,8 @@ func _porch() -> void:
         t.box_at(chair+Vector3(0,.06,z),Vector3(.9,.06,.06),Vector3(0,0,.12),PLANK_DARK)
         t.rod(chair+Vector3(-.22,.08,z),chair+Vector3(-.22,.42,z),.025,PLANK_DARK,4)
         t.rod(chair+Vector3(.22,.08,z),chair+Vector3(.22,.42,z),.025,PLANK_DARK,4)
-    var nelu=KeeperScript.new();nelu.name="Nelu";nelu.npc_id="nelu";nelu.pose="sit"
-    nelu.position=chair+Vector3(0,0,0);nelu.rotation.y=-PI*.5;body.add_child(nelu);parts.keepers["nelu"]=nelu
+    t.box(chair+Vector3(-.24,.5,-.22),chair+Vector3(.16,.58,.22),Color("b5452f"))
+    t.box(chair+Vector3(-.2,.58,-.2),chair+Vector3(.12,.6,.2),Color("efe3c4"))
     # Barrel, pots and a rope ladder down the right side for quick boarding.
     t.cylinder(Vector3(1.45,FLOOR_Y+.4,5.4),.3,.3,.8,PLANK,Vector3.ZERO,10)
     for y in [.15,.65]: t.cylinder(Vector3(1.45,FLOOR_Y+y,5.4),.31,.31,.05,IRON,Vector3.ZERO,10)
@@ -502,7 +497,7 @@ func _workshop() -> void:
     var cleaner=CleanerScript.new();cleaner.name="HideCleaner";cleaner.mounted=true
     cleaner.position=Vector3(0,FLOOR_Y,-1.42);cleaner.rotation.y=PI
     body.add_child(cleaner);parts["cleaner"]=cleaner
-    # Storage counter along the left wall, with Old Man Closet behind it.
+    # Storage counter along the left wall, shelves of jars behind it.
     t.box(Vector3(-.95,FLOOR_Y,.9),Vector3(-.55,FLOOR_Y+1.05,2.4),PLANK)
     t.box(Vector3(-1.0,FLOOR_Y+1.05,.85),Vector3(-.5,FLOOR_Y+1.12,2.45),PLANK_DARK)
     for z in [.9,2.4]: t.box(Vector3(-1.75,FLOOR_Y,z-.04),Vector3(-.95,FLOOR_Y+1.05,z+.04),PLANK_DARK)
@@ -516,9 +511,7 @@ func _workshop() -> void:
     var point:=Marker3D.new();point.name="InteractionPoint";point.position=Vector3(.45,0,0);counter.add_child(point)
     var title:=_make_label(34,Color("ffe3a3"));title.name="Title";title.position=Vector3(-.23,.72,0);title.rotation.y=PI*.5;counter.add_child(title)
     var slogan:=_make_label(20,Color("f1d6b0"));slogan.name="Slogan";slogan.position=Vector3(-.23,.42,0);slogan.rotation.y=PI*.5;counter.add_child(slogan)
-    var keeper=KeeperScript.new();keeper.name="Keeper";keeper.npc_id="debara";keeper.position=Vector3(-1.05,0,0);keeper.rotation.y=PI*.5
-    counter.add_child(keeper);counter.keeper=keeper
-    body.add_child(counter);parts.counters["storage"]=counter;parts.keepers["debara"]=keeper
+    body.add_child(counter);parts.counters["storage"]=counter
     # Hides drying on the right wall, a tanning frame and a hanging lantern.
     for k in 3:
         var z: float=.6+k*.62
@@ -538,8 +531,12 @@ func _workshop() -> void:
 func _interactables() -> void:
     _use("jeep",Vector3(-2.35,0,-3.7),3.2)
     _use("trunk",Vector3(2.6,0,.8),3.2)
-    _use("terrace",Vector3(2.65,0,5.0),3.0)
-    _use("terrace",Vector3(1.0,FLOOR_Y,4.05),1.8)
+    # Ladders: the rope ladder joins the ground and the porch (boarding goes
+    # straight up to the terrace), the wooden one joins the porch and the terrace.
+    _use("board",Vector3(2.65,0,5.0),3.0)
+    _use("alight",Vector3(1.6,FLOOR_Y,5.0),1.0)
+    _use("ladder_up",Vector3(1.15,FLOOR_Y,3.95),1.0)
+    _use("ladder_down",Vector3(1.18,DECK_Y,3.45),.95)
     # Cargo hatch on the right flank of the trunk.
     t.box(Vector3(1.55,1.65,-.1),Vector3(1.66,2.75,1.7),PLANK_LIGHT)
     for z in [.0,.8,1.6]: t.box(Vector3(1.64,1.7,z-.03),Vector3(1.69,2.7,z+.03),PLANK_DARK)
@@ -572,9 +569,17 @@ func _collisions() -> void:
     _shape(Vector3(-.55,5.55,HOUSE_Z1-.2),Vector3(.55,WALL_TOP,HOUSE_Z1))
     _shape(Vector3(-2.2,WALL_TOP,ROOF_Z0),Vector3(2.2,RIDGE_Y,ROOF_Z1))
     _shape(Vector3(-DECK_X,DECK_Y-.15,DECK_Z0),Vector3(DECK_X,DECK_Y,DECK_Z1))
+    # Railings are walls taller than a jump, so riders cannot fall or hop off a
+    # moving truck. The ladder hatch is closed too: the ladders work with E.
+    var rail: float=2.3
     for side in [-1.0,1.0]:
-        _shape(Vector3(side*1.95-.07,FLOOR_Y,HOUSE_Z1),Vector3(side*1.95+.07,FLOOR_Y+1.1,LOG_Z1))
-        _shape(Vector3(side*1.95,FLOOR_Y,LOG_Z1-.14),Vector3(side*.75,FLOOR_Y+1.1,LOG_Z1))
+        _shape(Vector3(side*DECK_X-.08,DECK_Y,DECK_Z0-.08),Vector3(side*DECK_X+.08,DECK_Y+rail,DECK_Z1+.08))
+        _shape(Vector3(side*1.95-.07,FLOOR_Y,HOUSE_Z1),Vector3(side*1.95+.07,FLOOR_Y+rail,LOG_Z1))
+        _shape(Vector3(side*1.95,FLOOR_Y,LOG_Z1-.14),Vector3(side*.75,FLOOR_Y+rail,LOG_Z1))
+    for z in [DECK_Z0,DECK_Z1]: _shape(Vector3(-DECK_X,DECK_Y,z-.08),Vector3(DECK_X,DECK_Y+rail,z+.08))
+    # The porch gate between the ramp posts, closed whenever the ramp is up.
+    var gate:=_shape(Vector3(-.75,FLOOR_Y,LOG_Z1-.14),Vector3(.75,FLOOR_Y+rail,LOG_Z1))
+    gate.name="GateShape";parts["gate_shape"]=gate
     _shape(Vector3(-1.3,FLOOR_Y,-2.22),Vector3(1.3,FLOOR_Y+1.9,-.62))
     _shape(Vector3(-.95,FLOOR_Y,.9),Vector3(-.55,FLOOR_Y+1.1,2.4))
     for z in [.9,2.4]: _shape(Vector3(-1.75,FLOOR_Y,z-.04),Vector3(-.95,FLOOR_Y+1.1,z+.04))
@@ -629,10 +634,15 @@ func _ramp() -> void:
     parts["ramp_shape"]=collision;parts["ramp_down"]=angle
 
 func _smoke() -> void:
+    # Puffs turn see-through as a camera comes close, so riders on the terrace
+    # never find the chimney smoke filling their view (a soft fade, not dither dots).
+    var smoke: StandardMaterial3D=Toon.toon(Color("c9cbc8")).duplicate()
+    smoke.distance_fade_mode=BaseMaterial3D.DISTANCE_FADE_PIXEL_ALPHA
+    smoke.distance_fade_min_distance=3.0;smoke.distance_fade_max_distance=8.0
     for source in [Vector3(1.18,4.95,-2.98),Vector3(1.25,8.8,-1.7)]:
         for k in 5:
             var puff:=MeshInstance3D.new();var sphere:=SphereMesh.new();sphere.radius=.28;sphere.height=.56;sphere.radial_segments=6;sphere.rings=4
-            puff.mesh=sphere;puff.material_override=Toon.toon(Color("c9cbc8"));puff.set_meta("styled",true)
+            puff.mesh=sphere;puff.material_override=smoke;puff.set_meta("styled",true)
             puff.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
             puff.set_meta("phase",float(k)/5.0);puff.set_meta("source",source);puff.position=source
             body.add_child(puff);parts.puffs.append(puff)

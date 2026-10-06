@@ -2,15 +2,26 @@ class_name HuntingJeep
 extends RigidBody3D
 ## The Wandering Oak: the crew's truck and moving base. Host-only rigid-body
 ## simulation with four raycast suspension / tire contacts (the rear pair is
-## drawn as a tandem). Seat 0 is the driver in the cab; seats 1-3 are gunner
-## posts on the lookout terrace, where hunters keep their own camera and can
-## shoot while someone drives. Parked without a driver, the truck freezes, lowers
-## its ramp and becomes solid ground for walking up to the cottage.
-const SEATS=[Vector3(-.62,1.3,-3.7),Vector3(-.95,7.8,-.2),Vector3(.95,7.8,-.2),Vector3(0,7.8,2.7)]
+## drawn as a tandem). The only seat is the driver's, in the cab. Everyone else
+## rides on foot: whoever stands on the truck (porch, cottage or the lookout
+## terrace) is carried with it every physics frame and can walk, turn, aim and
+## shoot while someone drives. Parked without a driver, the truck freezes,
+## lowers its ramp and the porch gate opens for walking up to the cottage.
+const SEATS=[Vector3(-.62,1.3,-3.7)]
 const WHEELS=[Vector3(-1.35,1.32,-5.3),Vector3(1.35,1.32,-5.3),Vector3(-1.75,1.32,3.6),Vector3(1.75,1.32,3.6)]
-## Hull box (truck-local) for boarding distance and for securing riders.
+## Hull box (truck-local) for boarding distance.
 const HULL_MIN:=Vector3(-2.1,0,-7.0)
 const HULL_MAX:=Vector3(2.1,9.0,6.1)
+## Anyone whose feet are inside this box rides along with the truck.
+const RIDE_MIN:=Vector3(-2.35,.9,-7.1)
+const RIDE_MAX:=Vector3(2.35,10.5,6.25)
+## Where the ladders put a hunter: on the terrace a step in from the ladder
+## hatch, and on the middle of the porch (both just out of reach of the
+## ladders' own prompts, so nobody climbs straight back by accident).
+const DECK_LANDING:=Vector3(.95,7.85,2.3)
+const PORCH_LANDING:=Vector3(.4,3.7,4.8)
+## Fastest the truck may roll while someone climbs on or off from the ground.
+const BOARD_SPEED: float=2.0
 const CAMERA_HEIGHT: float=4.2
 const PARK_SECONDS: float=.8
 ## Stowed, the ramp slides flat under the trailer between the frame rails.
@@ -26,7 +37,7 @@ const Model:=preload("res://actors/vehicles/oak_truck_model.gd")
 @export var engine_force: float=24000
 @export var max_forward_speed: float=19
 @export var max_reverse_speed: float=6
-var occupants: Array=[0,0,0,0]
+var occupants: Array=[0]
 var command: Dictionary={}
 var speed: float=0
 var velocity: Vector3:
@@ -51,11 +62,11 @@ var camera_input_time: int=0
 ## Parked: frozen on the host, ramp down and walkable. Replicated to clients.
 var parked: bool=false
 var counters: Dictionary={}
-var keepers: Dictionary={}
 var cleaner: Node3D
 var _parked_clock: float=0.0
 var _ramp: Node3D
 var _ramp_shape: CollisionShape3D
+var _gate_shape: CollisionShape3D
 var _ramp_down: float=.58
 var _ramp_lowered:=Transform3D.IDENTITY
 var _ramp_blend: float=0.0
@@ -69,6 +80,8 @@ func _ready() -> void:
     # kinematic body, and one stepping off a terrace post is teleported metres in
     # a single frame, which the physics engine would turn into a huge shove.
     collision_mask=1|16
+    # Replicas move before the hunters riding them, so riders stay glued on.
+    process_physics_priority=-10
     mass=chassis_mass
     center_of_mass_mode=RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
     center_of_mass=Vector3(0,1.0,-.3)
@@ -85,11 +98,11 @@ func _ready() -> void:
     for node in parts.turns: wheel_turns.append(node)
     for node in parts.spins: wheel_spins.append(node)
     for node in parts.extra_spins: extra_spins.append(node)
-    _ramp=parts.ramp;_ramp_shape=parts.ramp_shape;_ramp_down=parts.ramp_down
+    _ramp=parts.ramp;_ramp_shape=parts.ramp_shape;_ramp_down=parts.ramp_down;_gate_shape=parts.gate_shape
     _ramp_lowered=Transform3D(Basis(Vector3.RIGHT,_ramp_down),_ramp.position)
     _ramp.transform=RAMP_STOWED
     _puffs=parts.puffs;_labels=parts.labels
-    counters=parts.counters;keepers=parts.keepers;cleaner=parts.cleaner
+    counters=parts.counters;cleaner=parts.cleaner
     orbit=Node3D.new();add_child(orbit)
     orbit.top_level=true
     orbit.position=global_position+Vector3.UP*CAMERA_HEIGHT
@@ -129,6 +142,8 @@ func _set_parked(value: bool) -> void:
     parked=value
     _parked_clock=0.0
     if is_instance_valid(_ramp_shape): _ramp_shape.disabled=not value
+    # The porch gate closes whenever the ramp is up, so riders cannot step off the back.
+    if is_instance_valid(_gate_shape): _gate_shape.disabled=value
 
 func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
     if not enabled or not NetworkSession.is_host(): return
@@ -192,7 +207,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
             p.x=clampf(p.x,-18,18);p.z=clampf(p.z,-17,17)
             var constrained:=state.transform;constrained.origin=p;state.transform=constrained
             state.linear_velocity=Vector3.ZERO;state.angular_velocity=Vector3.ZERO
-    if state.transform.origin.y < -30 or absf(state.transform.origin.x)>595 or absf(state.transform.origin.z)>595:
+    if state.transform.origin.y < -30 or absf(state.transform.origin.x)>ForestMap.LIMIT+5 or absf(state.transform.origin.z)>ForestMap.LIMIT+5:
         state.transform=NetworkSession.world.world_router.jeep_spawn()
         state.linear_velocity=Vector3.ZERO;state.angular_velocity=Vector3.ZERO
 
@@ -231,21 +246,18 @@ func _physics_process(delta: float) -> void:
             global_basis=Basis(global_basis.get_rotation_quaternion().slerp(target_rotation,1-exp(-14*delta)))
             linear_velocity=target_velocity
     else:
-        var payload: float=chassis_mass+85*(4-occupants.count(0))+2*NetworkSession.trunk_space()
+        var payload: float=chassis_mass+85*(1-occupants.count(0))+2*NetworkSession.trunk_space()
         if absf(mass-payload)>.1: mass=payload
         _update_parking(delta)
         freeze=not enabled or parked
-        if enabled and not parked and occupants[0]!=0 and NetworkSession.phase!="loading":
-            var input: Vector2=command.get("drive",Vector2.ZERO)
-            if absf(speed)>.5 or absf(input.y)>.1: secure_riders()
     for i in 4:
         wheel_turns[i].position.y=WHEELS[i].y-float(spring_lengths[i])
         wheel_turns[i].rotation.y=steering if i<2 else 0
         wheel_spins[i].rotation.x+=speed*delta/wheel_radius
-        var p=NetworkSession.players.get(occupants[i])
-        if not is_instance_valid(p): continue
-        p.seat_index=i;p.global_position=to_global(SEATS[i]);p.velocity=linear_velocity
-        if i==0: p.visual.global_basis=global_basis
+    var driver=NetworkSession.players.get(occupants[0])
+    if is_instance_valid(driver):
+        driver.seat_index=0;driver.global_position=to_global(SEATS[0]);driver.velocity=linear_velocity
+        driver.visual.global_basis=global_basis
     for spin in extra_spins: spin.rotation.x+=speed*delta/wheel_radius
     orbit.global_position=orbit.global_position.lerp(global_position+Vector3.UP*CAMERA_HEIGHT,1-exp(-12*delta))
     var local=NetworkSession.local_hunter()
@@ -267,25 +279,6 @@ func _update_parking(delta: float) -> void:
     if _parked_clock>=PARK_SECONDS:
         linear_velocity=Vector3.ZERO;angular_velocity=Vector3.ZERO;speed=0
         _set_parked(true)
-
-## Host: when the truck pulls away, anyone still walking on it takes a terrace
-## post (or steps off beside it if every post is taken).
-func secure_riders() -> void:
-    for peer in NetworkSession.players:
-        var p=NetworkSession.players[peer]
-        if not is_instance_valid(p) or p.seat_index>=0 or not p.world_ready: continue
-        var local: Vector3=to_local(p.global_position)
-        if local.y<1.0 or local.x<HULL_MIN.x or local.x>HULL_MAX.x or local.z<HULL_MIN.z or local.z>HULL_MAX.z or local.y>HULL_MAX.y+1.5: continue
-        NetworkSession.release_jobs(peer)
-        var seat:=-1
-        if p.health>0:
-            for index in [1,2,3]:
-                if occupants[index]==0: seat=index;break
-        if seat>0:
-            occupants[seat]=peer;p.set_seat(seat)
-            NetworkSession.tell(peer,"RIDER_SECURED")
-        else:
-            p.global_position=exit_point(1);p.velocity=Vector3.ZERO
 
 func _process(delta: float) -> void:
     _clock+=delta
@@ -316,23 +309,47 @@ func hull_distance(point: Vector3) -> float:
     var local: Vector3=to_local(point)
     return local.distance_to(local.clamp(HULL_MIN,HULL_MAX))
 
-## Ground point beside the truck where a seat's hunter steps off.
+## Whether a hunter standing at `point` is aboard and rides along.
+func carries(point: Vector3) -> bool:
+    var local: Vector3=global_transform.affine_inverse()*point
+    return local.x>=RIDE_MIN.x and local.x<=RIDE_MAX.x and local.y>=RIDE_MIN.y and local.y<=RIDE_MAX.y and local.z>=RIDE_MIN.z and local.z<=RIDE_MAX.z
+
+## Ground point beside the truck: 0 by the cab door, anything else by the rope
+## ladder on the right of the porch.
 func exit_point(index: int) -> Vector3:
-    var offset:=Vector3(-2.75,1.0,-3.7) if index==0 else Vector3(2.85,1.0,5.6-float(index-1)*1.3)
+    var offset:=Vector3(-2.75,1.0,-3.7) if index==0 else Vector3(2.85,1.0,5.6)
     return global_position+Basis(Vector3.UP,rotation.y)*offset
 
-## Seat 0 is the wheel; `gunner` prefers a terrace post.
-func enter(peer: int, gunner: bool=false) -> bool:
+## The only seat: the wheel.
+func enter(peer: int) -> bool:
     var p=NetworkSession.players.get(peer)
-    if not enabled or not p or p.seat_index>=0 or p.health<=0 or linear_velocity.length()>2 or hull_distance(p.global_position)>3.4: return false
-    var index:=-1
-    for seat in ([1,2,3,0] if gunner else [0,1,2,3]):
-        if occupants[seat]==0: index=seat;break
-    if index<0: NetworkSession.tell(peer,"SEATS_FULL");return false
+    if not enabled or not p or p.seat_index>=0 or p.health<=0 or linear_velocity.length()>BOARD_SPEED or hull_distance(p.global_position)>3.4: return false
+    if occupants[0]!=0: NetworkSession.tell(peer,"SEATS_FULL");return false
     NetworkSession.release_jobs(peer)
-    occupants[index]=peer;p.set_seat(index)
-    p.global_position=to_global(SEATS[index]);p.velocity=Vector3.ZERO
-    if index==0: _set_parked(false)
+    occupants[0]=peer;p.set_seat(0)
+    p.global_position=to_global(SEATS[0]);p.velocity=Vector3.ZERO
+    _set_parked(false)
+    return true
+
+## Host: the ladders. "board" climbs the rope ladder from the ground straight to
+## the terrace, "ladder_up"/"ladder_down" go between porch and terrace (fine while
+## driving), "alight" climbs back down to the ground. The caller has already
+## checked the hunter stands at that ladder.
+func climb(peer: int, route: String) -> bool:
+    var p=NetworkSession.players.get(peer)
+    if not enabled or not p or p.seat_index>=0 or p.health<=0: return false
+    var slow: bool=linear_velocity.length()<=BOARD_SPEED
+    match route:
+        "board":
+            if not slow: NetworkSession.tell(peer,"TRUCK_TOO_FAST");return false
+            NetworkSession.release_jobs(peer);p.place_aboard(to_global(DECK_LANDING))
+        "ladder_up": NetworkSession.release_jobs(peer);p.place_aboard(to_global(DECK_LANDING))
+        "ladder_down": NetworkSession.release_jobs(peer);p.place_aboard(to_global(PORCH_LANDING))
+        "alight":
+            if not slow: NetworkSession.tell(peer,"STOP_TO_EXIT");return false
+            NetworkSession.release_jobs(peer)
+            p.respawn_at(exit_point(1))
+        _: return false
     return true
 
 func exit_seat(peer: int,force: bool=false) -> bool:

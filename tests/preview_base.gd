@@ -1,6 +1,6 @@
 extends SceneTree
 ## Renders the Wandering Oak truck in camp, its shop windows, cottage, terrace
-## and out on the forest road with gunners aboard.
+## and out on the forest road with a hunter riding the terrace.
 ## Usage: godot --path . --script res://tests/preview_base.gd -- [output_dir]
 var scene
 var session
@@ -35,7 +35,6 @@ func run() -> void:
     hunter.global_position=Vector3(-30,0,30)
     camera.global_position=Vector3(-7,6.5,13);camera.look_at(Vector3(3.5,2.2,-3),Vector3.UP)
     await capture("base_camp")
-    # Stand in front of each window so its keeper turns and talks.
     hunter.global_position=truck.counters.weapons.interaction_position()
     await shot("base_front",Vector3(-7.5,4.2,-11.5),Vector3(0,3.2,0))
     await shot("base_shops",Vector3(-7.2,2.6,1.2),Vector3(0,2.6,1.2))
@@ -48,7 +47,7 @@ func run() -> void:
     hunter.global_position=Vector3(-30,0,30)
     await shot("base_terrace",Vector3(-4.5,10.8,-5.5),Vector3(0,7.9,1.2))
     # Out in the forest: the host chooses the map from the wheel, then hands the
-    # wheel to a friend and climbs to a terrace post.
+    # wheel to a friend and climbs up to ride on the terrace.
     hunter.set_physics_process(true)
     hunter.global_position=truck.exit_point(0)
     truck.enter(1)
@@ -61,7 +60,7 @@ func run() -> void:
     var friend=session._spawn_player(2,"Friend");friend.world_ready=true
     truck.exit_seat(1,true)
     friend.global_position=truck.exit_point(0);truck.enter(2)
-    hunter.global_position=truck.exit_point(1);truck.enter(1,true)
+    hunter.place_aboard(truck.to_global(truck.DECK_LANDING))
     for i in 150:
         session._accept_input(2,{"seq":60000+i,"direction":Vector3.ZERO,"drive":Vector2(0,-1),"yaw":0,"pitch":0})
         await physics_frame
@@ -70,11 +69,11 @@ func run() -> void:
     for i in 6:
         session._accept_input(2,{"seq":61000+i,"direction":Vector3.ZERO,"drive":Vector2(0,-1),"yaw":0,"pitch":0})
         await physics_frame
-    await capture("base_gunner")
+    await capture("base_rider")
     scene.hud.hide()
     for i in 30:
         session._accept_input(2,{"seq":62000+i,"direction":Vector3.ZERO,"drive":Vector2(.35,-1),"yaw":0,"pitch":0})
         await physics_frame
     await shot("base_drive",Vector3(-10,6.5,9),Vector3(0,3.5,-1))
-    print("BASE_PREVIEW_DONE speed=",snappedf(truck.speed,.1)," seats=",truck.occupants)
+    print("BASE_PREVIEW_DONE speed=",snappedf(truck.speed,.1)," seats=",truck.occupants," rider=",truck.to_local(hunter.global_position).snapped(Vector3.ONE*.01))
     scene.queue_free();await frames(5);quit()

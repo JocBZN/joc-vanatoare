@@ -1,8 +1,14 @@
 class_name ForestMap
 extends Node3D
 ## Deterministic terrain on every peer. Only the host creates wildlife.
-const SIZE: float = 1200.0
-const STEP: float = 6.0
+## 2.4 km across, so the truck is the way to get around.
+const SIZE: float = 2400.0
+const STEP: float = 8.0
+const CELLS: int = 300
+## Hunters, wildlife and the truck stay this far inside the edge.
+const LIMIT: float = SIZE * 0.5 - 10.0
+## Tree collider buckets, so only trees near a hunter or the truck are scanned.
+const TREE_CELL: float = 32.0
 const SEED: int = 10337
 const LAKE_CENTER := Vector2(190.0, 160.0)
 const LAKE_RADIUS: float = 72.0
@@ -17,6 +23,10 @@ var region_noise := FastNoiseLite.new()
 var warp_noise := FastNoiseLite.new()
 var ridge_noise := FastNoiseLite.new()
 var trees: Array[Vector3] = []
+var tree_cells: Dictionary = {}
+## Height samples of the built terrain, (CELLS+1) x (CELLS+1), row by row from
+## the north-west corner. The minimap paints its relief from them.
+var heights: PackedFloat32Array
 var colliders: Dictionary = {}
 var collider_clock: float = 0.0
 var water_material: ShaderMaterial
@@ -64,8 +74,14 @@ func lake_basin(height: float, x: float, z: float) -> float:
 func height_at(x: float, z: float) -> float:
     var dist: float = Vector2(x, z).length()
     var fade := smoothstep(35.0, 80.0, dist)
-    var height: float = noise.get_noise_2d(x, z) * 12.0 * fade + mountains_at(x, z, dist)
+    var height: float = noise.get_noise_2d(x, z) * 12.0 * fade + mountains_at(x, z, dist) + rim_at(x, z)
     return lake_basin(height, x, z)
+
+## Wooded hills rise along the edge, so the world ends in a ridge, not a cliff.
+func rim_at(x: float, z: float) -> float:
+    var rise: float = smoothstep(SIZE * 0.5 - 190.0, SIZE * 0.5 - 25.0, maxf(absf(x), absf(z)))
+    if rise <= 0.0: return 0.0
+    return rise * (26.0 + region_noise.get_noise_2d(x * 2.0, z * 2.0) * 12.0)
 
 ## Local slope in degrees, estimated from the height field itself (central differences);
 ## used to keep animals off cliff faces and trees from rooting on them.
@@ -94,7 +110,7 @@ func animal_spawn(entry: AnimalDefinition, point: Vector3) -> Vector3:
     var best := point
     for i in 20:
         var p: Vector3 = point + Vector3(sin(i * 2.4), 0, cos(i * 2.4)) * i * 4.0
-        p.x = clampf(p.x, -580, 580); p.z = clampf(p.z, -580, 580)
+        p.x = clampf(p.x, -LIMIT + 10.0, LIMIT - 10.0); p.z = clampf(p.z, -LIMIT + 10.0, LIMIT - 10.0)
         if not in_lake(p.x, p.z) and slope_at(p.x, p.z) <= entry.max_slope:
             best = p; break
     best.y = height_at(best.x, best.z) + .12
@@ -120,26 +136,55 @@ func build() -> void:
     built=true
     build_progress.emit(1.0)
 
+## One indexed grid: every height is sampled once and shared by the six
+## triangles around it, with normals taken from the neighbouring samples.
 func _terrain() -> void:
-    var surface := SurfaceTool.new()
-    surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-    for iz in 200:
-        if iz%16==0:
-            build_progress.emit(.05+.55*iz/200.0)
+    var count: int = CELLS + 1
+    var half: float = SIZE * 0.5
+    heights.resize(count * count)
+    var vertices := PackedVector3Array(); vertices.resize(count * count)
+    var uvs := PackedVector2Array(); uvs.resize(count * count)
+    for iz in count:
+        if iz % 30 == 0:
+            build_progress.emit(.05 + .35 * iz / float(count))
             await get_tree().process_frame
             if cancelled or not is_inside_tree(): return
-        for ix in 200:
-            var x := ix * STEP - SIZE * 0.5
-            var z := iz * STEP - SIZE * 0.5
-            for offset in [Vector2(0,0), Vector2(1,0), Vector2(0,1), Vector2(1,0), Vector2(1,1), Vector2(0,1)]:
-                var px: float = x + offset.x * STEP
-                var pz: float = z + offset.y * STEP
-                surface.set_uv(Vector2(px, pz) / 20.0)
-                surface.add_vertex(Vector3(px, height_at(px,pz) - 0.015, pz))
-    surface.generate_normals()
-    surface.generate_tangents()
-    surface.index()
-    var mesh := surface.commit()
+        var z: float = iz * STEP - half
+        for ix in count:
+            var x: float = ix * STEP - half
+            var h: float = height_at(x, z)
+            var index: int = iz * count + ix
+            heights[index] = h
+            vertices[index] = Vector3(x, h - 0.015, z)
+            uvs[index] = Vector2(x, z) / 20.0
+    var normals := PackedVector3Array(); normals.resize(count * count)
+    for iz in count:
+        if iz % 60 == 0:
+            build_progress.emit(.4 + .12 * iz / float(count))
+            await get_tree().process_frame
+            if cancelled or not is_inside_tree(): return
+        var up: int = maxi(iz - 1, 0); var down: int = mini(iz + 1, CELLS)
+        for ix in count:
+            var left: int = maxi(ix - 1, 0); var right: int = mini(ix + 1, CELLS)
+            var dx: float = (heights[iz * count + right] - heights[iz * count + left]) / (STEP * (right - left))
+            var dz: float = (heights[down * count + ix] - heights[up * count + ix]) / (STEP * (down - up))
+            normals[iz * count + ix] = Vector3(-dx, 1.0, -dz).normalized()
+    var indices := PackedInt32Array(); indices.resize(CELLS * CELLS * 6)
+    var cursor: int = 0
+    for iz in CELLS:
+        for ix in CELLS:
+            var a: int = iz * count + ix
+            indices[cursor] = a; indices[cursor + 1] = a + 1; indices[cursor + 2] = a + count
+            indices[cursor + 3] = a + 1; indices[cursor + 4] = a + count + 1; indices[cursor + 5] = a + count
+            cursor += 6
+    var arrays: Array = []; arrays.resize(Mesh.ARRAY_MAX)
+    arrays[Mesh.ARRAY_VERTEX] = vertices; arrays[Mesh.ARRAY_NORMAL] = normals
+    arrays[Mesh.ARRAY_TEX_UV] = uvs; arrays[Mesh.ARRAY_INDEX] = indices
+    var mesh := ArrayMesh.new()
+    mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+    build_progress.emit(.56)
+    await get_tree().process_frame
+    if cancelled or not is_inside_tree(): return
     var visual := MeshInstance3D.new()
     visual.mesh = mesh
     var material := GameArt.ground_material()
@@ -184,26 +229,29 @@ func _trees() -> void:
     var rng := RandomNumberGenerator.new()
     rng.seed = SEED
     var chunks: Dictionary = {}
-    for index in 6500:
-        if index%650==0:
-            build_progress.emit(.62+.06*index/6500.0)
+    var span: float = SIZE * 0.5 - 12.0
+    for index in 24000:
+        if index%2000==0:
+            build_progress.emit(.62+.06*index/24000.0)
             await get_tree().process_frame
             if cancelled or not is_inside_tree(): return
-        var x := rng.randf_range(-588,588)
-        var z := rng.randf_range(-588,588)
+        var x := rng.randf_range(-span,span)
+        var z := rng.randf_range(-span,span)
         if Vector2(x,z).length() < 42 or absf(x - sin(z * 0.012) * 28.0 * smoothstep(35,80,absf(z))) < 5.5:
             continue
         if in_lake(x,z) or slope_at(x,z) > 48.0:
             continue
         var point := Vector3(x,height_at(x,z),z)
-        trees.append(point)
+        _add_tree(point)
         var key := Vector3i(floori(x/64),floori(z/64),1 if rng.randf()<.35 else 0)
         if not chunks.has(key): chunks[key] = []
         chunks[key].append(Transform3D(Basis(Vector3.UP,rng.randf()*TAU).scaled(Vector3.ONE*rng.randf_range(.8,1.6)),point))
     var chunk_index:=0
     for key in chunks:
         chunk_index+=1
-        if chunk_index%24==0:
+        # A frame per batch keeps the loading bar moving without spending a
+        # rendered frame on every few dozen of the ~2 800 chunks.
+        if chunk_index%96==0:
             build_progress.emit(.68+.17*chunk_index/float(chunks.size()))
             await get_tree().process_frame
             if cancelled or not is_inside_tree(): return
@@ -211,6 +259,26 @@ func _trees() -> void:
         _multimesh(GameArt.nature_mesh(id),chunks[key],130,0,true)
         _multimesh(GameArt.impostor(id),chunks[key],430,125,false)
     await _undergrowth(rng)
+
+func _add_tree(point: Vector3) -> void:
+    var cell := Vector2i(floori(point.x / TREE_CELL), floori(point.z / TREE_CELL))
+    if not tree_cells.has(cell): tree_cells[cell] = PackedInt32Array()
+    tree_cells[cell].append(trees.size())
+    trees.append(point)
+
+## Indices of the trees within `radius` of `point` (bucketed, never a full scan).
+func trees_near(point: Vector3, radius: float) -> PackedInt32Array:
+    var found := PackedInt32Array()
+    var reach: int = ceili(radius / TREE_CELL)
+    var origin := Vector2i(floori(point.x / TREE_CELL), floori(point.z / TREE_CELL))
+    for cx in range(origin.x - reach, origin.x + reach + 1):
+        for cz in range(origin.y - reach, origin.y + reach + 1):
+            var cell := Vector2i(cx, cz)
+            if not tree_cells.has(cell): continue
+            for index in tree_cells[cell]:
+                var tree: Vector3 = trees[index]
+                if Vector2(tree.x - point.x, tree.z - point.z).length_squared() < radius * radius: found.append(index)
+    return found
 
 func _multimesh(mesh: Mesh,transforms: Array,end: float,begin: float=0,shadows: bool=false) -> MultiMeshInstance3D:
     var mm:=MultiMesh.new();mm.transform_format=MultiMesh.TRANSFORM_3D;mm.mesh=mesh
@@ -297,11 +365,8 @@ func _process(delta: float) -> void:
         if NetworkSession.is_host() or p.local_player: observers.append(p.global_position)
     if is_instance_valid(NetworkSession.jeep): observers.append(NetworkSession.jeep.global_position)
     var wanted: Dictionary = {}
-    for i in trees.size():
-        for observer in observers:
-            if trees[i].distance_squared_to(observer) < 75*75:
-                wanted[i] = true
-                break
+    for observer in observers:
+        for i in trees_near(observer, 75.0): wanted[i] = true
     for i in colliders.keys():
         if not wanted.has(i):
             colliders[i].queue_free()

@@ -92,9 +92,9 @@ func _ready() -> void:
 func configure_surface(point: Vector3,kind: StringName) -> void:
     _work_point=point+Vector3(-.075,.035,.045)
     _shell=kind==&"turtle"
-    var colors: Dictionary={&"rabbit":Color("86705c"),&"deer":Color("b27b4e"),&"boar":Color("5a4940"),&"wolf":Color("737977"),&"bear":Color("493d32"),&"frog":Color("63794b"),&"turtle":Color("635a36"),&"snake":Color("7a7953"),&"crocodile":Color("666747"),&"ancient_crocodile":Color("464f3a")}
+    var colors: Dictionary={&"rabbit":Color("86705c"),&"deer":Color("b27b4e"),&"boar":Color("5a4940"),&"wolf":Color("737977"),&"bear":Color("493d32"),&"frog":Color("63794b"),&"turtle":Color("635a36"),&"snake":Color("7a7953"),&"crocodile":Color("666747"),&"ancient_crocodile":Color("464f3a"),&"ancient_bear":Color("4f4338"),&"albino_crocodile":Color("e9d6cd")}
     _fur.set_shader_parameter("coat_color",colors.get(kind,Color("86705c")))
-    _fur.set_shader_parameter("scales",kind in [&"frog",&"turtle",&"snake",&"crocodile",&"ancient_crocodile"])
+    _fur.set_shader_parameter("scales",kind in [&"frog",&"turtle",&"snake",&"crocodile",&"ancient_crocodile",&"albino_crocodile"])
     _fur.set_shader_parameter("shell",_shell)
     _surface.position=_work_point;_ribbon.position=_work_point;_pose(0)
 

@@ -4,8 +4,13 @@ extends LobbyInteractable
 
 func _ready() -> void:
     interaction_kind="harvest"
-    interaction_range=2.8
+    var animal:=get_parent() as WildlifeAnimal
+    interaction_range=reach(animal.definition) if is_instance_valid(animal) else 2.8
     super._ready()
+
+## Big bodies (the bosses) can be worked from further away.
+static func reach(definition: AnimalDefinition) -> float:
+    return 2.8+maxf(0.0,definition.length*.35-.6)
 
 func can_interact() -> bool:
     var animal:=get_parent() as WildlifeAnimal

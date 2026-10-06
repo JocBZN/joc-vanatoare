@@ -221,11 +221,13 @@ func host_test() -> void:
     var driver:=0
     for peer in session.players:
         if session.players[peer].player_name=="client1": driver=peer
-    check(session.jeep.enter(driver),"remote client occupies driver seat")
-    check(session.jeep.enter(1),"host occupies passenger seat")
+    check(session.jeep.enter(driver),"remote client occupies the driver's seat")
+    check(not session.jeep.enter(1),"the wheel is the only seat")
+    session._action(1,"climb","board")
+    check(session.players[1].riding and session.jeep.carries(session.players[1].global_position),"host climbs aboard on foot")
     await frames(15)
     write_phase("enter")
-    check(await wait_until(func(): return not session.jeep.occupants.has(0)),"three clients enter passenger seats")
+    check(await wait_until(func(): return riders()==3),"two clients climb aboard on foot through the host")
     var before: Vector3=session.jeep.global_position
     write_phase("drive")
     check(await wait_until(func(): return Vector2(session.jeep.global_position.x-before.x,session.jeep.global_position.z-before.z).length()>1,5),"authoritative movement from remote driver input")
@@ -233,14 +235,15 @@ func host_test() -> void:
     check(await wait_until(func():
         for hunter in session.players.values():
             if hunter.player_name=="client2" and hunter.combat.shots_fired>0: return true
-        return false,8),"host accepts a gunner's shot from the moving truck")
+        return false,8),"host accepts a rider's shot from the moving truck")
+    check(riders()==3 and session.jeep.occupants[0]==driver,"driver at the wheel, three riders still aboard while it moves")
     await frames(120)
     session.jeep.linear_velocity=Vector3.ZERO;session.jeep.angular_velocity=Vector3.ZERO
     session.players[1].control_enabled=false
-    session.jeep.exit_seat(1)
+    session._action(1,"climb","ladder_down");session._action(1,"climb","alight")
     await frames(10)
     write_phase("exit")
-    check(await wait_until(func(): return session.jeep.occupants==[0,0,0,0]),"passengers exit via server commands")
+    check(await wait_until(func(): return session.jeep.occupants==[0] and riders()==0),"driver and riders get off via server commands")
     var peer: int=session.players.keys()[1]
     var p=session.players[peer]
     # Isolate muzzle validation from biome habitat relocation and boardwalk cover.
@@ -294,6 +297,13 @@ func host_test() -> void:
     await frames(25)
     write_phase("done")
     await frames(35)
+## Hunters standing aboard the truck on foot (host view).
+func riders() -> int:
+    var count: int=0
+    for hunter in session.players.values():
+        if hunter.seat_index<0 and hunter.riding and session.jeep.carries(hunter.global_position): count+=1
+    return count
+
 func client_test() -> void:
     check(await wait_until(func(): return phase()=="join",20),"host ready")
     check(session.join_game(role,"127.0.0.1",24680)==OK,"create ENet client")
@@ -477,18 +487,27 @@ func client_test() -> void:
     if role=="client1": session.request_action("sell_trunk")
     check(await wait_until(func(): return phase()=="enter"),"passenger phase")
     check(session.local_hunter().inventory.coins==(30 if role=="client1" else 0),"private wallet sale ownership")
-    session.request_action("enter")
-    check(await wait_until(func(): return session.local_hunter().seat_index>=0),"server assigns seat")
+    if role!="client1": session.request_action("climb","board")
+    check(await wait_until(func(): return session.local_hunter().seat_index==0 or session.local_hunter().riding),"server puts me at the wheel or aboard")
     var drive_start: Vector3=session.jeep.global_position
     check(await wait_until(func(): return phase()=="drive"),"remote driving phase")
     if role=="client2":
-        # A terrace gunner fires through ENet while client1 drives the truck.
+        # A rider fires through ENet while client1 drives the truck.
         var gunner=session.local_hunter()
-        check(gunner.seat_index>0,"client gunner stands at a terrace post")
-        check(await wait_until(func(): return absf(session.jeep.speed)>1.0,6),"truck rolls under the gunner")
+        check(gunner.seat_index<0 and gunner.riding,"client rider stands on the terrace, not in a seat")
+        check(await wait_until(func(): return absf(session.jeep.speed)>1.0,6),"truck rolls under the rider")
         var rounds: int=gunner.inventory.ammunition()
         session.request_shot(gunner.global_position+Vector3.UP*1.6,Vector3(0,-.25,1).normalized())
-        check(await wait_until(func(): return gunner.inventory.ammunition()<rounds,5),"remote gunner fires from the moving truck's terrace")
+        check(await wait_until(func(): return gunner.inventory.ammunition()<rounds,5),"remote rider fires from the moving truck's terrace")
+        var deck: Vector3=session.jeep.to_local(gunner.global_position)
+        check(session.jeep.carries(gunner.global_position) and absf(deck.y-7.8)<.6,"on its own screen the rider stays on the moving deck (%s)" % str(deck))
+    if role=="client3":
+        check(await wait_until(func(): return absf(session.jeep.speed)>1.0,6),"truck rolls under the other riders")
+        await frames(20)
+        var aboard: int=0
+        for hunter in session.players.values():
+            if hunter.seat_index<0 and session.jeep.carries(hunter.global_position): aboard+=1
+        check(aboard==3,"every rider replica rides the moving truck on this screen (%d)" % aboard)
     if role=="client1":
         # Headless DisplayServer can't capture a mouse. Send normal validated input RPCs.
         session.set_physics_process(false)
@@ -503,7 +522,7 @@ func client_test() -> void:
             await frames(1)
         session.set_physics_process(true)
     check(await wait_until(func(): return phase()=="seats"),"drive phase")
-    check(not session.jeep.occupants.has(0),"four shared seats synchronized")
+    check(session.jeep.occupants[0]!=0,"the driver's seat is synchronized")
     check(await wait_until(func(): return Vector2(session.jeep.global_position.x-drive_start.x,session.jeep.global_position.z-drive_start.z).length()>1,3),"driver movement visible on clients")
     if role=="client1":
         session.set_physics_process(false)
@@ -513,8 +532,12 @@ func client_test() -> void:
             await frames(1)
         session.set_physics_process(true)
     check(await wait_until(func(): return phase()=="exit"),"exit phase")
-    session.request_action("exit")
-    check(await wait_until(func(): return session.local_hunter().seat_index<0),"server exits own seat")
+    if role=="client1": session.request_action("exit")
+    else:
+        session.request_action("climb","ladder_down")
+        await frames(10)
+        session.request_action("climb","alight")
+    check(await wait_until(func(): return session.local_hunter().seat_index<0 and not session.jeep.carries(session.local_hunter().global_position)),"server lets me off the truck")
     if role=="client3":
         check(await wait_until(func(): return phase()=="disconnect3"),"reconnect phase")
         session.leave_game()

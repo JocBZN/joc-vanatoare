@@ -52,14 +52,14 @@ func run() -> void:
     check(map.mud_factor(Vector3.ZERO)==0 and map.mud_factor(Vector3(50,2,50))==0,"dry landing and raised decks preserve grip")
     check(scene.world_router.active.has_node("AbandonedHut") and scene.world_router.active.has_node("OldWatchtower") and scene.world_router.active.has_node("CrocodileLair"),"three distinct exploration landmarks exist")
     check(scene.world_router.active.find_children("Boardwalk*","Node3D",true,false).size()==3,"three solid jeep-width boardwalks link the banks")
-    check(session.animals.size()==24,"host populates initial Swamp wildlife")
+    check(session.animals.size()==25 and session.living_bosses().size()==1,"host populates initial Swamp wildlife and wakes one boss")
     var twin=load("res://world/swamp/swamp_map.gd").new();scene.add_child(twin)
     twin.set_seed(map.current_seed)
     check(is_equal_approx(twin.height_at(135,-216),map.height_at(135,-216)),"same seed produces identical Swamp elevation on another peer")
     twin.queue_free()
     var kinds: Dictionary={}
     for a in session.animals.values(): kinds[a.definition.id]=true;a.set_physics_process(false)
-    check(kinds.size()==5,"all five species including rare lair crocodile exist")
+    check(kinds.size()==6 and kinds.has(&"albino_crocodile"),"all five species including rare lair crocodile exist, plus the albino boss")
     var guard_id: int=0
     for a in session.animals.values():
         if a.get_meta("lair_guard",false): guard_id=a.animal_id
@@ -152,7 +152,7 @@ func run() -> void:
     var fire=scene.world_router.active.get_node("Camp/GiantCampfire/Expedition")
     hunter.global_position=fire.global_position+Vector3(0,.5,3.4);session.request_action("start_hunt","forest");await loaded()
     check(session.phase=="hunt" and session.world_id=="forest","Forest still loads after a Swamp expedition")
-    check(session.animals.values().all(func(a) -> bool: return a.definition.id in [&"rabbit",&"deer",&"boar",&"wolf",&"bear"]),"Forest spawns only its own fauna")
+    check(session.animals.values().all(func(a) -> bool: return a.definition.id in [&"rabbit",&"deer",&"boar",&"wolf",&"bear",&"ancient_bear"]),"Forest spawns only its own fauna")
     check(hunter.inventory.coins==wallet,"wallet persists across the two biome expeditions")
     print("RESULT ",checks," checks, ",failures," failures")
     scene.queue_free();await frames(8);quit(1 if failures else 0)

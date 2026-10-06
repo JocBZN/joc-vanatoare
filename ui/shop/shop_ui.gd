@@ -9,7 +9,6 @@ var is_open: bool = false
 var _root: Control
 var _title: Label
 var _subtitle: Label
-var _quote: Label
 var _summary: Label
 var _rows: VBoxContainer
 var _message: Label
@@ -42,11 +41,9 @@ func _input(event: InputEvent) -> void:
         close()
         get_viewport().set_input_as_handled()
 
-func open_for(shop_kind: String, source: HunterInventory, title: String, quote: String="") -> void:
+func open_for(shop_kind: String, source: HunterInventory, title: String) -> void:
     inventory = source
     kind = shop_kind
-    _quote.text = quote
-    _quote.visible = quote != ""
     _selected_index=0
     _preview_path=""
     is_open = true
@@ -100,10 +97,6 @@ func _build_layout() -> void:
     _close_button = _button(tr("CLOSE"))
     header.add_child(_close_button)
     _close_button.pressed.connect(close)
-    _quote = _label("", 16, Color("ffd88a"))
-    _quote.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    _quote.hide()
-    column.add_child(_quote)
     _subtitle = _label("", 15, Color("b4bfae"))
     column.add_child(_subtitle)
     _summary = _label("", 17, Color("eebc62"))

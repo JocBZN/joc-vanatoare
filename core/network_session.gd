@@ -24,6 +24,9 @@ var next_animal: int = 1
 var next_loot: int = 1
 var tick: float = 0.0
 var spawn_clock: float = 0.0
+## Bosses: at most MAX_BOSSES alive per map, the next one after `boss_clock`.
+const MAX_BOSSES: int = 2
+var boss_clock: float = 0.0
 var rng := RandomNumberGenerator.new()
 var pending_peers: Dictionary = {}
 var cooldowns: Dictionary = {}
@@ -61,8 +64,10 @@ var local_clean_state: Dictionary={}
 var clean_token: int=0
 var clean_sequence: int=0
 var clean_received_sequence: int=-1
-## Truck seats remembered across a map change (host only).
-var travel_seats: Array=[0,0,0,0]
+## Who rode the truck out of the last map (host only): the driver, and every
+## hunter aboard on foot with their truck-local position.
+var travel_driver: int=0
+var travel_riders: Dictionary={}
 
 func _ready() -> void:
     rng.seed=10337
@@ -142,7 +147,7 @@ func leave_game() -> void:
         profiles.clear();health_profiles.clear();revive_jobs.clear()
         trunk.clear()
         trunk_view.clear()
-        jeep.occupants=[0,0,0,0]
+        jeep.occupants=[0]
         world_id="lobby";world_epoch=0;local_loaded_epoch=0
         loading_members.clear();ready_players.clear()
         world.restore_lobby()
@@ -292,6 +297,7 @@ func _physics_process(delta: float) -> void:
             if spawn_clock<=0:
                 spawn_clock=8
                 _spawn_near_player()
+            _tick_bosses(delta)
         if mode=="host" and tick>=.05:
             snapshot_sequence+=1
             var state:=_snapshot()
@@ -500,7 +506,9 @@ func _action(peer: int, kind: String, value: String) -> void:
                     if mode=="host": _broadcast(&"_loot_removed",[id,world_epoch])
         "test_loot":
             if _at_stall(p,"test_loot"): inv.collect(EquipmentCatalog.TEST_LOOT)
-        "enter": jeep.enter(peer,value=="terrace")
+        "enter": jeep.enter(peer)
+        "climb":
+            if value in ["board","alight","ladder_up","ladder_down"] and _at_stall(p,value): jeep.climb(peer,value)
         "exit": jeep.exit_seat(peer)
         "deposit", "withdraw":
             if _at_stall(p,"trunk"): _move_cargo(peer,kind)
@@ -557,11 +565,15 @@ func _prepare_world(id: String,epoch: int,members: Array,map_seed: int=0) -> voi
     revive_jobs.clear()
     for hunter in players.values(): hunter.revive_progress=0;hunter.revive_helper=0
     forest=null
-    if is_host(): travel_seats=jeep.occupants.duplicate()
+    if is_host():
+        travel_driver=jeep.occupants[0];travel_riders.clear()
+        for peer in players:
+            var rider=players[peer]
+            if rider.seat_index<0 and rider.world_ready and rider.riding and jeep.carries(rider.global_position): travel_riders[peer]=rider.ride_local()
     for p in players.values():
         p.world_ready=false;p.control_enabled=false;p.velocity=Vector3.ZERO
         p.set_seat(-1)
-    jeep.occupants=[0,0,0,0]
+    jeep.occupants=[0]
     jeep.set_simulation(false)
     _set_phase("loading")
     world.prepare_world(id,epoch,map_seed)
@@ -618,13 +630,16 @@ func _check_loaded() -> void:
         index+=1
     jeep.reset_state(world.world_router.jeep_spawn())
     jeep.set_simulation(true)
-    # Whoever rode the truck out of the last map is still aboard when it arrives.
-    for seat in travel_seats.size():
-        var rider: int=int(travel_seats[seat])
-        if rider!=0 and players.has(rider) and players[rider].health>0 and jeep.occupants[seat]==0:
-            jeep.occupants[seat]=rider;players[rider].set_seat(seat)
-            players[rider].global_position=jeep.to_global(jeep.SEATS[seat])
-    travel_seats=[0,0,0,0]
+    # Whoever rode the truck out of the last map is still aboard when it arrives:
+    # the driver at the wheel, riders where they stood on the deck or porch.
+    if travel_driver!=0 and players.has(travel_driver) and players[travel_driver].health>0:
+        jeep.occupants[0]=travel_driver;players[travel_driver].set_seat(0)
+        players[travel_driver].global_position=jeep.to_global(jeep.SEATS[0])
+    for rider in travel_riders:
+        if players.has(rider) and players[rider].seat_index<0:
+            players[rider].place_aboard(jeep.global_transform*(Vector3(travel_riders[rider])+Vector3.UP*.05))
+            players[rider].target_position=players[rider].global_position
+    travel_driver=0;travel_riders.clear()
     cooldowns.clear();last_inputs.clear()
     _set_phase("hunt" if WorldCatalog.is_hunt(world_id) else "lobby")
     if WorldCatalog.is_hunt(world_id):
@@ -819,21 +834,72 @@ func _populate() -> void:
         var angle:=rng.randf()*TAU
         var distance:=rng.randf_range(45,170)
         spawn_animal(AnimalCatalog.roll(rng,world_id).id,Vector3(sin(angle)*distance,0,cos(angle)*distance))
+    # The first boss wakes somewhere far off at once; a second may follow later.
+    spawn_boss()
+    boss_clock=rng.randf_range(90,150)
+
+func living_bosses() -> Array:
+    var result: Array=[]
+    for animal in animals.values():
+        if animal.definition.boss and not animal.dead: result.append(animal)
+    return result
+
+func _tick_bosses(delta: float) -> void:
+    boss_clock-=delta
+    if boss_clock>0: return
+    boss_clock=rng.randf_range(150,260)
+    if living_bosses().size()<MAX_BOSSES: spawn_boss()
+
+## Host: a boss appears at a random spot on the map, far from every hunter and
+## from the truck, and everyone hears about it.
+func spawn_boss():
+    if not is_host() or phase!="hunt" or not is_instance_valid(forest) or living_bosses().size()>=MAX_BOSSES: return null
+    var entry: AnimalDefinition=AnimalCatalog.boss_for(world_id)
+    var span: float=ForestMap.LIMIT-60
+    for attempt in 40:
+        var point:=Vector3(rng.randf_range(-span,span),0,rng.randf_range(-span,span))
+        if Vector2(point.x,point.z).length()<260: continue
+        var clear: bool=not is_instance_valid(jeep) or jeep.global_position.distance_to(point)>=260
+        for hunter in players.values():
+            if hunter.global_position.distance_to(point)<260: clear=false
+        for other in living_bosses():
+            if other.global_position.distance_to(point)<400: clear=false
+        if not clear: continue
+        if entry.aquatic!=(forest.water_depth(point)>.3): continue
+        var boss=spawn_animal(entry.id,point)
+        if boss:
+            for peer in players: tell(peer,"BOSS_SPAWNED",{"item_key":entry.display_name})
+        return boss
+    return null
+
+## Host: a boss went down. Its trophies scatter around the body and the next
+## boss is a few minutes away.
+func boss_defeated(boss) -> void:
+    if not is_host() or not is_instance_valid(boss): return
+    var trophies: Array=boss.definition.trophies
+    for index in trophies.size():
+        var angle: float=TAU*index/float(maxi(1,trophies.size()))+rng.randf_range(-.2,.2)
+        var reach: float=boss.definition.width*.5+1.2+rng.randf_range(0,1.2)
+        var point: Vector3=boss.global_position+Vector3(sin(angle),0,cos(angle))*reach
+        point.y=forest.height_at(point.x,point.z)+.05 if is_instance_valid(forest) else boss.global_position.y
+        spawn_loot(trophies[index],point)
+    for peer in players: tell(peer,"BOSS_DOWN",{"item_key":boss.definition.display_name,"n":trophies.size()})
+    boss_clock=maxf(boss_clock,rng.randf_range(150,240))
 
 func _spawn_near_player() -> void:
     if players.is_empty(): return
     var p=players.values()[rng.randi_range(0,players.size()-1)]
     var angle:=rng.randf()*TAU
     var point: Vector3=p.global_position+Vector3(sin(angle),0,cos(angle))*rng.randf_range(55,145)
-    point.x=clampf(point.x,-580,580)
-    point.z=clampf(point.z,-580,580)
+    point.x=clampf(point.x,-ForestMap.LIMIT+10,ForestMap.LIMIT-10)
+    point.z=clampf(point.z,-ForestMap.LIMIT+10,ForestMap.LIMIT-10)
     if Vector2(point.x,point.z).length()<40: point.z-=65
     for id in animals.keys():
         var a=animals[id]
         var nearby:=false
         for hunter in players.values():
             if a.global_position.distance_to(hunter.global_position)<280: nearby=true;break
-        if not nearby and not a.dead and not a.get_meta("lair_guard",false): remove_animal(id)
+        if not nearby and not a.dead and not a.get_meta("lair_guard",false) and not a.definition.boss: remove_animal(id)
     var living: int=0
     for animal in animals.values():
         if not animal.dead: living+=1
@@ -969,7 +1035,7 @@ func _can_harvest(peer: int, animal) -> bool:
     if not animal.dead or animal.harvested or (animal.harvest_owner!=0 and animal.harvest_owner!=peer): return false
     if not hunter.world_ready or hunter.health<=0 or hunter.seat_index>=0: return false
     var point: Vector3=_harvest_point(animal)
-    if hunter.global_position.distance_to(point)>2.8: return false
+    if hunter.global_position.distance_to(point)>AnimalHarvestInteractable.reach(animal.definition): return false
     var ray:=PhysicsRayQueryParameters3D.create(hunter.global_position+Vector3.UP*.9,point+Vector3.UP*.1,1|16,[hunter.get_rid(),animal.get_rid()])
     return hunter.get_world_3d().direct_space_state.intersect_ray(ray).is_empty()
 
