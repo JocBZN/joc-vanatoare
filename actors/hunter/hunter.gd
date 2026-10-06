@@ -50,6 +50,8 @@ var _stride_time: float = 0.0
 func _ready() -> void:
     load("res://art/hunter_details.gd").apply(visual)
     camera_rig.spring_arm.add_excluded_object(get_rid())
+    # The camera also stops at the truck's walls when walking through the cottage.
+    camera_rig.spring_arm.collision_mask=1|16
     spawn_position = global_position
     target_position = global_position
     camera_rig.enabled=local_player
@@ -106,10 +108,18 @@ func _physics_process(delta: float) -> void:
         harvest_input_guard=false
     if local_player and control_enabled and not busy() and Input.is_action_just_pressed("reset_player"): NetworkSession.request_action("reset")
     if local_player and control_enabled and not busy() and not harvest_input_guard and Input.is_action_just_pressed("jump"): jump_pending=true
-    if seat_index>=0:
+    if seat_index==0:
         _update_visual(delta,0)
         $Visual/LeftLeg.rotation.x=-1.2
         $Visual/RightLeg.rotation.x=-1.2
+        return
+    if seat_index>0:
+        # A terrace gunner stands at a post and turns with the aim; the truck carries him.
+        var yaw: float=camera_rig.rotation.y if local_player else float(command.get("yaw",visual.rotation.y)) if NetworkSession.is_host() else target_yaw
+        if not local_player and NetworkSession.is_host():
+            camera_rig.aiming=bool(command.get("aim",false));camera_rig.rotation.x=float(command.get("pitch",0))
+        visual.rotation=Vector3(0,lerp_angle(visual.rotation.y,yaw,1-exp(-turn_speed*delta)),0)
+        _update_visual(delta,0)
         return
     _life_pose()
     if health<=0:
@@ -202,8 +212,13 @@ func set_seat(index: int) -> void:
     if index<0 and health>0:
         visual.rotation.x=0
         visual.rotation.z=0
-    camera_rig.enabled=local_player and index<0 and not busy()
-    if local_player and was_seated and index<0 and not NetworkSession.world.menu.is_open: camera_rig.camera.current=true
+    camera_rig.enabled=local_player and index!=0 and not busy()
+    var truck=NetworkSession.jeep
+    if is_instance_valid(truck):
+        if index>0: camera_rig.spring_arm.add_excluded_object(truck.get_rid())
+        else: camera_rig.spring_arm.remove_excluded_object(truck.get_rid())
+    var menu_open: bool=NetworkSession.world!=null and NetworkSession.world.menu.is_open
+    if local_player and index!=0 and (was_seated or index>0) and not menu_open: camera_rig.camera.current=true
 
 func take_damage(amount: int) -> void:
     if not NetworkSession.is_host() or health<=0: return

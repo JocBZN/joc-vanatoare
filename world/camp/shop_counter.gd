@@ -3,7 +3,7 @@ extends LobbyInteractable
 ## A counter aboard the Mammoth base, staffed by a Shopkeeper. The host still
 ## validates every purchase through `_at_stall`; the keeper is only the face.
 
-var keeper: Shopkeeper
+var keeper: Node3D
 var slogan_key: String=""
 
 func localized_name() -> String:

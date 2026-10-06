@@ -49,7 +49,7 @@ func verify() -> void:
     p.inventory.items.clear()
     p.inventory.coins=0
     p.inventory.collect(load("res://data/loot/wolf_pelt.tres"))
-    p.global_position=session.jeep.to_global(Vector3(0,0,2.55))
+    p.global_position=trunk_point()
     session.request_action("deposit")
     check(p.inventory.items.is_empty() and session.trunk.size()==1,"deposit bag into trunk")
     check(session.trunk[0].owner==session.identities[1],"trunk keeps loot owner")
@@ -76,8 +76,8 @@ func verify() -> void:
     var seller
     for stall in get_nodes_in_group("lobby_interactables"):
         if stall.interaction_kind=="sell": seller=stall
+    # The buyer works a window on the truck itself, so the cargo is always at hand.
     p.global_position=seller.interaction_position()
-    session.jeep.reset_state(Transform3D(Basis.IDENTITY,seller.global_position+Vector3(3,.6,0)))
     session.request_action("sell_trunk")
     check(p.inventory.coins==110,"trunk sale credits only owner's value")
     check(session.trunk.size()==1 and session.trunk[0].owner==session.identities[2],"other cargo untouched by sale")
@@ -108,3 +108,8 @@ func start_forest() -> void:
         var fire=session.world.world_router.active.get_node("Camp/GiantCampfire/Expedition")
         session.local_hunter().global_position=fire.global_position+Vector3(0,.5,3.4)
     session.request_action("start_hunt","forest")
+
+func trunk_point() -> Vector3:
+    for stall in get_nodes_in_group("lobby_interactables"):
+        if stall.interaction_kind=="trunk": return stall.interaction_position()+Vector3.UP*.1
+    return Vector3.ZERO

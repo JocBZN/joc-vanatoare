@@ -1,10 +1,14 @@
 extends LobbyInteractable
-## The camp hide cleaner: a wooden frame holding a big tumbling drum, a feed
-## chute and a lantern. Built procedurally in the camp's toon style; it faces
-## the campfire on its own. The drum spins faster while someone is using it.
+## The hide cleaner: a wooden frame holding a big tumbling drum, a feed chute
+## and a lantern, built procedurally in the camp's toon style. Standing alone it
+## faces the campfire; mounted in the Wandering Oak's workshop it keeps the
+## orientation the truck gives it and lets the truck carry its collision.
+## The drum spins faster while someone is using it.
 
 const FIRE:=Vector3(0,0,-1.8)
 
+## Set by the truck: no own StaticBody (it would collide with the truck body).
+var mounted: bool=false
 var _drum: Node3D
 var _spin: float=.6
 
@@ -12,14 +16,15 @@ func _ready() -> void:
     interaction_kind="cleaner"
     interaction_range=3.0
     var target:=Vector3(FIRE.x,global_position.y,FIRE.z)
-    if global_position.distance_to(target)>.5: look_at(target,Vector3.UP)
+    if not mounted and global_position.distance_to(target)>.5: look_at(target,Vector3.UP)
     var wood:=_material(Color("7a5434"),.9)
     var dark_wood:=_material(Color("4f3622"),.92)
     var steel:=_material(Color("7f8b88"),.45,.6)
     var copper:=_material(Color("b0703c"),.5,.4)
-    var body:=StaticBody3D.new();body.name="Body";add_child(body)
-    var shape:=CollisionShape3D.new();var box:=BoxShape3D.new();box.size=Vector3(2.6,1.9,1.6)
-    shape.shape=box;shape.position=Vector3(0,.95,0);body.add_child(shape)
+    if not mounted:
+        var body:=StaticBody3D.new();body.name="Body";add_child(body)
+        var shape:=CollisionShape3D.new();var box:=BoxShape3D.new();box.size=Vector3(2.6,1.9,1.6)
+        shape.shape=box;shape.position=Vector3(0,.95,0);body.add_child(shape)
     # Frame: four posts, two rails and a plank floor.
     for x in [-1.2,1.2]:
         for z in [-.65,.65]: _box(Vector3(.16,1.9,.16),Vector3(x,.95,z),wood)

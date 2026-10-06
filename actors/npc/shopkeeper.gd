@@ -1,16 +1,24 @@
 class_name Shopkeeper
 extends Node3D
-## A low-poly crew member of the Mammoth base, built from primitives like the
-## rest of the camp. Purely cosmetic and local: every peer sees the keeper turn
-## to its own hunter and shout lines at it; nothing here touches the network.
+## A low-poly crew member of the Wandering Oak truck, built from primitives
+## like the rest of the camp. Purely cosmetic and local: every peer sees the
+## keeper turn to its own hunter and shout lines at it; nothing here touches
+## the network.
 
-const TALK_RANGE: float=9.0
+const TALK_RANGE: float=6.5
+const Crew:=preload("res://data/npc_catalog.gd")
+const Toon:=preload("res://world/camp/toon_builder.gd")
 const BUBBLE_SECONDS: float=4.8
-static var _materials: Dictionary={}
+## Keepers sit close together on the truck; only one starts talking at a time.
+static var _quiet_until: float=0.0
 
 @export var npc_id: String="gica"
-## "stand" behind a counter, or "lounge" stretched out on a sun bed.
+## "stand" behind a counter, "sit" in a rocking chair, or "lounge" on a sun bed.
 @export var pose: String="stand"
+## Where the name tag and speech bubble float, in keeper space; INF = above the head.
+## Keepers inside the hollow log push the bubble out through their window.
+@export var tag_offset: Vector3=Vector3.INF
+@export var bubble_offset: Vector3=Vector3.INF
 var line_index: int=-1
 var talk_count: int=0
 var _rng:=RandomNumberGenerator.new()
@@ -30,14 +38,15 @@ func _ready() -> void:
     _rng.seed=hash(npc_id)^int(Time.get_ticks_usec())
     _clock=_rng.randf()*TAU
     _rest_yaw=rotation.y
-    _build(NpcCatalog.entry(npc_id))
+    _build(Crew.entry(npc_id))
     LocaleSettings.changed.connect(_localize)
     _localize()
 
 ## Shouts a line; -1 picks a random one that differs from the last.
 func say(index: int=-1) -> String:
-    if NpcCatalog.line_count(npc_id)==0: return ""
-    line_index=index if index>=0 else NpcCatalog.random_line(npc_id,_rng,line_index)
+    if Crew.line_count(npc_id)==0: return ""
+    _quiet_until=Time.get_ticks_msec()/1000.0+BUBBLE_SECONDS+.4
+    line_index=index if index>=0 else Crew.random_line(npc_id,_rng,line_index)
     talk_count+=1
     _bubble_time=BUBBLE_SECONDS
     _cooldown=_rng.randf_range(8.0,13.0)
@@ -47,10 +56,10 @@ func say(index: int=-1) -> String:
     return _bubble.text
 
 func current_line() -> String:
-    return tr(NpcCatalog.line_key(npc_id,line_index)) if line_index>=0 else ""
+    return tr(Crew.line_key(npc_id,line_index)) if line_index>=0 else ""
 
 func display_name() -> String:
-    return tr(NpcCatalog.name_key(npc_id))
+    return tr(Crew.name_key(npc_id))
 
 func is_talking() -> bool:
     return _bubble_time>0.0
@@ -64,17 +73,21 @@ func _process(delta: float) -> void:
     var hunter=NetworkSession.local_hunter()
     var distance: float=INF
     if is_instance_valid(hunter) and hunter.is_inside_tree(): distance=hunter.global_position.distance_to(global_position)
+    var quiet: bool=Time.get_ticks_msec()/1000.0<_quiet_until
     if distance<TALK_RANGE:
-        if not _near: _near=true;say()
+        if not _near: _near=true;_cooldown=_rng.randf_range(0.0,1.2)
         _cooldown-=delta
-        if _cooldown<=0.0 and not is_talking(): say()
+        if _cooldown<=0.0 and not is_talking() and not quiet: say()
     elif distance>TALK_RANGE+2.0: _near=false
     # Turn the whole body toward the hunter; drift back to the counter otherwise.
+    # Yaw is local, so the keeper keeps facing the hunter while the truck turns.
     var target_yaw: float=_rest_yaw+sin(_clock*.35)*.35
     if _near and pose=="stand":
         var flat: Vector3=hunter.global_position-global_position
-        if Vector2(flat.x,flat.z).length()>.2: target_yaw=atan2(flat.x,flat.z)
+        var parent_yaw: float=get_parent_node_3d().global_basis.get_euler().y if get_parent_node_3d() else 0.0
+        if Vector2(flat.x,flat.z).length()>.2: target_yaw=atan2(flat.x,flat.z)-parent_yaw
     if pose=="stand": rotation.y=lerp_angle(rotation.y,target_yaw,clampf(delta*3.0,0,1))
+    elif pose=="sit": _body.rotation.x=sin(_clock*1.3)*.07
     var talking: bool=is_talking()
     _body.position.y=sin(_clock*1.7)*.012
     _head.rotation.x=sin(_clock*(9.0 if talking else 1.1))*(.09 if talking else .03)
@@ -83,6 +96,7 @@ func _process(delta: float) -> void:
         var arm: Node3D=_arms[side]
         var sign_value: float=-1.0 if side==0 else 1.0
         if pose=="lounge": arm.rotation=Vector3(-2.6,0,sign_value*.5)
+        elif pose=="sit" and not talking: arm.rotation=Vector3(-.5,0,sign_value*.12)
         elif talking: arm.rotation=Vector3(-.9+sin(_clock*6.0+side*1.7)*.55,0,sign_value*(.25+sin(_clock*4.0)*.15))
         else: arm.rotation=Vector3(sin(_clock*1.3+side)*.06,0,sign_value*.08)
     if talking:
@@ -101,8 +115,12 @@ func _build(look: Dictionary) -> void:
     if pose=="lounge":
         # Stretched out on a sun bed: the whole rig leans back from the heels.
         rig.position.y=.5;rig.rotation.x=-1.32
+    elif pose=="sit":
+        # Hips on a chair seat about half a metre up, legs stretched forward.
+        rig.position.y=.5-.86*height
     for x in [-.13,.13]:
         var leg:=Node3D.new();leg.position=Vector3(x,.86,0);hips.add_child(leg)
+        if pose=="sit": leg.rotation.x=-PI*.42
         _part(leg,_box(Vector3(.2,.8,.22)),Vector3(0,-.42,0),pants)
         _part(leg,_box(Vector3(.22,.12,.34)),Vector3(0,-.8,.06),Color("2a2420"))
     var torso:=Node3D.new();torso.name="Torso";torso.position=Vector3(0,.86,0);hips.add_child(torso)
@@ -142,9 +160,11 @@ func _build(look: Dictionary) -> void:
             _part(_head,_cylinder(.25,.23,.16,10),Vector3(0,.52,0),hat_color)
             _part(_head,_box(Vector3(.4,.03,.2)),Vector3(0,.45,.26),Color("1b2633"))
             _part(_head,_box(Vector3(.1,.06,.02)),Vector3(0,.55,.25),Color("e3b23c"))
-    _name_tag=_label(26,Color("f6e3b5"),Vector3(0,2.12*height,0) if pose=="stand" else Vector3(0,1.05,-1.7))
+    _name_tag=_label(26,Color("f6e3b5"),Vector3(0,2.12*height,0) if pose=="stand" else Vector3(0,1.6*height,0) if pose=="sit" else Vector3(0,1.05,-1.7))
     _name_tag.name="NameTag"
+    if tag_offset!=Vector3.INF: _name_tag.position=tag_offset
     _bubble=_label(34,Color("fff6dc"),_name_tag.position+Vector3(0,.3,0))
+    if bubble_offset!=Vector3.INF: _bubble.position=bubble_offset
     _bubble.name="Bubble";_bubble.width=520;_bubble.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
     _bubble.modulate=Color("fff6dc");_bubble.outline_modulate=Color("2b1a10");_bubble.hide()
     _bubble.render_priority=2;_bubble.outline_render_priority=1
@@ -171,7 +191,7 @@ func _label(size: int, color: Color, at: Vector3) -> Label3D:
 
 func _part(parent: Node3D, mesh: Mesh, at: Vector3, color: Color) -> MeshInstance3D:
     var node:=MeshInstance3D.new();node.mesh=mesh;node.position=at
-    node.material_override=toon(color);node.set_meta("styled",true)
+    node.material_override=Toon.toon(color);node.set_meta("styled",true)
     parent.add_child(node)
     return node
 
@@ -185,13 +205,3 @@ func _sphere(radius: float, segments: int, rings: int) -> SphereMesh:
 func _cylinder(top: float, bottom: float, height: float, segments: int) -> CylinderMesh:
     var mesh:=CylinderMesh.new();mesh.top_radius=top;mesh.bottom_radius=bottom;mesh.height=height;mesh.radial_segments=segments
     return mesh
-
-## Flat toon colour shared by every low-poly part of the base and its crew.
-static func toon(color: Color, glow: float=0.0) -> StandardMaterial3D:
-    var key: String=color.to_html()+str(glow)
-    if _materials.has(key): return _materials[key]
-    var material:=StandardMaterial3D.new();material.albedo_color=color
-    material.roughness=.9;material.metallic_specular=.2;material.diffuse_mode=BaseMaterial3D.DIFFUSE_TOON
-    if glow>0.0: material.emission_enabled=true;material.emission=color;material.emission_energy_multiplier=glow
-    _materials[key]=material
-    return material

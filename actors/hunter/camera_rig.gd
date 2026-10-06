@@ -25,7 +25,7 @@ func _ready() -> void:
     scope_overlay=load("res://ui/hud/scope_overlay.gd").new();layer.add_child(scope_overlay)
 func is_first_person() -> bool:
     var hunter=get_parent()
-    return hunter.local_player and hunter.health>0 and hunter.seat_index<0 and LocaleSettings.perspective=="first"
+    return hunter.local_player and hunter.health>0 and hunter.seat_index!=0 and LocaleSettings.perspective=="first"
 func scope_visible() -> bool:
     var hunter=get_parent()
     return is_first_person() and aiming and hunter.control_enabled and view_model.ads_blend>.85 and EquipmentCatalog.weapon(hunter.inventory.equipped_weapon_id).sight_type=="scope"

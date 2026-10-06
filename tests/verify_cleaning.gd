@@ -76,10 +76,11 @@ func run() -> void:
     hunter.inventory.backpack_id=&"hoarder";hunter.inventory.items.clear()
     for stall in get_nodes_in_group("lobby_interactables"):
         if stall.interaction_kind=="cleaner": cleaner=stall
-    check(cleaner!=null and cleaner.get_node_or_null("Drum")!=null and cleaner.get_node_or_null("Body")!=null,"the camp has a hide cleaner with a drum")
+    check(cleaner!=null and cleaner.get_node_or_null("Drum")!=null and cleaner.mounted and cleaner.get_parent()==session.jeep,"the truck's workshop carries a hide cleaner with a drum")
     if cleaner==null: quit(1);return
-    var to_fire: Vector3=(Vector3(0,cleaner.global_position.y,-1.8)-cleaner.global_position).normalized()
-    check((-cleaner.global_basis.z).dot(to_fire)>.95,"the machine faces the campfire")
+    var truck=session.jeep
+    var to_door: Vector3=(truck.to_global(Vector3(0,cleaner.position.y,3.1))-cleaner.global_position).normalized()
+    check((-cleaner.global_basis.z).dot(to_door)>.95,"the machine faces the cottage door")
 
     # --- the pure drum schedule --------------------------------------------
     var rabbit: Array=CleaningPattern.pieces(11,0.0,false)

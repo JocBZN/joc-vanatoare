@@ -270,7 +270,7 @@ func run() -> void:
     var save: Dictionary=hunter.inventory.export_state()
     hunter.inventory.items.clear();hunter.inventory.apply_state(save)
     check(hunter.inventory.items[0].id==item.id and hunter.inventory.items[0].raw and hunter.inventory.loot_value()==item.sell_value,"raw hides survive inventory serialization")
-    hunter.global_position=session.jeep.to_global(Vector3(0,.2,2.55));session.request_action("deposit")
+    hunter.global_position=trunk_point();session.request_action("deposit")
     check(session.trunk.size()==1 and session.trunk[0].kind==String(item.id) and session.trunk[0].owner==session.identities[1],"cargo preserves quality and stable owner")
     session.request_action("withdraw")
     check(session.trunk.is_empty() and hunter.inventory.items[0].raw and hunter.inventory.loot_value()==item.sell_value,"withdrawal preserves raw hide and value")
@@ -445,3 +445,8 @@ func run() -> void:
         check(missing.is_empty(),"skinning strings localized "+language+" "+str(missing))
     print("RESULT ",checks," checks, ",failures," failures")
     scene.queue_free();await frames(8);quit(1 if failures else 0)
+
+func trunk_point() -> Vector3:
+    for stall in get_nodes_in_group("lobby_interactables"):
+        if stall.interaction_kind=="trunk": return stall.interaction_position()+Vector3.UP*.1
+    return Vector3.ZERO

@@ -59,9 +59,14 @@ func prepare(id: String, epoch: int, map_seed: int = 0) -> void:
 func map():
     return active.get_node("Swamp" if active_id=="swamp" else "Forest") if WorldCatalog.is_hunt(active_id) and is_instance_valid(active) else null
 
+## In camp the crew gathers south of the fire; out hunting they step off beside
+## the truck's shop windows.
 func hunter_spawn(index: int) -> Vector3:
-    return Vector3((index%4)*1.8-2.7,2.1 if active_id=="swamp" else .8,9)
+    if WorldCatalog.is_hunt(active_id): return Vector3(-3.6,2.1 if active_id=="swamp" else .8,-7.5+(index%4)*2.0)
+    return Vector3((index%4)*1.8-2.7,.8,9)
 
+## Out hunting the Wandering Oak arrives on the map's road, facing north up it;
+## in camp it stands beside the fire with its shop windows to the flames.
 func jeep_spawn() -> Transform3D:
-    if active_id=="swamp": return Transform3D(Basis(Vector3.UP,.25),Vector3(-6,2.1,7))
-    return Transform3D(Basis(Vector3.UP,.25),Vector3(-6,.6,7)) if active_id=="forest" else Transform3D(Basis(Vector3.UP,.49),Vector3(-9.4,.6,5.2))
+    if active_id=="swamp": return Transform3D(Basis.IDENTITY,Vector3(0,2.1,-4.5))
+    return Transform3D(Basis.IDENTITY,Vector3(0,.3,-4.5)) if active_id=="forest" else Transform3D(Basis.IDENTITY,Vector3(8.6,.25,-2.2))

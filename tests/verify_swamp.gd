@@ -138,14 +138,14 @@ func run() -> void:
         check(frog.harvest_completed==i+1,"manual Swamp step "+str(i+1)+" advances once")
     check(frog.harvested and hunter.inventory.items.size()==1,"Swamp loot requires manual cuts on the animal")
     session.set_physics_process(true);hunter.set_physics_process(true)
-    hunter.global_position=session.jeep.to_global(Vector3(0,.2,2.55));session.request_action("deposit")
+    hunter.global_position=trunk_point();session.request_action("deposit")
     check(session.trunk.size()==1 and hunter.inventory.items.is_empty(),"Swamp loot enters owned shared cargo")
     session.request_action("return_lobby");await loaded()
     check(session.phase=="lobby" and session.trunk.size()==1 and session.animals.is_empty(),"return unloads Swamp and preserves cargo")
     var seller
     for stall in get_nodes_in_group("lobby_interactables"):
         if stall.interaction_kind=="sell": seller=stall
-    session.jeep.reset_state(Transform3D(Basis.IDENTITY,seller.global_position+Vector3(4,.6,0)));hunter.global_position=seller.interaction_position()
+    hunter.global_position=seller.interaction_position()
     var pristine: int=AnimalCatalog.loot(&"frog_hide__r5").sell_value
     session.request_action("sell_trunk");check(hunter.inventory.coins==pristine and session.trunk.is_empty(),"seller pays owner for a pristine raw Swamp hide")
     var wallet: int=hunter.inventory.coins
@@ -156,3 +156,8 @@ func run() -> void:
     check(hunter.inventory.coins==wallet,"wallet persists across the two biome expeditions")
     print("RESULT ",checks," checks, ",failures," failures")
     scene.queue_free();await frames(8);quit(1 if failures else 0)
+
+func trunk_point() -> Vector3:
+    for stall in get_nodes_in_group("lobby_interactables"):
+        if stall.interaction_kind=="trunk": return stall.interaction_position()+Vector3.UP*.1
+    return Vector3.ZERO

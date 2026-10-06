@@ -38,6 +38,7 @@ var map_menu
 var minimap
 var _slot_active_style: StyleBoxFlat
 var _slot_inactive_style: StyleBoxFlat
+var _last_seat: int=-1
 const MAX_HEALTH: int = 100
 
 func _ready() -> void:
@@ -140,12 +141,13 @@ func _process(delta: float) -> void:
         return
     toast.visible=_toast_time>0 and not shop.is_open and not menu.is_open and not map_menu.is_open
     hit_indicator.visible=_hit_time>0 and hunter.control_enabled
-    crosshair.visible=hunter.control_enabled and not hunter.busy() and hunter.seat_index<0 and hunter.health>0 and not (hunter.camera_rig.is_first_person() and hunter.camera_rig.aiming)
+    crosshair.visible=hunter.control_enabled and not hunter.busy() and hunter.seat_index!=0 and hunter.health>0 and not (hunter.camera_rig.is_first_person() and hunter.camera_rig.aiming)
     _update_nearby()
     _update_target()
     cursor_hint.text=tr("HARVEST_CANCEL_HINT" if harvest_panel.is_open() or cleaning_panel.is_open() else "CURSOR_HINT")
-    var driving:=hunter.seat_index>=0
-    $HUD/Root/Controls.text=tr("DOWNED_HELP" if hunter.health<=0 else "DRIVING" if hunter.seat_index==0 else "PASSENGER" if driving else "HARVEST_CONTROLS" if hunter.busy() else "CONTROLS")
+    var driving:=hunter.seat_index==0
+    _watch_seat()
+    $HUD/Root/Controls.text=tr("DOWNED_HELP" if hunter.health<=0 else "DRIVING" if driving else "PASSENGER" if hunter.seat_index>0 else "HARVEST_CONTROLS" if hunter.busy() else "CONTROLS")
     $HUD/Root/Header/Status.text=NetworkSession.status_text()
     if hunter.health<=0: view_label.text=tr("DOWNED")
     elif driving: view_label.text="%d km/h" % roundi(absf(NetworkSession.jeep.speed)*3.6)
@@ -172,7 +174,8 @@ func _update_nearby() -> void:
     nearby=null
     if is_instance_valid(harvest_panel) and (harvest_panel.is_open() or cleaning_panel.is_open()): prompt.hide();return
     var nearest: float=INF
-    for candidate in get_tree().get_nodes_in_group("lobby_interactables"):
+    var seated: bool=is_instance_valid(hunter) and hunter.seat_index>=0
+    for candidate in [] if seated else get_tree().get_nodes_in_group("lobby_interactables"):
         if not is_instance_valid(candidate) or not candidate.can_interact(): continue
         var distance: float=candidate.distance_from(hunter.global_position)
         if distance<=candidate.interaction_range and distance<nearest:
@@ -185,12 +188,12 @@ func _update_nearby() -> void:
     prompt_label.offset_bottom=62 if harvest_prompt else 42
     prompt_label.add_theme_font_size_override("font_size",16 if harvest_prompt else 20)
     prompt_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART if harvest_prompt else TextServer.AUTOWRAP_OFF
-    if hunter.seat_index>=0: prompt_label.text="[ E ]  "+tr("jeep_exit")
+    if hunter.seat_index>=0: prompt_label.text="[ E ]  "+tr("jeep_exit" if hunter.seat_index==0 else "terrace_exit")
     elif nearby: prompt_label.text=nearby.localized_name() if nearby.interaction_kind=="revive" else "[ E ]  "+nearby.localized_name()
 
 func _update_target() -> void:
     health_label.hide()
-    if not hunter.control_enabled or hunter.seat_index>=0 or hunter.busy(): return
+    if not hunter.control_enabled or hunter.seat_index==0 or hunter.busy(): return
     var camera:=hunter.camera_rig.camera
     var center:=get_viewport().get_visible_rect().size*.5
     var origin:=camera.project_ray_origin(center)
@@ -213,6 +216,9 @@ func _unhandled_input(event: InputEvent) -> void:
         elif event.is_action_pressed("inventory"):
             _open_shop("inventory")
             get_viewport().set_input_as_handled()
+        elif event.is_action_pressed("expedition_map") and hunter.seat_index==0:
+            open_map_menu()
+            get_viewport().set_input_as_handled()
         elif event.is_action_pressed("minimap_detail") and is_instance_valid(minimap):
             minimap.toggle_detail()
             get_viewport().set_input_as_handled()
@@ -226,13 +232,26 @@ func interact_nearby() -> void:
     if nearby is LootPickup: NetworkSession.request_action("pickup",str(nearby.network_id))
     elif nearby.interaction_kind=="test_loot": NetworkSession.request_action("test_loot")
     elif nearby.interaction_kind=="jeep": NetworkSession.request_action("enter")
+    elif nearby.interaction_kind=="terrace": NetworkSession.request_action("enter","terrace")
     elif nearby.interaction_kind=="revive": return
     elif nearby.interaction_kind=="harvest": _begin_harvest(nearby.get_parent() as WildlifeAnimal)
     elif nearby.interaction_kind=="cleaner": _begin_clean()
-    elif nearby.interaction_kind=="expedition":
-        map_menu.open()
-        _set_capture(false);hud.hide()
+    elif nearby.interaction_kind=="expedition": open_map_menu()
     else: _open_shop(nearby.interaction_kind,nearby.greet_customer() if nearby.has_method("greet_customer") else "")
+
+## The expedition map: from the truck's wheel (Tab, or straight away when the
+## host takes the wheel in camp) or beside the campfire.
+func open_map_menu() -> void:
+    if map_menu.is_open or shop.is_open or menu.is_open: return
+    if is_instance_valid(minimap): minimap.close_detail()
+    map_menu.open()
+    _set_capture(false);hud.hide()
+
+func _watch_seat() -> void:
+    var seat: int=hunter.seat_index
+    if seat==_last_seat: return
+    _last_seat=seat
+    if seat==0 and NetworkSession.phase=="lobby" and NetworkSession.is_host() and hunter.control_enabled: open_map_menu()
 
 func _open_shop(kind: String, quote: String="") -> void:
     if is_instance_valid(minimap): minimap.close_detail()
@@ -258,7 +277,7 @@ func _on_continue() -> void:
     if is_instance_valid(map_menu) and map_menu.is_open: return
     if NetworkSession.phase=="loading" or NetworkSession.local_loaded_epoch!=NetworkSession.world_epoch: return
     if not is_instance_valid(hunter): return
-    if hunter.seat_index>=0: NetworkSession.jeep.camera.current=true
+    if hunter.seat_index==0: NetworkSession.jeep.camera.current=true
     else: hunter.camera_rig.camera.current=true
     hud.show()
     _set_capture(true)
@@ -378,7 +397,7 @@ func _release_harvest_focus() -> void:
     var previous: Hunter=_harvest_focus_hunter
     _harvest_focus_hunter=null
     previous.harvest_target=0;previous.harvest_input_guard=true;previous.jump_pending=false
-    previous.camera_rig.enabled=previous.local_player and previous.seat_index<0
+    previous.camera_rig.enabled=previous.local_player and previous.seat_index!=0
     previous.camera_rig.set_process(true)
     previous.visual.visible=not previous.camera_rig.is_first_person()
     if previous==hunter and previous.control_enabled and not menu.is_open:
@@ -409,7 +428,7 @@ func _begin_clean() -> void:
 
 func _update_clean(delta: float) -> void:
     if not is_instance_valid(cleaning_panel): return
-    var unavailable: bool=not is_instance_valid(hunter) or NetworkSession.phase!="lobby" or NetworkSession.local_loaded_epoch!=NetworkSession.world_epoch
+    var unavailable: bool=not is_instance_valid(hunter) or NetworkSession.phase=="loading" or NetworkSession.local_loaded_epoch!=NetworkSession.world_epoch
     unavailable=unavailable or shop.is_open or menu.is_open or map_menu.is_open
     if is_instance_valid(hunter): unavailable=unavailable or hunter.health<=0 or hunter.seat_index>=0 or not hunter.control_enabled
     if unavailable:

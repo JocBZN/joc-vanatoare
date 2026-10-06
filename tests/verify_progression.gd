@@ -28,7 +28,7 @@ func run() -> void:
     session.jeep.global_position=Vector3(0,1,-55);session.jeep.speed=12
     session.constrain_to_lobby(session.jeep,true)
     check(session.jeep.global_position.z>=-17 and session.jeep.speed==0,"jeep also waits in lobby")
-    session.jeep.global_position=Vector3(-9.4,.3,5.2)
+    session.jeep.reset_state(scene.world_router.jeep_spawn())
     var other=session._spawn_player(2,"Other")
     session._action(2,"start_hunt","")
     check(session.phase=="lobby","client cannot start expedition")

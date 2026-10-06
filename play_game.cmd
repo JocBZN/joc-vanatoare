@@ -10,5 +10,7 @@ if not defined HUNT_GODOT (
   pause
   exit /b 1
 )
+echo Actualizez importul Godot (prima data dureaza putin)...
+"%HUNT_GODOT%" --headless --path "%~dp0." --import
 echo Pornesc jocul cu %HUNT_GODOT%
 start "" "%HUNT_GODOT%" --path "%~dp0."

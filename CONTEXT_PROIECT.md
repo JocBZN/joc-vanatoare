@@ -16,7 +16,7 @@ Prototip 3D PC în Godot/GDScript: vânătoare co-op pentru un host și până l
 
 Bucla: pregătești echipamentul în tabăra nocturnă → E la foc → hostul alege Forest sau Swamp → încărcare comună → vânătoare/colectare/transport cu jeep → întoarcere în tabără → vânzare și upgrade-uri.
 
-- Tabără cu foc, corturi, mașina de curățat blănuri, jeep și **Mamutul**: o bază-mașină absurdă, cu trei niveluri. Are Arsenal, Ghiozdane, Debara (depozit personal) și ghișeu de vânzare, fiecare cu un NPC care strigă replici RO/EN. Cele trei tarabe vechi au fost înlocuite; detalii în docs/base.md.
+- Tabăra e doar focul, cozy, cu **Stejarul Călător** parcat alături. E singurul vehicul și baza mobilă a echipei: un cap de camion care trage un trunchi de stejar scobit. Pe trunchi sunt geamurile Arsenal, Ghiozdane și Vânzare, cu NPC-uri care strigă replici RO/EN. Din trunchi crește o căsuță din bușteni, cu Debara (depozit personal) și mașina de curățat blănuri. Deasupra e o terasă cu 3 posturi de tragere, de unde se trage în timp ce altcineva conduce. Harta se alege de la volan. Detalii în docs/base.md.
 - Două expediții înregistrate în WorldCatalog: Forest și Blackwater Marsh, fiecare aproximativ 1200 × 1200 m, cu teren determinist și vegetație gestionată pe sectoare.
 - Pădure: iepure, căprioară, mistreț, lup, urs. Primele două fug; celelalte urmăresc și atacă.
 - Mlaștină: broască, țestoasă, șarpe, crocodil, crocodil uriaș; apă traversabilă, noroi care încetinește, podețe, colibă, turn și bârlog cu gardian. Detalii și valori în docs/swamp.md.
@@ -24,7 +24,7 @@ Bucla: pregătești echipamentul în tabăra nocturnă → E la foc → hostul a
 - Upgrade-uri independente damage/cadență/încărcător, niveluri 0–3; muniție în încărcător, R pentru reload, rezervă nelimitată în prototip.
 - First/third person, ADS, cătare fizică și lunetă pentru Old rifle.
 - Hunter cu 100 HP; la doborâre rămâne pe sol. Alt jucător viu ține E 3 secunde pentru revive la 50 HP; hostul verifică distanța și vizibilitatea. Nu există auto-respawn; solo/toată echipa doborâtă rămâne o limitare de design.
-- Jeep fizic RigidBody3D/Jolt cu patru suspensii raycast, patru locuri, cameră externă, V pentru redresare. Portbagaj 120 spații, proprietar individual pentru fiecare loot.
+- Camionul-bază (clasa `HuntingJeep`) e un RigidBody3D/Jolt cu patru suspensii raycast. Are volanul (cameră externă) și 3 posturi de tragere pe terasă; V îl redresează. Fără șofer se parchează și își coboară rampa. Portbagaj 120 spații, proprietar individual pentru fiecare loot.
 - Progresul și HP sunt păstrate la travel și reconectare cât timp hostul rămâne activ. Progresul economic nu este salvat între sesiuni.
 
 ## Harta codului
@@ -36,7 +36,7 @@ Bucla: pregătești echipamentul în tabăra nocturnă → E la foc → hostul a
 | core/locale_settings.gd | Autoload: traduceri, preferințe, profil și identitate anonimă |
 | world/world_router.gd | Scene și încărcare etapizată, progres și schimbarea hărții |
 | world/lobby/, world/forest/, world/swamp/ | Tabără, teren și lumi separate |
-| world/camp/mega_base.gd, shop_counter.gd, actors/npc/shopkeeper.gd, data/npc_catalog.gd | Baza-mașină Mamutul, ghișeele ei și echipajul de NPC-uri |
+| actors/vehicles/hunting_jeep.gd, oak_truck_model.gd, world/camp/{shop_counter,cozy_camp,toon_builder}.gd, actors/npc/shopkeeper.gd, data/npc_catalog.gd | Camionul-bază Stejarul Călător (fizică + model), ghișeele lui, tabăra cozy, geometria toon comasată și echipajul de NPC-uri |
 | actors/hunter/ | Mișcare, camere, corp, armă first person |
 | systems/combat/, systems/inventory/ | Combat și inventar/progresie/serializare |
 | actors/animals/ | AI, modele și animații; AI rulează pe host |
@@ -500,3 +500,95 @@ Verificări rulate local în această sesiune: container Linux cloud, Godot 4.7.
 - Capturi reale prin `tests/preview_base.gd`, cu Xvfb + OpenGL3 software (llvmpipe), Compatibility. Toate cele nouă au fost inspectate vizual și sunt salvate în `docs/base_*.png`. Forward+ pe GPU real și FPS-ul nu au fost măsurate aici.
 
 Limite și reluare: Mamutul nu se conduce. NPC-urile nu au audio. Echilibrul (150 spații de debara) este o primă valoare. Jocul nu a fost jucat interactiv de un om în această sesiune: urcarea pe rampe este verificată prin simularea hostului, nu cu mouse/tastatură. Pe Windows trebuie rulat `run_headless_tests.ps1`, acum cu suita `base`, și testul de rețea. Commit local pe branch-ul `claude/absurd-vehicle-game-a1mq0h`; primul push a fost refuzat de GitHub (403, lipsă acces). După ce utilizatorul a reconectat GitHub, push-ul a reușit, cu branch nou pe origin.
+
+### Stejarul Călător — camion-bază compact, tabăra devine doar focul — 6 octombrie 2026 (sesiune Claude Code cloud, continuare)
+
+Cerere (după ce Mamutul a pornit la utilizator, cu `play_game.cmd`): Mamutul e prea mare și inutil. Vehiculul trebuie să fie compact și fantastic, un cap de camion cu remorcă:
+- remorca e un trunchi de copac vechi, culcat; acolo e etajul 1, cu magazinele;
+- etajul 2 e o casă din lemn care iese din trunchi, „făcută cu interes”, cu acoperiș frumos din cărămidă/țiglă ca la hobbiți; înăuntru sunt depozitul și lucrul pielii;
+- sus e o terasă de pe care se poate trage în timp ce cineva conduce.
+
+Camionul trebuie să se conducă bine și să fie transportul principal. Lobby-ul devine doar un foc cozy cu camionul alături. Harta se alege de la volan.
+
+Mai întâi, problema raportată la pornire: Mamutul nu apărea, iar tarabele dispăruseră. Cauza era cache-ul `.godot` vechi: rulat fără import, Godot nu cunoștea noile `class_name`. Reprodus local și corectat:
+- scripturile noi se referă unele la altele prin `preload`, nu prin `class_name`;
+- `play_game.cmd` face întâi `--headless --import`, apoi pornește jocul.
+
+Implementare (detalii complete în `docs/base.md`):
+- **Vehiculul:** `actors/vehicles/hunting_jeep.gd` (clasa `HuntingJeep`, cu API-ul păstrat) e acum camionul. Camionul înlocuiește jeep-ul.
+  - Fizica jeep-ului e reglată pentru 3,6 t: arcuri 125 kN/m, roți 0,78 m, ampatament 8,9 m, 19/6 m/s, centru de masă jos, amortizare de ruliu și forțe laterale la înălțimea osiei.
+  - Locul 0 e volanul, locurile 1–3 sunt posturile de pe terasă.
+  - Parcarea: fără șofer, după 0,8 s de repaus, camionul se îngheață pe host (`parked`, replicat) și își coboară rampa (coliziunea ei e activă doar atunci).
+  - `secure_riders()`: când pornește, cei rămași pe camion urcă pe posturi (sau coboară lângă el), iar jobul de curățare se anulează.
+  - `hull_distance()`, `exit_point()`, iar `enter(peer, gunner)` preferă un post.
+  - Camionul nu are layer-ul Hunters în mask. Un hunter cinematic teleportat de pe terasă la sol producea în Jolt o împingere de ~180 m/s (reprodus și diagnosticat local).
+- **Modelul:** `actors/vehicles/oak_truck_model.gd` (nou) e modelul procedural:
+  - cabină verde cu coarne de cerb, bară din buștean, faruri și coș cu fum;
+  - trunchi din 14 doage cu inele, mușchi, ciuperci și o creangă;
+  - trei geamuri cioplite cu copertine, tejghele, interior de lemn de miez, pereți despărțitori, felinare și marfă la vedere;
+  - căsuță din bușteni cu ramuri-suport crescute din trunchi, ferestre rotunde cu flori, ușă rotundă verde și arc de piatră;
+  - acoperiș de țiglă rând cu rând, cu mușchi și coș de piatră;
+  - terasă cu balustradă din crengi, becuri, felinare, fanion și scară;
+  - verandă cu balansoar, poartă cu nume și rampă care intră sub remorcă.
+
+  Geometria e comasată în 72 de batch-uri prin `world/camp/toon_builder.gd` (nou). Are 30 de forme de coliziune, direct pe corp.
+- **Rețea și luptă:**
+  - `_shoot` acceptă trăgătorii de pe terasă și refuză șoferul; `reload`/`slot` merg de pe post.
+  - `start_hunt` se acceptă de la volan sau lângă foc.
+  - Locurile se păstrează prin călătorie (`travel_seats`).
+  - `release_jobs()` e nou; curățarea blănurilor merge și în expediție, pentru că atelierul e în camion.
+  - `LOBBY_NORTH_LIMIT` a revenit la −19.
+- **Vânătorul:** pe post stă în picioare, se rotește după țintă și își păstrează camera și ochirea. Camera se oprește la pereții camionului când se merge prin căsuță (`hunter.gd`, `camera_rig.gd`, `hunter_combat.gd`).
+- **UI:** `game/main.gd` și `ui/maps/map_menu.gd`:
+  - harta se deschide singură când hostul se urcă la volan în tabără; Tab (acțiune nouă `expedition_map`) o redeschide;
+  - în expediție, harta oferă „Înapoi în tabără”;
+  - promptul și controalele sunt noi pentru terasă;
+  - noul tip de interacțiune `terrace`.
+- **NPC-uri:** `actors/npc/shopkeeper.gd` are poza nouă `sit` (balansoar), offseturi pentru nume și balon (balonul iese pe geam), urmărire relativă la camion și un singur balon spontan odată. Replicile lui Nea Nelu și una a lui Nea Fane sunt noi.
+- **Tabăra și lumea:**
+  - `world/camp/camp.tscn` e refăcut din original, fără tarabe, corturi și ladă; gardul și brazii nordici sunt înapoi;
+  - `world/lobby/lobby.tscn` are acum focul și `CozyCamp`: bușteni cu pături, buturugi, ceainic cu abur, căni, covor, chitară, lemne, ghirlande, felinare, licurici, hamac și un câine care doarme;
+  - Mamutul (`world/camp/mega_base.gd`) a fost șters;
+  - `world/world_router.gd`: camionul stă lângă foc în tabără, iar în expediții pe drum, cu fața spre nord; vânătorii apar lângă geamurile lui.
+- **Texte:** RO/EN noi sau actualizate pentru volan, terasă, portbagaj, condus, loading, hartă, atelier, nume și firma căsuței. Au fost scoase cheile de etaj ale Mamutului.
+- **Teste:**
+  - `tests/verify_base.gd` e rescris (66 de verificări) și `tests/preview_base.gd` e refăcut;
+  - au fost adaptate `verify_forest`, `verify_swamp`, `verify_harvest` (portbagajul și vânzătorul sunt acum pe camion), `verify_cleaning` (mașina e în căsuță), `verify_progression`, `verify_worlds_vehicle` (camionul răsturnat pornește mai sus) și `network_peer`;
+  - în `network_peer`, client2 trage de pe terasă prin ENet cât timp client1 conduce.
+- **Terminații de linie:** au fost restaurate CRLF în `hunter.gd`, `hunting_jeep.gd`, `world_router.gd` și în `docs/architecture.md` și `docs/play_guide.md`. Ultimele două fuseseră convertite accidental la LF în commit-ul Mamutului.
+
+Verificări rulate local (Linux, Godot 4.7.2; echivalente bash ale scripturilor `.ps1`):
+- Import headless: exit 0, fără erori.
+- Unsprezece suite headless, inclusiv `base`: **767 checks, 0 failures**:
+
+  | Suită | Checks |
+  | --- | --- |
+  | maps_predators | 42 |
+  | worlds_vehicle | 45 |
+  | forest | 56 |
+  | progression | 57 |
+  | revive_perspective | 37 |
+  | art_wildlife | 48 |
+  | swamp | 51 |
+  | animated_wildlife | 103 |
+  | harvest | 204 |
+  | cleaning | 59 |
+  | base | 66 |
+
+  `verify_water.gd`: 22/0 (COAST dry 5,48 / lake 4,83 m/s; BUOYANCY dry 0,178 / wet 0,108 m). `verify_random_terrain.gd`: 6/0.
+- ENet host + 3 clienți + al cincilea refuzat. Forest: host 64 / client1 57 / client2 52 / client3 56 / extra 3 = **232 checks, 0 failures**. Swamp: **232 checks, 0 failures**. `_err.log` e curat. După restaurarea CRLF, `verify_base` (66/0) și rețeaua Forest (232/0) au fost rerulate pe codul final. `git diff --check` raportează doar caracterul `\r` din fișierele care erau deja CRLF în repo.
+- Rulări intermediare, neincluse în totaluri, care au găsit probleme reale, toate corectate:
+  - rampa se oprea la marginea verandei (muchie de 3 cm tratată ca perete);
+  - de la geamul Ghiozdane se putea cumpăra de la Arsenal (raza geamurilor a scăzut de la 3 m la 2 m);
+  - explozia Jolt la coborârea de pe terasă;
+  - sosirea în pădure perpendicular pe drum ducea camionul în copaci;
+  - în suita `cleaning`, verificarea orientării spre foc a devenit orientare spre ușa căsuței.
+- Capturi reale cu `tests/preview_base.gd` (Xvfb + OpenGL3/llvmpipe, Compatibility), inspectate și salvate în `docs/base_*.png`: tabăra, fața, geamurile (NPC-urile se văd prin geamuri), vânzarea, căsuța, atelierul, terasa, vederea trăgătorului cu HUD-ul și camionul pe drum în pădure. Capturile vechi ale Mamutului au fost șterse. FPS-ul și Forward+ pe GPU real nu au fost măsurate.
+
+Limite și reluare:
+- Pe terasă se stă la posturi fixe; mersul liber e posibil doar când camionul e parcat.
+- Remorca e rigidă față de cabină (un singur corp, pentru stabilitate).
+- Magazinele funcționează și în expediție, așa că vânzarea în tabără devine opțională (de discutat cu utilizatorul dacă vrea restricție).
+- Jocul nu a fost jucat de un om cu tastatura în această sesiune.
+
+Commit și push pe `claude/absurd-vehicle-game-a1mq0h`.

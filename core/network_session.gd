@@ -61,6 +61,8 @@ var local_clean_state: Dictionary={}
 var clean_token: int=0
 var clean_sequence: int=0
 var clean_received_sequence: int=-1
+## Truck seats remembered across a map change (host only).
+var travel_seats: Array=[0,0,0,0]
 
 func _ready() -> void:
     rng.seed=10337
@@ -427,8 +429,10 @@ func _action(peer: int, kind: String, value: String) -> void:
         if kind=="start_hunt" and phase=="lobby":
             if not WorldCatalog.is_hunt(value): tell(peer,"MAP_UNAVAILABLE");return
             var hunter=players[peer]
-            if not hunter.world_ready or hunter.health<=0 or hunter.seat_index>=0: return
-            if not _at_stall(hunter,"expedition"): tell(peer,"MAP_AT_FIRE");return
+            if not hunter.world_ready or hunter.health<=0: return
+            # The map is chosen from the truck's wheel (or, as before, beside the campfire).
+            var at_wheel: bool=jeep.occupants[0]==peer
+            if not at_wheel and (hunter.seat_index>=0 or not _at_stall(hunter,"expedition")): tell(peer,"MAP_AT_FIRE");return
             if not pending_peers.is_empty(): tell(peer,"WAIT_CONNECTIONS");return
             if mode=="host" and players.size()<required_players: tell(peer,"FULL_PARTY");return
             _begin_loading(value)
@@ -463,14 +467,14 @@ func _action(peer: int, kind: String, value: String) -> void:
         "reset":
             if p.seat_index<0: p.respawn()
         "reload":
-            if p.seat_index<0: inv.begin_reload()
+            if p.seat_index!=0: inv.begin_reload()
         "equip":
             if _at_stall(p,"weapons"): inv.equip_weapon(StringName(value))
         "equip_slot":
             var slot_parts:=value.split(":")
             if slot_parts.size()==2 and _at_stall(p,"weapons"): inv.assign_slot(StringName(slot_parts[0]),int(slot_parts[1]))
         "slot":
-            if p.seat_index<0: inv.switch_slot(int(value))
+            if p.seat_index!=0: inv.switch_slot(int(value))
         "debug_unlock_all":
             inv.debug_unlock_all()
         "buy_weapon":
@@ -496,7 +500,7 @@ func _action(peer: int, kind: String, value: String) -> void:
                     if mode=="host": _broadcast(&"_loot_removed",[id,world_epoch])
         "test_loot":
             if _at_stall(p,"test_loot"): inv.collect(EquipmentCatalog.TEST_LOOT)
-        "enter": jeep.enter(peer)
+        "enter": jeep.enter(peer,value=="terrace")
         "exit": jeep.exit_seat(peer)
         "deposit", "withdraw":
             if _at_stall(p,"trunk"): _move_cargo(peer,kind)
@@ -553,6 +557,7 @@ func _prepare_world(id: String,epoch: int,members: Array,map_seed: int=0) -> voi
     revive_jobs.clear()
     for hunter in players.values(): hunter.revive_progress=0;hunter.revive_helper=0
     forest=null
+    if is_host(): travel_seats=jeep.occupants.duplicate()
     for p in players.values():
         p.world_ready=false;p.control_enabled=false;p.velocity=Vector3.ZERO
         p.set_seat(-1)
@@ -581,7 +586,7 @@ func _accept_loaded(peer: int,epoch: int) -> void:
     else:
         var p=players[peer]
         if not p.world_ready:
-            var point: Vector3=jeep.global_position+Vector3(3,1.5,2) if phase=="hunt" else world.world_router.hunter_spawn(players.keys().find(peer))
+            var point: Vector3=jeep.exit_point(1)+Vector3(0,.5,0) if phase=="hunt" else world.world_router.hunter_spawn(players.keys().find(peer))
             if phase=="hunt": point.y=forest.height_at(point.x,point.z)+1
             p.spawn_position=point;p.global_position=point;p.world_ready=true
         snapshot_sequence+=1
@@ -613,6 +618,13 @@ func _check_loaded() -> void:
         index+=1
     jeep.reset_state(world.world_router.jeep_spawn())
     jeep.set_simulation(true)
+    # Whoever rode the truck out of the last map is still aboard when it arrives.
+    for seat in travel_seats.size():
+        var rider: int=int(travel_seats[seat])
+        if rider!=0 and players.has(rider) and players[rider].health>0 and jeep.occupants[seat]==0:
+            jeep.occupants[seat]=rider;players[rider].set_seat(seat)
+            players[rider].global_position=jeep.to_global(jeep.SEATS[seat])
+    travel_seats=[0,0,0,0]
     cooldowns.clear();last_inputs.clear()
     _set_phase("hunt" if WorldCatalog.is_hunt(world_id) else "lobby")
     if WorldCatalog.is_hunt(world_id):
@@ -647,8 +659,8 @@ func _handle_load_failure(peer: int,epoch: int) -> void:
     if phase=="loading" and WorldCatalog.is_hunt(world_id): _begin_loading("lobby")
     elif peer!=1 and mode=="host": multiplayer.multiplayer_peer.disconnect_peer(peer)
 
-## The Mammoth base fills the north edge of the camp, so hunters may walk up to its back wall.
-const LOBBY_NORTH_LIMIT: float=-21.0
+## Northern edge of the camp clearing for hunters on foot.
+const LOBBY_NORTH_LIMIT: float=-19.0
 
 func constrain_to_lobby(body: Node3D, vehicle: bool=false) -> void:
     if phase!="lobby": return
@@ -757,7 +769,8 @@ func _shoot(peer: int, origin: Vector3, direction: Vector3) -> void:
     if not players.has(peer) or not origin.is_finite() or not direction.is_finite() or direction.length_squared()<.8: return
     var p=players[peer]
     if phase=="loading" or not p.world_ready or is_busy(peer): return
-    if p.seat_index>=0 or p.health<=0 or int(p.command.get("revive",0))>0 or origin.distance_to(p.global_position)>8: return
+    # Gunners on the truck's terrace may shoot; the driver keeps both hands on the wheel.
+    if p.seat_index==0 or p.health<=0 or int(p.command.get("revive",0))>0 or origin.distance_to(p.global_position)>8: return
     var now:=Time.get_ticks_msec()
     if now<int(cooldowns.get(peer,0)): return
     var weapon:=EquipmentCatalog.weapon(p.inventory.equipped_weapon_id)
@@ -1224,6 +1237,11 @@ func _apply_harvest_state(data: Dictionary, epoch: int, sequence: int) -> void:
 func is_cleaning(peer: int) -> bool:
     return clean_jobs.has(peer) if is_host() else peer==local_id() and bool(local_clean_state.get("active",false))
 
+## Drops any knife work a hunter is doing (boarding or riding the truck).
+func release_jobs(peer: int) -> void:
+    if is_harvesting(peer): _cancel_harvest(peer)
+    if is_cleaning(peer): _cancel_clean(peer)
+
 func is_busy(peer: int) -> bool:
     return is_harvesting(peer) or is_cleaning(peer)
 
@@ -1247,7 +1265,8 @@ func _raw_hide_index(inventory) -> int:
     return best
 
 func _can_clean(peer: int) -> bool:
-    if not is_host() or phase!="lobby" or not players.has(peer): return false
+    # The workshop rides in the truck's cottage, so it works in camp and out hunting.
+    if not is_host() or phase=="loading" or not players.has(peer): return false
     var hunter=players[peer]
     return hunter.world_ready and hunter.health>0 and hunter.seat_index<0 and _at_stall(hunter,"cleaner")
 

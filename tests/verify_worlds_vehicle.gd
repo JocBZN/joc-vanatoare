@@ -115,7 +115,8 @@ func run() -> void:
     await drive(Vector2.ZERO,90,true)
     jeep.exit_seat(1,true);wall.queue_free()
     # Recover an overturned jeep without losing cargo.
-    jeep.reset_state(Transform3D(Basis(Vector3.FORWARD,PI),Vector3(50,34,-100)))
+    # Upside down, the terrace railing is the lowest point: start well above the pad.
+    jeep.reset_state(Transform3D(Basis(Vector3.FORWARD,PI),Vector3(50,41,-100)))
     await frames(150)
     hunter.global_position=jeep.global_position+Vector3(2,0,0)
     check(jeep.recover(1),"nearby hunter can recover overturned jeep")

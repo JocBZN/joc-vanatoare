@@ -157,7 +157,7 @@ func host_test() -> void:
         var p=session.players[peer]
         p.inventory.items.clear()
         p.inventory.collect(load("res://data/loot/deer_pelt.tres"))
-        p.global_position=session.jeep.to_global(Vector3(0,.2,2.55))
+        p.global_position=trunk_point()
         session._send_inventory(peer)
     await frames(20)
     write_phase("deposit")
@@ -186,7 +186,7 @@ func host_test() -> void:
     var storage
     for stall in get_nodes_in_group("lobby_interactables"):
         if stall.interaction_kind=="storage": storage=stall
-    check(storage!=null and storage.interaction_position().y>3.0,"storage counter is upstairs in the Mammoth base")
+    check(storage!=null and storage.interaction_position().y>3.0,"storage counter is upstairs in the truck's cottage")
     cleaner_peer.global_position=storage.interaction_position()+Vector3.UP*.1
     await frames(20)
     write_phase("storage")
@@ -200,7 +200,6 @@ func host_test() -> void:
     var seller
     for stall in get_nodes_in_group("lobby_interactables"):
         if stall.interaction_kind=="sell": seller=stall
-    session.jeep.reset_state(Transform3D(Basis.IDENTITY,seller.global_position+Vector3(4,.6,0)))
     for p in session.players.values(): p.global_position=seller.interaction_position()
     await frames(20)
     write_phase("sell1")
@@ -214,11 +213,10 @@ func host_test() -> void:
     for animal in session.animals.values(): animal.set_physics_process(false)
     # Both biomes guarantee a flat, dry arrival area. Test transport/controls
     # here so a random hillside cannot roll the parked car during exit checks.
-    var drive_point: Vector3=Vector3(0,session.forest.height_at(0,-12)+.6,-12)
-    session.jeep.reset_state(Transform3D(Basis.IDENTITY,drive_point))
+    session.jeep.reset_state(session.world.world_router.jeep_spawn())
     await frames(90)
     for peer in session.players:
-        session.players[peer].global_position=session.jeep.global_position+Vector3(2,.2,0)
+        session.players[peer].global_position=session.jeep.exit_point(1)
     session.jeep.linear_velocity=Vector3.ZERO;session.jeep.angular_velocity=Vector3.ZERO
     var driver:=0
     for peer in session.players:
@@ -232,6 +230,10 @@ func host_test() -> void:
     write_phase("drive")
     check(await wait_until(func(): return Vector2(session.jeep.global_position.x-before.x,session.jeep.global_position.z-before.z).length()>1,5),"authoritative movement from remote driver input")
     write_phase("seats")
+    check(await wait_until(func():
+        for hunter in session.players.values():
+            if hunter.player_name=="client2" and hunter.combat.shots_fired>0: return true
+        return false,8),"host accepts a gunner's shot from the moving truck")
     await frames(120)
     session.jeep.linear_velocity=Vector3.ZERO;session.jeep.angular_velocity=Vector3.ZERO
     session.players[1].control_enabled=false
@@ -479,6 +481,14 @@ func client_test() -> void:
     check(await wait_until(func(): return session.local_hunter().seat_index>=0),"server assigns seat")
     var drive_start: Vector3=session.jeep.global_position
     check(await wait_until(func(): return phase()=="drive"),"remote driving phase")
+    if role=="client2":
+        # A terrace gunner fires through ENet while client1 drives the truck.
+        var gunner=session.local_hunter()
+        check(gunner.seat_index>0,"client gunner stands at a terrace post")
+        check(await wait_until(func(): return absf(session.jeep.speed)>1.0,6),"truck rolls under the gunner")
+        var rounds: int=gunner.inventory.ammunition()
+        session.request_shot(gunner.global_position+Vector3.UP*1.6,Vector3(0,-.25,1).normalized())
+        check(await wait_until(func(): return gunner.inventory.ammunition()<rounds,5),"remote gunner fires from the moving truck's terrace")
     if role=="client1":
         # Headless DisplayServer can't capture a mouse. Send normal validated input RPCs.
         session.set_physics_process(false)
@@ -548,3 +558,8 @@ func start_forest() -> void:
         var fire=session.world.world_router.active.get_node("Camp/GiantCampfire/Expedition")
         session.local_hunter().global_position=fire.global_position+Vector3(0,.5,3.4)
     session.request_action("start_hunt",hunt_map)
+
+func trunk_point() -> Vector3:
+    for stall in get_nodes_in_group("lobby_interactables"):
+        if stall.interaction_kind=="trunk": return stall.interaction_position()+Vector3.UP*.1
+    return Vector3.ZERO

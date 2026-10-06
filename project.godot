@@ -108,6 +108,10 @@ minimap_detail={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":77)]
 }
+expedition_map={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"physical_keycode":4194306)]
+}
 inventory={
 "deadzone": 0.2,
 "events": [Object(InputEventKey,"physical_keycode":66)]

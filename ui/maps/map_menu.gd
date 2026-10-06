@@ -4,6 +4,7 @@ var is_open: bool=false
 var root_control: Control
 var start_button: Button
 var close_button: Button
+var camp_button: Button
 var status: Label
 var title: Label
 var subtitle: Label
@@ -57,6 +58,10 @@ func refresh() -> void:
     start_button.text=tr("MAP_START" if NetworkSession.is_host() else "WAIT_HOST")
     var hunter=NetworkSession.local_hunter()
     start_button.disabled=not NetworkSession.is_host() or NetworkSession.phase!="lobby" or not hunter or not hunter.world_ready or hunter.health<=0 or (NetworkSession.mode=="host" and NetworkSession.players.size()<NetworkSession.required_players)
+    # Out hunting, the driver's map also offers the way home.
+    camp_button.text=tr("RETURN_LOBBY")
+    camp_button.visible=NetworkSession.phase=="hunt" and NetworkSession.is_host()
+    start_button.visible=NetworkSession.phase=="lobby" or not NetworkSession.is_host()
     status.text=message if not message.is_empty() else tr("MAP_HOST_HINT" if NetworkSession.is_host() else "MAP_CLIENT_HINT")
 
 func _build() -> void:
@@ -93,6 +98,8 @@ func _build() -> void:
     var spacer:=Control.new();spacer.size_flags_vertical=Control.SIZE_EXPAND_FILL;details.add_child(spacer)
     start_button=_button(Color("9d773e"));start_button.custom_minimum_size.y=54;details.add_child(start_button)
     start_button.pressed.connect(func() -> void: NetworkSession.request_action("start_hunt",selected))
+    camp_button=_button(Color("5e4a2c"));camp_button.custom_minimum_size.y=54;details.add_child(camp_button)
+    camp_button.pressed.connect(func() -> void: NetworkSession.request_action("return_lobby"))
     status=_label(15,Color("d9bd83"));status.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;column.add_child(status)
     close_button=_button(Color("293b32"));close_button.custom_minimum_size.y=42;column.add_child(close_button)
     close_button.pressed.connect(close)

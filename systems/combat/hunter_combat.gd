@@ -43,7 +43,7 @@ func _physics_process(delta: float) -> void:
 func try_fire() -> bool:
     if not hunter.control_enabled or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED or cooldown_left > 0.0:
         return false
-    if not hunter.local_player or hunter.seat_index>=0 or hunter.health<=0 or hunter.revive_target>0 or hunter.busy() or hunter.harvest_input_guard or NetworkSession.is_busy(hunter.peer_id): return false
+    if not hunter.local_player or hunter.seat_index==0 or hunter.health<=0 or hunter.revive_target>0 or hunter.busy() or hunter.harvest_input_guard or NetworkSession.is_busy(hunter.peer_id): return false
     if hunter.inventory.reload_remaining>0: return false
     var camera: Camera3D=hunter.camera_rig.camera
     var center:=camera.get_viewport().get_visible_rect().size*.5
