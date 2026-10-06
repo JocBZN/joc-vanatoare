@@ -624,7 +624,7 @@ Modificări:
   - pe harta mare, numele (tu → prieteni → camion → locuri) se desenează după pictograme, iar unul care ar acoperi un nume deja scris se ascunde până la zoom (`Minimap._draw_labels`);
   - titlul hărții și numele lung al boss-ului nu se mai taie în legendă (`Paint.fit_size`, `Paint.wrap`);
   - fumul hornului se estompează lin de aproape (`DISTANCE_FADE_PIXEL_ALPHA`, 3–8 m), în loc de cercurile punctate dither din fața celui de pe terasă;
-  - trofeele erau supraexpuse: lumina aurie a scăzut la 0,45 și a urcat la 1 m, iar chihlimbarul e portocaliu, cu emisie 0,55.
+  - trofeele erau supraexpuse: lumina aurie a scăzut la 0,45 și a urcat la 1 m, chihlimbarul e portocaliu, cu emisie 0,55, iar gastroliții au culori de piatră închisă. `preview_bosses.gd` fotografiază trofeele sub o lumină mai blândă, toate șase în cadru.
 - `docs/base_gunner.png` (postul de tragere dispărut) a fost șters.
 
 Verificări rulate local (Linux, Godot 4.7.2; echivalente bash ale scripturilor `.ps1`). Toate sunt rulări locale din această sesiune, nu rezultate upstream:

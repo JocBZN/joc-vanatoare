@@ -47,11 +47,13 @@ func run() -> void:
             camera.position=Vector3(-6.5,4.2,4.0);camera.look_at(Vector3(0,.7,.4))
             await capture("boss_"+kind+"_back")
         animal.queue_free();await frames(3)
-    # Trophies laid out in a row.
-    var x: float=-3.0
+    # Trophies laid out in a row, under a softer late-afternoon light so their
+    # own gold glow and colours read (the full sun washes them out).
+    sun.light_energy=.55;env.environment.ambient_light_energy=.3
+    var x: float=-2.75
     for id in catalog.TROPHY_IDS:
         var pickup=load("res://world/pickups/deer_loot.tscn").instantiate()
-        pickup.loot_definition=catalog.loot(id);pickup.position=Vector3(x,0,0);stage.add_child(pickup);x+=1.2
-    camera.position=Vector3(0,1.6,3.6);camera.look_at(Vector3(0,.3,0))
+        pickup.loot_definition=catalog.loot(id);pickup.position=Vector3(x,0,0);stage.add_child(pickup);x+=1.1
+    camera.position=Vector3(0,1.5,4.4);camera.look_at(Vector3(0,.3,0))
     await capture("boss_trophies")
     quit()
