@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"great_white"
+display_name = "ANIMAL_GREAT_WHITE"
+model_path = "res://actors/animals/models/great_white.tscn"
+max_health = 520
+spawn_weight = 7
+aggressive = true
+attack_damage = 36
+walk_speed = 2.8
+run_speed = 13
+aggro_range = 75
+pursuit_range = 200
+aggro_memory = 40
+height = 1.5
+length = 5.2
+width = 1.6
+aquatic = true
+swimmer = true
+swim_depth = 10
+territory = 160
+leap_range = 15
+leap_cooldown = 2.8
+pack_radius = 25
+loot_id = &"great_white_hide"
+harvest_strokes = 12
+harvest_period = 1.8
+harvest_window = 0.13
+harvest_quirks = PackedStringArray("thick", "chomp")

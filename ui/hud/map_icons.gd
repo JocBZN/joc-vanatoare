@@ -121,6 +121,27 @@ static func draw_species(canvas: CanvasItem, kind: StringName, at: Vector2, size
                 var x: float=-.3+k*.18
                 _fill(canvas,PackedVector2Array([Vector2(x-.05,-.04),Vector2(x,-.14),Vector2(x+.05,-.04)]),at,size,color)
             canvas.draw_circle(at+Vector2(-.5,-.04)*size*.5,maxf(.8,size*.025),Color("ff3048") if kind==&"albino_crocodile" else accent)
+        &"colossal_squid":
+            _blob(canvas,Vector2(.35,0),Vector2(.5,.2),at,size,color)
+            _fill(canvas,PackedVector2Array([Vector2(.75,0),Vector2(.95,-.3),Vector2(.95,.3)]),at,size,color)
+            _blob(canvas,Vector2(-.1,0),Vector2(.2,.2),at,size,color)
+            for y in [-.2,-.07,.07,.2]: _line(canvas,[Vector2(-.2,y),Vector2(-.85,y*1.6)],.08,at,size,color)
+            canvas.draw_circle(at+Vector2(-.12,-.06)*size*.5,maxf(.8,size*.04),accent)
+        &"sea_turtle":
+            _blob(canvas,Vector2(0,0),Vector2(.5,.32),at,size,color)
+            _blob(canvas,Vector2(-.6,0),Vector2(.16,.13),at,size,color)
+            for p in [Vector2(-.3,-.4),Vector2(-.3,.4),Vector2(.3,-.3),Vector2(.3,.3)]: _blob(canvas,p,Vector2(.2,.08),at,size,color)
+        &"manta_ray":
+            _fill(canvas,PackedVector2Array([Vector2(-.7,0),Vector2(.1,-.55),Vector2(.4,0),Vector2(.1,.55)]),at,size,color)
+            _line(canvas,[Vector2(.35,0),Vector2(.95,0)],.06,at,size,color)
+        &"jellyfish", &"man_o_war":
+            _blob(canvas,Vector2(0,-.15),Vector2(.42,.32),at,size,color)
+            for x in [-.28,-.1,.1,.28]: _line(canvas,[Vector2(x,.1),Vector2(x+(.05 if x<0 else -.05),.7)],.08,at,size,color)
+        &"barracuda", &"moray", &"reef_shark", &"electric_eel", &"hammerhead", &"great_white", &"orca", &"megalodon", &"swordfish", &"tiger_shark", &"sea_snake", &"dolphin", &"grouper", &"lionfish", &"pufferfish":
+            _blob(canvas,Vector2(0,0),Vector2(.6,.22),at,size,color)
+            _fill(canvas,PackedVector2Array([Vector2(.5,0),Vector2(.85,-.3),Vector2(.8,0),Vector2(.85,.3)]),at,size,color)
+            _fill(canvas,PackedVector2Array([Vector2(-.1,-.2),Vector2(.05,-.5),Vector2(.2,-.2)]),at,size,color)
+            canvas.draw_circle(at+Vector2(-.38,-.04)*size*.5,maxf(.8,size*.03),accent)
         _:
             _blob(canvas,Vector2(0,.28),Vector2(.38,.3),at,size,color)
             for toe in [Vector2(-.42,-.12),Vector2(-.15,-.38),Vector2(.15,-.38),Vector2(.42,-.12)]:

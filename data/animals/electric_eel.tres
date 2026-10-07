@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"electric_eel"
+display_name = "ANIMAL_ELECTRIC_EEL"
+model_path = "res://actors/animals/models/electric_eel.tscn"
+max_health = 160
+spawn_weight = 14
+aggressive = true
+attack_damage = 22
+walk_speed = 2.2
+run_speed = 7.5
+aggro_range = 30
+pursuit_range = 100
+aggro_memory = 25
+height = 0.5
+length = 3.2
+width = 0.5
+aquatic = true
+swimmer = true
+swim_depth = 10
+territory = 45
+leap_range = 0
+leap_cooldown = 2
+pack_radius = 0
+shock_radius = 5.5
+loot_id = &"electric_eel_skin"
+harvest_strokes = 7
+harvest_period = 2.1
+harvest_window = 0.22
+harvest_quirks = PackedStringArray("twitch", "slippery")

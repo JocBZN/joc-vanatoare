@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"sea_snake"
+display_name = "ANIMAL_SEA_SNAKE"
+model_path = "res://actors/animals/models/sea_snake.tscn"
+max_health = 60
+spawn_weight = 20
+aggressive = true
+attack_damage = 24
+walk_speed = 2.6
+run_speed = 8.5
+aggro_range = 22
+pursuit_range = 70
+aggro_memory = 20
+height = 0.25
+length = 2.2
+width = 0.25
+aquatic = true
+swimmer = true
+swim_depth = 3
+territory = 60
+leap_range = 6
+leap_cooldown = 1.6
+pack_radius = 0
+loot_id = &"sea_snake_skin"
+harvest_strokes = 4
+harvest_period = 2.2
+harvest_window = 0.3
+harvest_quirks = PackedStringArray("slippery", "wiggle")

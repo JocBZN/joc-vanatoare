@@ -3,6 +3,7 @@ extends Node
 var hunter: Hunter
 var inventory: HunterInventory
 @onready var shop: ShopUI = $ShopUI
+var garage: GarageUI
 @onready var menu: CampMenu = $CampMenu
 @onready var hud: Control = $HUD/Root
 @onready var crosshair: Control = $HUD/Root/Crosshair
@@ -40,6 +41,7 @@ func _ready() -> void:
     NetworkSession.player_changed.connect(_bind_player)
     NetworkSession.changed.connect(_localize)
     shop.closed.connect(_on_shop_closed)
+    garage=GarageUI.new();add_child(garage);garage.closed.connect(_on_shop_closed)
     menu.continued.connect(_on_continue)
     LocaleSettings.changed.connect(_localize)
     loading_screen=LoadingScreen.new();add_child(loading_screen)
@@ -67,6 +69,7 @@ func _ready() -> void:
 func prepare_world(id: String,epoch: int,map_seed: int=0) -> void:
     _set_capture(false)
     if shop.is_open: shop.close()
+    if garage.is_open: garage.close()
     map_menu.close()
     menu.dismiss_for_loading()
     hud.hide();loading_screen.begin(id)
@@ -97,11 +100,13 @@ func _bind_player() -> void:
     hunter=NetworkSession.local_hunter()
     if not is_instance_valid(hunter): return
     if shop.is_open: shop.close()
+    if garage.is_open: garage.close()
     inventory=hunter.inventory
     if not hunter.combat.hit.is_connected(_on_hit): hunter.combat.hit.connect(_on_hit)
     if not hunter.combat.fired.is_connected(_on_fired): hunter.combat.fired.connect(_on_fired)
     if not inventory.changed.is_connected(_update_hud): inventory.changed.connect(_update_hud)
     if not inventory.feedback.is_connected(_show_feedback): inventory.feedback.connect(_show_feedback)
+    if DisplayServer.get_name()!="headless": TruckUpgrades.free_for_testing=true
     if DisplayServer.get_name()!="headless": inventory.debug_unlock_all() # DEBUG: convenience for interactive play; skipped headless so economy tests stay exact
     _update_hud()
     if not menu.is_open: _on_continue()
@@ -141,7 +146,7 @@ func _update_target() -> void:
         target_animal=result.collider
 
 func _unhandled_input(event: InputEvent) -> void:
-    if shop.is_open or menu.is_open or map_menu.is_open or NetworkSession.phase=="loading" or NetworkSession.local_loaded_epoch!=NetworkSession.world_epoch: return
+    if shop.is_open or garage.is_open or menu.is_open or map_menu.is_open or NetworkSession.phase=="loading" or NetworkSession.local_loaded_epoch!=NetworkSession.world_epoch: return
     if event.is_action_pressed("release_cursor"):
         if is_instance_valid(minimap) and minimap.detail: minimap.close_detail()
         else: _open_menu()
@@ -149,6 +154,9 @@ func _unhandled_input(event: InputEvent) -> void:
     elif is_instance_valid(hunter) and hunter.control_enabled:
         if event.is_action_pressed("interact"):
             interact_nearby()
+            get_viewport().set_input_as_handled()
+        elif event.is_action_pressed("horn"):
+            NetworkSession.request_action("horn")
             get_viewport().set_input_as_handled()
         elif event.is_action_pressed("inventory"):
             _open_shop("inventory")
@@ -168,11 +176,12 @@ func interact_nearby() -> void:
     if is_instance_valid(cleaning_panel) and cleaning_panel.is_open(): _cancel_clean();return
     if hunter.seat_index>=0: NetworkSession.request_action("exit");return
     _update_nearby()
-    if not nearby or shop.is_open or menu.is_open or map_menu.is_open or not hunter.control_enabled or hunter.health<=0: return
+    if not nearby or shop.is_open or garage.is_open or menu.is_open or map_menu.is_open or not hunter.control_enabled or hunter.health<=0: return
     if nearby is LootPickup: NetworkSession.request_action("pickup",str(nearby.network_id))
     elif nearby.interaction_kind=="test_loot": NetworkSession.request_action("test_loot")
     elif nearby.interaction_kind=="jeep": NetworkSession.request_action("enter")
-    elif nearby.interaction_kind in ["board","alight","ladder_up","ladder_down"]: NetworkSession.request_action("climb",nearby.interaction_kind)
+    elif nearby.interaction_kind in NetworkSession.CLIMB_ROUTES: NetworkSession.request_action("climb",nearby.interaction_kind)
+    elif nearby.interaction_kind=="garage": _open_garage()
     elif nearby.interaction_kind=="revive": return
     elif nearby.interaction_kind=="harvest": _begin_harvest(nearby.get_parent() as WildlifeAnimal)
     elif nearby.interaction_kind=="cleaner": _begin_clean()
@@ -182,7 +191,7 @@ func interact_nearby() -> void:
 ## The expedition map: from the truck's wheel (Tab, or straight away when the
 ## host takes the wheel in camp) or beside the campfire.
 func open_map_menu() -> void:
-    if map_menu.is_open or shop.is_open or menu.is_open: return
+    if map_menu.is_open or shop.is_open or garage.is_open or menu.is_open: return
     if is_instance_valid(minimap): minimap.close_detail()
     map_menu.open()
     _set_capture(false);hud.hide()
@@ -192,6 +201,11 @@ func _watch_seat() -> void:
     if seat==_last_seat: return
     _last_seat=seat
     if seat==0 and NetworkSession.phase=="lobby" and NetworkSession.is_host() and hunter.control_enabled: open_map_menu()
+
+func _open_garage() -> void:
+    if is_instance_valid(minimap): minimap.close_detail()
+    garage.open_for(inventory)
+    _set_capture(false)
 
 func _open_shop(kind: String) -> void:
     if is_instance_valid(minimap): minimap.close_detail()
@@ -262,7 +276,7 @@ func _begin_harvest(animal: WildlifeAnimal) -> void:
 func _update_harvest(delta: float) -> void:
     if not is_instance_valid(harvest_panel): return
     var unavailable: bool=not is_instance_valid(hunter) or NetworkSession.phase!="hunt" or NetworkSession.local_loaded_epoch!=NetworkSession.world_epoch
-    unavailable=unavailable or shop.is_open or menu.is_open or map_menu.is_open
+    unavailable=unavailable or shop.is_open or garage.is_open or menu.is_open or map_menu.is_open
     if is_instance_valid(hunter): unavailable=unavailable or hunter.health<=0 or hunter.seat_index>=0 or not hunter.control_enabled
     if unavailable:
         if harvest_panel.is_open() or is_instance_valid(_harvest_focus_hunter): _cancel_harvest()
@@ -364,7 +378,7 @@ func _begin_clean() -> void:
 func _update_clean(delta: float) -> void:
     if not is_instance_valid(cleaning_panel): return
     var unavailable: bool=not is_instance_valid(hunter) or NetworkSession.phase=="loading" or NetworkSession.local_loaded_epoch!=NetworkSession.world_epoch
-    unavailable=unavailable or shop.is_open or menu.is_open or map_menu.is_open
+    unavailable=unavailable or shop.is_open or garage.is_open or menu.is_open or map_menu.is_open
     if is_instance_valid(hunter): unavailable=unavailable or hunter.health<=0 or hunter.seat_index>=0 or not hunter.control_enabled
     if unavailable:
         if cleaning_panel.is_open(): _cancel_clean()

@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"manta_ray"
+display_name = "ANIMAL_MANTA_RAY"
+model_path = "res://actors/animals/models/manta_ray.tscn"
+max_health = 280
+spawn_weight = 8
+aggressive = false
+attack_damage = 0
+walk_speed = 3
+run_speed = 8
+aggro_range = 20
+pursuit_range = 80
+aggro_memory = 15
+height = 0.5
+length = 3
+width = 5
+aquatic = true
+swimmer = true
+swim_depth = 9
+territory = 200
+leap_range = 0
+leap_cooldown = 2
+pack_radius = 0
+loot_id = &"manta_hide"
+harvest_strokes = 7
+harvest_period = 2.3
+harvest_window = 0.24
+harvest_quirks = PackedStringArray("thick", "slippery")

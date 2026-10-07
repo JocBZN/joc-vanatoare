@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"hammerhead"
+display_name = "ANIMAL_HAMMERHEAD"
+model_path = "res://actors/animals/models/hammerhead.tscn"
+max_health = 380
+spawn_weight = 10
+aggressive = true
+attack_damage = 28
+walk_speed = 3
+run_speed = 12
+aggro_range = 58
+pursuit_range = 170
+aggro_memory = 35
+height = 1.1
+length = 4.2
+width = 1.6
+aquatic = true
+swimmer = true
+swim_depth = 9
+territory = 130
+leap_range = 12
+leap_cooldown = 2.4
+pack_radius = 35
+loot_id = &"hammerhead_hide"
+harvest_strokes = 10
+harvest_period = 1.9
+harvest_window = 0.17
+harvest_quirks = PackedStringArray("thick", "slippery")

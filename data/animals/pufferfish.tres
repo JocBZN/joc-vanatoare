@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"pufferfish"
+display_name = "ANIMAL_PUFFERFISH"
+model_path = "res://actors/animals/models/pufferfish.tscn"
+max_health = 90
+spawn_weight = 18
+aggressive = true
+attack_damage = 20
+walk_speed = 1.2
+run_speed = 4.5
+aggro_range = 8
+pursuit_range = 30
+aggro_memory = 15
+height = 0.6
+length = 0.8
+width = 0.6
+aquatic = true
+swimmer = true
+swim_depth = 4
+territory = 25
+leap_range = 0
+leap_cooldown = 2
+pack_radius = 0
+bite_reach = 2.2
+loot_id = &"pufferfish_skin"
+harvest_strokes = 5
+harvest_period = 2.4
+harvest_window = 0.27
+harvest_quirks = PackedStringArray("thick", "wiggle")

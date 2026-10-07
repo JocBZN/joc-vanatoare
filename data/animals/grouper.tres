@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"grouper"
+display_name = "ANIMAL_GROUPER"
+model_path = "res://actors/animals/models/grouper.tscn"
+max_health = 150
+spawn_weight = 16
+aggressive = false
+attack_damage = 0
+walk_speed = 1.4
+run_speed = 5.5
+aggro_range = 14
+pursuit_range = 50
+aggro_memory = 15
+height = 0.8
+length = 1.8
+width = 0.7
+aquatic = true
+swimmer = true
+swim_depth = 7
+territory = 40
+leap_range = 0
+leap_cooldown = 2
+pack_radius = 0
+loot_id = &"grouper_scales"
+harvest_strokes = 5
+harvest_period = 2.4
+harvest_window = 0.28
+harvest_quirks = PackedStringArray("thick")

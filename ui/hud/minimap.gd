@@ -79,12 +79,14 @@ func _ensure_relief(map) -> bool:
     heights_texture=ImageTexture.create_from_image(image)
     _relief_id=map.get_instance_id()
     var swamp: bool=map.has_method("mud_factor")
+    var ocean: bool=map.has_method("map_places")
     for rect in [radar,full_map]:
         var material: ShaderMaterial=rect.material
         material.set_shader_parameter("heights",heights_texture)
         material.set_shader_parameter("cells",float(map.CELLS))
         material.set_shader_parameter("map_size",float(map.SIZE))
         material.set_shader_parameter("swamp",1.0 if swamp else 0.0)
+        material.set_shader_parameter("ocean",1.0 if ocean else 0.0)
         if swamp:
             var walks:=PackedVector4Array()
             for segment in map.WALKS: walks.append(Vector4(segment[0].x,segment[0].y,segment[1].x,segment[1].y))
@@ -268,7 +270,8 @@ func _draw_full() -> void:
     var labels: Array=[]
     # Places worth a name.
     var places: Array=[]
-    if map.has_method("mud_factor"):
+    if map.has_method("map_places"): places=map.map_places()
+    elif map.has_method("mud_factor"):
         places=[["SWAMP_LANDING",Vector3(0,0,10)],["SWAMP_HUT",Vector3(110,0,-155)],["SWAMP_TOWER",Vector3(-155,0,-100)],["SWAMP_LAIR",Vector3(170,0,-330)]]
     else:
         places=[["SWAMP_LANDING",Vector3(0,0,10)],["MAP_LAKE",Vector3(map.LAKE_CENTER.x,0,map.LAKE_CENTER.y)]]

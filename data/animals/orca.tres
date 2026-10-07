@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"orca"
+display_name = "ANIMAL_ORCA"
+model_path = "res://actors/animals/models/orca.tscn"
+max_health = 900
+spawn_weight = 3
+aggressive = true
+attack_damage = 44
+walk_speed = 3
+run_speed = 11.5
+aggro_range = 65
+pursuit_range = 200
+aggro_memory = 40
+height = 2
+length = 7
+width = 2.2
+aquatic = true
+swimmer = true
+swim_depth = 7
+territory = 150
+leap_range = 14
+leap_cooldown = 3
+pack_radius = 45
+loot_id = &"orca_hide"
+harvest_strokes = 14
+harvest_period = 1.7
+harvest_window = 0.11
+harvest_quirks = PackedStringArray("thick", "slippery")

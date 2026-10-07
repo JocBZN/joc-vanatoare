@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"lionfish"
+display_name = "ANIMAL_LIONFISH"
+model_path = "res://actors/animals/models/lionfish.tscn"
+max_health = 70
+spawn_weight = 22
+aggressive = true
+attack_damage = 16
+walk_speed = 1
+run_speed = 3.5
+aggro_range = 9
+pursuit_range = 40
+aggro_memory = 15
+height = 0.55
+length = 0.9
+width = 0.7
+aquatic = true
+swimmer = true
+swim_depth = 5
+territory = 20
+leap_range = 0
+leap_cooldown = 2
+pack_radius = 0
+bite_reach = 1.8
+loot_id = &"lionfish_spine"
+harvest_strokes = 4
+harvest_period = 2.4
+harvest_window = 0.29
+harvest_quirks = PackedStringArray("wiggle")

@@ -217,7 +217,8 @@ func _draw_speed(screen: Vector2) -> void:
     var center:=Vector2(screen.x-86.0,screen.y-78.0)
     var radius: float=52.0
     var kmh: float=absf(truck.speed)*3.6
-    var fraction: float=clampf(kmh/75.0,0.0,1.0)
+    var dial: float=maxf(75.0,truck.max_forward_speed*3.6*(TruckUpgrades.NITRO_SPEED if TruckUpgrades.level(truck.upgrades,&"nitro")>0 else 1.0))
+    var fraction: float=clampf(kmh/dial,0.0,1.0)
     var start: float=deg_to_rad(135.0)
     var sweep: float=deg_to_rad(270.0)
     draw_circle(center,radius+10.0,Color(0,0,0,0.32))
@@ -233,6 +234,26 @@ func _draw_speed(screen: Vector2) -> void:
     Paint.panel(self,pill,Paint.ACCENT if gear=="D" else Color(0.95,0.93,0.86,0.92),6.0,Color(0,0,0,0),false)
     Paint.text(self,Vector2(pill.position.x,pill.position.y+15),gear,13,Color(0.1,0.1,0.1),HORIZONTAL_ALIGNMENT_CENTER,24,0)
     Paint.steering_wheel(self,center+Vector2(-radius-28.0,radius-4.0),18.0,Color(1,1,1,0.7))
+    # Nitro tank, once the boosters are fitted: fills while idle, drains while burning.
+    if TruckUpgrades.level(truck.upgrades,&"nitro")>0:
+        var tank:=Rect2(center+Vector2(-radius-40.0,radius+16.0),Vector2(radius*2.0+80.0,8.0))
+        draw_rect(tank,Color(0,0,0,0.42))
+        draw_rect(Rect2(tank.position,Vector2(tank.size.x*clampf(truck.nitro,0.0,1.0),tank.size.y)),Color("ff9a3a") if truck.boosting else Color("f2c94c"))
+        Paint.text(self,tank.position+Vector2(0,-3),tr("HUD_NITRO"),10,Paint.MUTED,HORIZONTAL_ALIGNMENT_LEFT,-1,3)
+    # Rotor fuel and the gramophone's recharge sit under it.
+    var bar_y: float=radius+36.0
+    if TruckUpgrades.level(truck.upgrades,&"rotor")>0:
+        var fuel:=Rect2(center+Vector2(-radius-40.0,bar_y),Vector2(radius*2.0+80.0,8.0))
+        draw_rect(fuel,Color(0,0,0,0.42))
+        draw_rect(Rect2(fuel.position,Vector2(fuel.size.x*clampf(truck.rotor_fuel,0.0,1.0),fuel.size.y)),Color("8fd3ff") if truck.rotor_on else Color("e9e2cf"))
+        Paint.text(self,fuel.position+Vector2(0,-3),tr("HUD_ROTOR"),10,Paint.MUTED,HORIZONTAL_ALIGNMENT_LEFT,-1,3)
+        bar_y+=20.0
+    if TruckUpgrades.level(truck.upgrades,&"horn")>0:
+        var horn:=Rect2(center+Vector2(-radius-40.0,bar_y),Vector2(radius*2.0+80.0,8.0))
+        draw_rect(horn,Color(0,0,0,0.42))
+        var ready: float=1.0-clampf(truck.horn_cooldown/TruckUpgrades.HORN_COOLDOWN,0.0,1.0)
+        draw_rect(Rect2(horn.position,Vector2(horn.size.x*ready,horn.size.y)),Color("d9b24a") if ready>=1.0 else Color("8d7f86"))
+        Paint.text(self,horn.position+Vector2(0,-3),tr("HUD_HORN"),10,Paint.MUTED,HORIZONTAL_ALIGNMENT_LEFT,-1,3)
 
 # --- Top: boss, notifications, lobby, party -------------------------------------------------
 

@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"tiger_shark"
+display_name = "ANIMAL_TIGER_SHARK"
+model_path = "res://actors/animals/models/tiger_shark.tscn"
+max_health = 420
+spawn_weight = 8
+aggressive = true
+attack_damage = 30
+walk_speed = 2.8
+run_speed = 12.5
+aggro_range = 65
+pursuit_range = 190
+aggro_memory = 35
+height = 1.2
+length = 4.6
+width = 1.4
+aquatic = true
+swimmer = true
+swim_depth = 8
+territory = 150
+leap_range = 13
+leap_cooldown = 2.5
+pack_radius = 30
+loot_id = &"tiger_shark_hide"
+harvest_strokes = 11
+harvest_period = 1.8
+harvest_window = 0.15
+harvest_quirks = PackedStringArray("thick", "chomp")

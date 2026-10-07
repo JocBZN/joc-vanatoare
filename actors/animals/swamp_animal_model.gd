@@ -101,7 +101,7 @@ func _process(delta: float) -> void:
     if animal.dead:
         body.rotation.z=lerpf(body.rotation.z,1.35,1-exp(-4*delta));return
     var moving: float=clampf(animal.movement_speed/maxf(.1,animal.definition.run_speed),0,1)
-    var attacking: bool=animal.state=="Attack"
+    var attacking: bool=animal.state in ["Attack","Leap"]
     body.scale.y=1+sin(t*2.1)*.012
     if species=="frog":
         var hop: float=maxf(0,sin(t*9))*moving

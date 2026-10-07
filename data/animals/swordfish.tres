@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"swordfish"
+display_name = "ANIMAL_SWORDFISH"
+model_path = "res://actors/animals/models/swordfish.tscn"
+max_health = 200
+spawn_weight = 9
+aggressive = true
+attack_damage = 30
+walk_speed = 3.5
+run_speed = 15
+aggro_range = 60
+pursuit_range = 180
+aggro_memory = 30
+height = 0.8
+length = 3.6
+width = 0.6
+aquatic = true
+swimmer = true
+swim_depth = 7
+territory = 140
+leap_range = 18
+leap_cooldown = 2.6
+pack_radius = 0
+loot_id = &"swordfish_bill"
+harvest_strokes = 9
+harvest_period = 1.9
+harvest_window = 0.19
+harvest_quirks = PackedStringArray("slippery", "thick")

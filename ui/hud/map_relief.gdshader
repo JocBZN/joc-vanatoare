@@ -13,6 +13,7 @@ uniform bool circle = true;
 uniform float corner = 0.0;
 uniform float opacity = 0.96;
 uniform float swamp = 0.0;
+uniform float ocean = 0.0;
 uniform float water_level = 0.0;
 uniform vec2 lake_center = vec2(190.0, 160.0);
 uniform float lake_reach = 98.0;
@@ -58,7 +59,11 @@ void fragment() {
     float shade = clamp(dot(normal, normalize(vec3(-.55, .75, -.45))), 0.0, 1.0);
     float steep = 1.0 - normal.y;
     vec3 color;
-    if (swamp > .5) {
+    if (ocean > .5) {
+        color = mix(vec3(.86, .79, .56), vec3(.3, .52, .24), smoothstep(.5, 2.5, h));
+        color = mix(color, vec3(.2, .4, .19), smoothstep(3.0, 10.0, h));
+        color = mix(color, vec3(.52, .5, .43), smoothstep(14.0, 22.0, h));
+    } else if (swamp > .5) {
         color = mix(vec3(.36, .38, .24), vec3(.33, .45, .27), smoothstep(.2, 2.0, h));
         color = mix(color, vec3(.42, .52, .31), smoothstep(4.0, 12.0, h));
         color = mix(color, vec3(.52, .5, .38), smoothstep(16.0, 28.0, h));
@@ -85,7 +90,12 @@ void fragment() {
         wet = distance(world, lake_center) < lake_reach && h < lake_level;
         depth = lake_level - h;
     }
-    if (wet) {
+    if (wet && ocean > .5) {
+        // Lagoon turquoise over the shallows, falling away to deep navy over the canyons.
+        color = mix(vec3(.3, .82, .8), vec3(.02, .15, .33), smoothstep(.0, 24.0, depth));
+        color = mix(color, vec3(.03, .08, .2), smoothstep(26.0, 50.0, depth));
+        color *= mix(.92, 1.05, shade);
+    } else if (wet) {
         vec3 shallow = swamp > .5 ? vec3(.33, .52, .49) : vec3(.36, .6, .68);
         vec3 deep = swamp > .5 ? vec3(.18, .33, .35) : vec3(.16, .34, .5);
         color = mix(shallow, deep, smoothstep(.0, 1.6, depth));
@@ -93,8 +103,8 @@ void fragment() {
     }
     // The road through the middle of the map, the camp clearing, boardwalks.
     float road_x = swamp > .5 ? sin(world.y * .008) * 28.0 : sin(world.y * .012) * 28.0 * smoothstep(35.0, 80.0, abs(world.y));
-    float road = band(abs(world.x - road_x), swamp > .5 ? 4.0 : 3.2, pixel);
-    if (swamp < .5) road = max(road, 1.0 - smoothstep(12.0, 15.0, length(world)));
+    float road = ocean > .5 ? 0.0 : band(abs(world.x - road_x), swamp > .5 ? 4.0 : 3.2, pixel);
+    if (swamp < .5 && ocean < .5) road = max(road, 1.0 - smoothstep(12.0, 15.0, length(world)));
     color = mix(color, vec3(.8, .67, .46), road * .85);
     for (int i = 0; i < walk_count; i++) {
         float walk = band(segment_distance(world, walks[i].xy, walks[i].zw), 2.3, pixel);

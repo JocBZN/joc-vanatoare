@@ -16,6 +16,7 @@ const WEAPONS: Array[Resource] = [
     preload("res://data/weapons/raygun.tres"),
     preload("res://data/weapons/chain_smg.tres"),
     preload("res://data/weapons/nova_shotgun.tres"),
+    preload("res://data/weapons/harpoon.tres"),
 ]
 const BACKPACKS: Array[Resource] = [
     preload("res://data/backpacks/small.tres"),

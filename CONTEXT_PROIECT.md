@@ -1,6 +1,6 @@
 # Context și jurnal de dezvoltare — Hunt Together
 
-Actualizat: 6 octombrie 2026. Acest fișier este punctul de reluare al proiectului.
+Actualizat: 7 octombrie 2026. Acest fișier este punctul de reluare al proiectului.
 
 ## Copia locală și sursa
 
@@ -667,3 +667,59 @@ Limite și reluare:
 - Magazinele funcționează și în expediție.
 
 Commit și push pe `claude/absurd-vehicle-game-a1mq0h`: `1f12ac2` (codul și documentația), apoi un commit cu capturile, fișierele `.uid` și acest jurnal.
+
+## 7 octombrie 2026 — Animale agresive inteligente: salt, pachet, simțuri
+
+Cererea: toate animalele care pot răni un om să fie mai inteligente și puțin absurde (stil Friendly Slope): să sară la atac și să vină repede spre jucător.
+
+Modificări:
+- `AnimalDefinition`: `leap_range`, `leap_cooldown`, `leap_speed`, `leap_hop`, `pack_radius` (0 = fără salt / fără apel de pachet).
+- `WildlifeAnimal` (host): pregătire scurtă (se ghemuiește și se întoarce spre pradă), apoi salt balistic spre locul unde va fi prada (anticipare după viteză), aterizare cu lovitură în arie (boșii mai mare); cooldown; `_call_pack` (un animal care vede un vânător atrage toți agresivii din rază, pe același tip de teren); `_senses` (miros/auz fără vedere directă la 30% din `aggro_range`); fugă în zigzag înainte de salt; +20% viteză sub 50% viață; la zgomot de împușcătură prădătorii aleargă (nu se plimbă); cadavrul unui animal împușcat în aer cade la sol. Starea nouă `Leap` (replicată; clipul `Attack`, altfel `Run`).
+- Specii (run_speed / aggro_range / leap_range): lup 11,5/60/12 (pachet 75), urs 8,8/50/10 (35), mistreț 9,2/30/9 (45), șarpe 7,5/24/8, crocodil 8,0/32/10 (30), crocodil străvechi 7,2/38/12, ursul străvechi 9,0/60/15, crocodilul albinos 8,2/46/15. Iepurele, căprioara, broasca și țestoasa nu sar. Jucătorul aleargă la 8,5 m/s.
+- Fișiere: `data/definitions/animal_definition.gd`, `data/animals/{wolf,bear,boar,snake,crocodile,ancient_crocodile,ancient_bear,albino_crocodile}.tres`, `actors/animals/wildlife_animal.gd`, `actors/animals/swamp_animal_model.gd`, `tests/verify_leap.gd` (nou, în `run_headless_tests.ps1`), `tests/verify_maps_predators.gd` și `tests/verify_swamp.gd` (testul teleporta animalul în plin salt: resetez `leaping`/`leap_windup`).
+
+Teste rulate local (Godot 4.7.1 headless, nu 4.7.2): leap 25/0, maps_predators 42/0, swamp 51/0, animated_wildlife 103/0, bosses 76/0, art_wildlife 48/0. Restul suitelor și testele ENet nu au fost rulate.
+
+Rămâne: balansul (viteze, daune, rază de pachet) nu a fost jucat de un om; nu există sunet/animație dedicată de salt (se refolosește `Attack`); nu există knockback pe jucător; sărituri peste obstacole înalte nu sunt tratate.
+
+## 7 octombrie 2026 — Upgrade-uri de camion, Ocean, costume de scufundare, creaturi marine
+
+Cererea: upgrade-uri la camion (viteză, accelerație, 4 construcții noi, ultima fiind barca), o hartă Ocean reală cu insule, corali, alge și mulți pești periculoși, costume de scufundare; apoi upgrade-uri gratuite pentru testare.
+
+Modificări (detalii în `docs/ocean.md`):
+- Upgrade-uri: `data/truck_upgrades.gd`, `actors/vehicles/truck_builds.gd` (plug de bivol, turn de pază, rachete nitro, kit de barcă), `hunting_jeep.gd` (efecte, fizică de barcă, replicare `up`/`nitro`/`boost`/`float`), `ui/garage/garage_ui.gd`, banca din `oak_truck_model.gd`, acțiunea `truck_upgrade` și poarta oceanului în `network_session.gd`, indicator nitro în HUD. În jocul cu fereastră upgrade-urile costă 0 (`TruckUpgrades.free_for_testing`); headless păstrează prețurile.
+- Ocean: `world/ocean/*` (hartă, apă clipmap, fund, flora procedurală, shadere), integrare în `WorldCatalog`, `WorldRouter`, meniul de hărți, minimap (`map_relief.gdshader`), localizare RO/EN.
+- Înot și costume: `hunter.gd` (înot 3D, postură, costum), `art/diving_suit.gd`.
+- Creaturi: 8 specii + megalodon (`data/animals/*.tres`, `data/loot/*.tres`, `actors/animals/sea_animal_model.gd`), `WildlifeAnimal._swim_ai`, populare/limite în `network_session.gd`, pictograme pe harta mare.
+- Teste noi: `verify_truck.gd` (38), `verify_ocean.gd` (59), previzualizări `preview_truck/ocean/sea.gd`. `verify_maps_predators.gd` așteaptă acum trei destinații.
+
+Teste rulate local (Godot 4.7.1 headless): maps_predators 42, worlds_vehicle 45, forest 56, progression 57, revive_perspective 37, art_wildlife 48, swamp 51, animated_wildlife 103, harvest 204, cleaning 59, base 75, bosses 76, leap 25, truck 38, ocean 59 — toate 0 eșecuri. Capturi reale (Intel UHD 620, Forward+) inspectate în sesiune. Testele ENet și `verify_water/random_terrain` nu au fost rulate.
+
+Rămâne: balansul nu a fost jucat de un om; performanța pe UHD 620 nemăsurată (încărcarea Oceanului ~9 s); fără sunet/oxigen/împingere la mușcătură; epavele n-au coliziune; modelele marine sunt simple (doar din capturi). Rețeaua pentru înot/barcă e acoperită de cod (snapshot existent), nu de un test ENet.
+
+## 7 octombrie 2026 (seara) — Barcă care se transformă, nitro stabil, apă tropicală, creaturi noi, Calamarul colosal
+
+Cererea: design mai bun la barcă și animație misto, transformare doar la contactul cu apa; nitro care răstoarnă camionul; construcții mai logice; apoi apă tropicală limpede care se întunecă cu adâncimea, pești mai bine modelați și mai multe animale marine cu animații bune de înot; un Calamar colosal ca boss.
+
+Detalii în `docs/ocean.md` (secțiunea „Actualizare”). Fișiere principale: `actors/vehicles/hunting_jeep.gd` (stabilizatori, nitro central, `boat_deploy`), `actors/vehicles/truck_builds.gd` (bară, turn, nitro, barcă pliabilă), `world/ocean/{ocean_world.gd,ocean_floor.gdshader,ocean_water.gdshader,flora.gdshader,kelp.gdshader,fish_school.gdshader,ocean_flora.gd,ocean_map.gd}` (apă tropicală, lumină cu adâncimea, pești de recif), `actors/animals/{sea_animal_model.gd,sea_skin.gdshader,colossal_squid_model.gd,squid.gdshader}`, `data/animals/*.tres` (+10 specii, calamarul), `data/loot/*.tres`, `wildlife_animal.gd` (fugă pașnică, combo, cerneală), `network_session.gd` (alegerea bossului, populație), localizare RO/EN.
+
+Teste rulate local (Godot 4.7.1 headless): ocean 75/0, truck 39/0 (nitro: tangaj 0,0002), maps_predators 42/0, leap 25/0, bosses 76/0, swamp 51/0, worlds_vehicle 45/0. Capturi reale inspectate: galeria creaturilor, calamarul în patru poze, transformarea bărcii. Nu au fost rulate din nou: base, forest, harvest, cleaning, animated_wildlife, art_wildlife, progression, revive_perspective (neatinse direct) și testele ENet.
+
+Rămâne: nu am putut reproduce o răsturnare reală a camionului în simulare (cauzele găsite sunt reale, dar neconfirmate în joc); balansul calamarului și al noilor specii nejucat; performanța pe UHD 620 (hartă ~9 s, mai multe creaturi); modelele sunt low-poly procedurale judecate din capturi.
+
+## 7 octombrie 2026 (noaptea) — Construcții absurde, Galion, sferă de sticlă, harpon, poza Oceanului
+
+Cererea: poza hărții Ocean lipsea din meniu; upgrade-uri de camion mult mai absurde dar frumoase; barca să devină mult mai mare, credibilă, cu animație mai bună și o terasă la pupa pentru tras aproape de apă; o sferă de sticlă sub mașină; 3–4 construcții noi mărețe și utile; arma Harpon (+100% daune la animale marine, se încarcă foarte greu).
+
+Modificări:
+- `assets/ui/ocean_card.png` (+ import) pentru meniul de hărți.
+- `actors/vehicles/truck_builds.gd`: Capul de Bivol (coarne, ochi roșii care ard mai tare cu viteza, inel în nas, aburi din nări), Cuibul Corbului (telescop, clopot, papagal, radar rotitor, girueta-pește), Rachete-Morcov (cu ochi, flăcări din frunze), **Galionul** (24 m: două jumătăți de coc din scânduri, tunuri, ancoră, cauciucuri, colac, proră cu rățușcă de cauciuc, pupa cu terasă telescopică, scări de la verandă, scară spre apă, felinare, cârmă cu elice, catarg; desfacere în etape cu aburi și tremur, `animate_boat(d,t,speed,floating)`).
+- `actors/vehicles/truck_extras.gd` (nou): Grătarul Spitalicesc (vindecă pe cei de la bord), Aspiratorul de Pradă (trompă de 14 segmente, trage prada în rucsac), Sfera de Sticlă (coboară sub barcă pe cablu când plutește; coliziune, intrare/ieșire), Gramofonul Anti-Rechini (tasta H, sperie animalele 8 s, reîncărcare 18 s), Stejarul Zburător (rotor, tasta C ține camionul în aer, combustibil).
+- `data/truck_upgrades.gd`: 9 construcții (grill→tower, vacuum→nitro, sphere→boat, horn→boat, rotor→tower), prețuri, constante. `hunting_jeep.gd`: `_host_extras`, `_sweep_loot`, `blast_horn`, forță rotor, `_refresh_boxes`, punți/terasă solide doar când barca e desfăcută, snapshot extins (`sph,rot,rotor,hcd,hc,gr,vac`), rute `deck_down/deck_up/board_deck/sphere_down/sphere_up`. `network_session.gd`: `CLIMB_ROUTES`, `vacuum_pickup`, acțiunea `horn`, `damage_against` (harpon), `rotor` în comanda șoferului. `wildlife_animal.gd`: `scare()`; creaturile marine ignoră pe cei de pe camion (inclusiv în sferă).
+- Harpon: `data/weapons/harpoon.tres` (230 daune, 9 s reîncărcare, încărcător 1, `marine_bonus=1.0`), `actors/equipment/harpoon_model.gd|.tscn`, catalog, localizare.
+- UI: garaj (9 rânduri cu accente), HUD (bare rotor/gramofon), taste noi `horn` (H), `rotor` (C), texte RO/EN.
+- Teste: `verify_truck.gd` 53 (ORDER/BUILDS noi, terasă, sferă, grătar, gramofon, rotor, harpon), `verify_ocean.gd` 75, previzualizare nouă `tests/preview_builds.gd`.
+
+Teste rulate local (Godot 4.7.1 headless): maps_predators 42/0, forest 56/0, revive_perspective 37/0, animated_wildlife 103/0, cleaning 59/0, base 75/0, bosses 76/0, leap 25/0, truck 53/0, ocean 75/0. Capturi reale inspectate: bivol, galion (3/4, lateral, pupa de sus), sferă.
+
+Rămâne: nu am văzut încă galionul pe apă reală (doar pe uscat, terenul taie pupa), nici sfera sub apă; balansul (grătar 4 HP/s, aspirator 22 m, rotor, harpon) nejucat; Capul de Bivol și coarnele sunt mari și pot masca vizibilitatea în față; harponul folosește sunetul și modelul inspirate din arme existente, fără animație de funie; Stejarul Zburător nu are încă coliziune verificată cu turnul la aterizări dure.

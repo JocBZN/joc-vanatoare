@@ -18,6 +18,24 @@ extends Resource
 @export var length: float=0
 @export var width: float=0
 @export var loot_id: StringName
+## Pounce: 0 disables it. Otherwise the animal launches itself at prey that is
+## between the melee range and `leap_range`, and hurts whatever it lands near.
+## Sea creatures move in 3D with no gravity. `swim_depth` is how far below the
+## surface they like to cruise; `bite_reach` overrides the melee reach (0 = automatic).
+@export var swimmer: bool = false
+@export var swim_depth: float = 4.0
+@export var bite_reach: float = 0.0
+## How far from its home a swimmer roams, and (electric eel) the radius of its shock.
+@export var territory: float = 60.0
+@export var shock_radius: float = 0.0
+@export var leap_range: float = 0.0
+@export var leap_cooldown: float = 2.8
+@export var leap_speed: float = 14.0
+## Extra upward kick on top of the arc the jump needs, for absurdly high pounces.
+@export var leap_hop: float = 2.0
+## When this animal first notices a hunter, every aggressive animal of the same
+## kind of terrain (land or water) within this radius joins the chase.
+@export var pack_radius: float = 0.0
 ## A map boss: spawned on its own clock anywhere on the map (at most two alive),
 ## never culled for being far away, and it drops `trophies` where it falls.
 @export var boss: bool = false

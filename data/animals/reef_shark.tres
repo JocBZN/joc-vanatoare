@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"reef_shark"
+display_name = "ANIMAL_REEF_SHARK"
+model_path = "res://actors/animals/models/reef_shark.tscn"
+max_health = 220
+spawn_weight = 22
+aggressive = true
+attack_damage = 18
+walk_speed = 2.8
+run_speed = 11.5
+aggro_range = 50
+pursuit_range = 160
+aggro_memory = 30
+height = 0.9
+length = 2.6
+width = 0.9
+aquatic = true
+swimmer = true
+swim_depth = 6
+territory = 110
+leap_range = 10
+leap_cooldown = 2.2
+pack_radius = 40
+loot_id = &"reef_shark_hide"
+harvest_strokes = 8
+harvest_period = 2
+harvest_window = 0.23
+harvest_quirks = PackedStringArray("slippery", "thick")

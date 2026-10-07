@@ -112,7 +112,7 @@ func run() -> void:
         var before: float=animal.global_position.distance_to(hunter.global_position)
         await frames(45)
         check(animal.target_peer==1 and animal.global_position.distance_to(hunter.global_position)<before-1,str(kind)+" hunts instead of fleeing")
-        animal.global_position=Vector3(0,30,-101.4);animal.velocity=Vector3.ZERO;animal.attack_clock=0
+        animal.global_position=Vector3(0,30,-101.4);animal.velocity=Vector3.ZERO;animal.attack_clock=0;animal.leaping=false;animal.leap_windup=-1
         await frames(38);check(hunter.health<100,str(kind)+" applies an animated bite after windup")
         animal.set_physics_process(false);session.remove_animal(animal.animal_id)
     hunter.inventory.items.clear();hunter.inventory.coins=0

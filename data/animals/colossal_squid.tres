@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"colossal_squid"
+display_name = "ANIMAL_COLOSSAL_SQUID"
+model_path = "res://actors/animals/models/colossal_squid.tscn"
+max_health = 5200
+spawn_weight = 0
+aggressive = true
+attack_damage = 34
+walk_speed = 2.2
+run_speed = 9.5
+aggro_range = 95
+pursuit_range = 320
+aggro_memory = 60
+height = 6
+length = 24
+width = 7
+aquatic = true
+swimmer = true
+swim_depth = 18
+territory = 350
+leap_range = 22
+leap_cooldown = 4
+pack_radius = 0
+bite_reach = 15
+loot_id = &"colossal_squid_hide"
+boss = true
+trophies = Array[StringName]([&"squid_beak", &"squid_eye", &"squid_eye", &"ink_sac", &"ink_sac", &"ink_sac"])
+harvest_strokes = 16
+harvest_period = 1.6
+harvest_window = 0.08
+harvest_quirks = PackedStringArray("wiggle", "slippery", "thick")

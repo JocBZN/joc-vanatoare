@@ -8,20 +8,39 @@ const SWAMP_ANIMALS: Array[Resource] = [
     preload("res://data/animals/frog.tres"), preload("res://data/animals/turtle.tres"),
     preload("res://data/animals/snake.tres"), preload("res://data/animals/crocodile.tres"), preload("res://data/animals/ancient_crocodile.tres")
 ]
+## Sea creatures of the ocean map (swimmers). Filled in by the ocean species files.
+const OCEAN_ANIMALS: Array[Resource] = [
+    preload("res://data/animals/barracuda.tres"), preload("res://data/animals/moray.tres"), preload("res://data/animals/reef_shark.tres"),
+    preload("res://data/animals/jellyfish.tres"), preload("res://data/animals/electric_eel.tres"), preload("res://data/animals/hammerhead.tres"),
+    preload("res://data/animals/great_white.tres"), preload("res://data/animals/orca.tres"),
+    preload("res://data/animals/swordfish.tres"), preload("res://data/animals/tiger_shark.tres"), preload("res://data/animals/lionfish.tres"),
+    preload("res://data/animals/pufferfish.tres"), preload("res://data/animals/sea_snake.tres"), preload("res://data/animals/man_o_war.tres"),
+    preload("res://data/animals/dolphin.tres"), preload("res://data/animals/sea_turtle.tres"), preload("res://data/animals/manta_ray.tres"),
+    preload("res://data/animals/grouper.tres")
+]
 ## One boss per map, spawned on its own clock (see NetworkSession._tick_bosses).
 const BOSSES: Array[Resource] = [
-    preload("res://data/animals/ancient_bear.tres"), preload("res://data/animals/albino_crocodile.tres")
+    preload("res://data/animals/ancient_bear.tres"), preload("res://data/animals/albino_crocodile.tres"), preload("res://data/animals/megalodon.tres"),
+    preload("res://data/animals/colossal_squid.tres")
 ]
 const LOOT_IDS = [&"rabbit_pelt", &"deer_pelt", &"boar_pelt", &"wolf_pelt", &"bear_pelt", &"boar_tusk", &"frog_hide", &"turtle_shell", &"snake_skin", &"crocodile_hide", &"ancient_crocodile_hide",
     &"ancient_bear_pelt", &"ancient_bear_claw", &"ancient_bear_fang", &"ancient_amber",
-    &"albino_crocodile_hide", &"albino_croc_tooth", &"croc_gastrolith", &"ancient_harpoon"]
+    &"albino_crocodile_hide", &"albino_croc_tooth", &"croc_gastrolith", &"ancient_harpoon",
+    &"barracuda_skin", &"moray_hide", &"reef_shark_hide", &"jellyfish_bell", &"electric_eel_skin", &"hammerhead_hide", &"great_white_hide", &"orca_hide", &"megalodon_hide",
+    &"megalodon_tooth", &"abyss_pearl", &"sunken_anchor",
+    &"swordfish_bill", &"tiger_shark_hide", &"lionfish_spine", &"pufferfish_skin", &"sea_snake_skin", &"man_o_war_bladder",
+    &"dolphin_hide", &"sea_turtle_shell", &"manta_hide", &"grouper_scales", &"colossal_squid_hide", &"squid_beak", &"squid_eye", &"ink_sac"]
 ## Boss trophies: dropped where the boss falls, picked up like any loot.
-const TROPHY_IDS = [&"ancient_bear_claw", &"ancient_bear_fang", &"ancient_amber", &"albino_croc_tooth", &"croc_gastrolith", &"ancient_harpoon"]
+const TROPHY_IDS = [&"ancient_bear_claw", &"ancient_bear_fang", &"ancient_amber", &"albino_croc_tooth", &"croc_gastrolith", &"ancient_harpoon", &"megalodon_tooth", &"abyss_pearl", &"sunken_anchor", &"squid_beak", &"squid_eye", &"ink_sac"]
 static var quality_loot: Dictionary = {}
-static func population(map_id: String) -> Array[Resource]: return SWAMP_ANIMALS if map_id=="swamp" else ANIMALS
-static func boss_for(map_id: String) -> AnimalDefinition: return BOSSES[1] if map_id=="swamp" else BOSSES[0]
+static func population(map_id: String) -> Array[Resource]: return OCEAN_ANIMALS if map_id=="ocean" else SWAMP_ANIMALS if map_id=="swamp" else ANIMALS
+static func boss_for(map_id: String) -> AnimalDefinition: return BOSSES[2] if map_id=="ocean" else BOSSES[1] if map_id=="swamp" else BOSSES[0]
+## Every boss that can wake on a map (the ocean has two: the megalodon and the colossal squid).
+static func bosses_for(map_id: String) -> Array[AnimalDefinition]:
+    if map_id=="ocean": return [BOSSES[2] as AnimalDefinition,BOSSES[3] as AnimalDefinition]
+    return [boss_for(map_id)]
 ## Every species that can appear: both populations and the bosses.
-static func all_animals() -> Array[Resource]: return ANIMALS+SWAMP_ANIMALS+BOSSES
+static func all_animals() -> Array[Resource]: return ANIMALS+SWAMP_ANIMALS+OCEAN_ANIMALS+BOSSES
 static func animal(id: StringName) -> AnimalDefinition:
     for entry: AnimalDefinition in all_animals():
         if entry.id == id:

@@ -3,12 +3,15 @@ extends Node
 signal changed
 signal player_changed
 signal trunk_changed
+## The truck's upgrade levels changed (bought here, or replicated from the host).
+signal truck_changed
 const MAX_PLAYERS = 4
 const TRUNK_CAPACITY = 120
 var world
 var players: Dictionary = {}
 var animals: Dictionary = {}
 var loot: Dictionary = {}
+const CLIMB_ROUTES: Array=["board","alight","ladder_up","ladder_down","tower_up","tower_down","deck_down","deck_up","board_deck","sphere_down","sphere_up"]
 var jeep
 var forest
 var mode: String = "solo"
@@ -68,6 +71,9 @@ var clean_received_sequence: int=-1
 ## hunter aboard on foot with their truck-local position.
 var travel_driver: int=0
 var travel_riders: Dictionary={}
+## Shared upgrade levels of the Wandering Oak (see TruckUpgrades). The host is
+## the authority; the truck snapshot carries them to everyone else.
+var truck_state: Dictionary=TruckUpgrades.fresh()
 
 func _ready() -> void:
     rng.seed=10337
@@ -338,7 +344,7 @@ func _accept_input(peer: int, data: Dictionary) -> void:
     var seq: int=int(data.get("seq",0))
     if seq<=int(last_inputs.get(peer,-1)): return
     last_inputs[peer]=seq
-    var validated={"direction":direction.limit_length(),"drive":drive.limit_length(),"yaw":wrapf(yaw,-PI,PI),"pitch":clampf(pitch,-1,.5),"sprint":bool(data.get("sprint",false)),"aim":bool(data.get("aim",false)),"jump":bool(data.get("jump",false)),"brake":bool(data.get("brake",false)),"time":Time.get_ticks_msec(),"first":bool(data.get("first",false))}
+    var validated={"direction":direction.limit_length(),"drive":drive.limit_length(),"yaw":wrapf(yaw,-PI,PI),"pitch":clampf(pitch,-1.5,1.5),"sprint":bool(data.get("sprint",false)),"rotor":bool(data.get("rotor",false)),"aim":bool(data.get("aim",false)),"jump":bool(data.get("jump",false)),"brake":bool(data.get("brake",false)),"time":Time.get_ticks_msec(),"first":bool(data.get("first",false))}
     var target: int=data.get("revive",0) if data.get("revive",0) is int else 0
     validated["revive"]=target
     validated["harvest"]=bool(data.get("harvest",false))
@@ -434,6 +440,8 @@ func _action(peer: int, kind: String, value: String) -> void:
         if peer!=1 or not is_host(): return
         if kind=="start_hunt" and phase=="lobby":
             if not WorldCatalog.is_hunt(value): tell(peer,"MAP_UNAVAILABLE");return
+            # The ocean can only be crossed by a truck that has been turned into a boat.
+            if value=="ocean" and TruckUpgrades.level(truck_state,&"boat")<1: tell(peer,"OCEAN_NEEDS_BOAT");return
             var hunter=players[peer]
             if not hunter.world_ready or hunter.health<=0: return
             # The map is chosen from the truck's wheel (or, as before, beside the campfire).
@@ -490,6 +498,8 @@ func _action(peer: int, kind: String, value: String) -> void:
             if parts.size()==2 and _at_stall(p,"weapons"): inv.buy_upgrade(StringName(parts[0]),parts[1])
         "bag":
             if _at_stall(p,"backpacks"): inv.buy_backpack(StringName(value))
+        "truck_upgrade":
+            if _at_stall(p,"garage"): buy_truck_upgrade(peer,StringName(value))
         "sell":
             if _at_stall(p,"sell"): inv.sell_all()
         "sell_stash":
@@ -508,7 +518,9 @@ func _action(peer: int, kind: String, value: String) -> void:
             if _at_stall(p,"test_loot"): inv.collect(EquipmentCatalog.TEST_LOOT)
         "enter": jeep.enter(peer)
         "climb":
-            if value in ["board","alight","ladder_up","ladder_down"] and _at_stall(p,value): jeep.climb(peer,value)
+            if value in CLIMB_ROUTES and _at_stall(p,value): jeep.climb(peer,value)
+        "horn":
+            if p.seat_index>=0 or p.riding: jeep.blast_horn(peer)
         "exit": jeep.exit_seat(peer)
         "deposit", "withdraw":
             if _at_stall(p,"trunk"): _move_cargo(peer,kind)
@@ -526,6 +538,29 @@ func _action(peer: int, kind: String, value: String) -> void:
                     tell(peer,"SOLD",{"n":earned})
                     _publish_trunk()
     _send_inventory(peer)
+
+## Host: the buyer pays from their own wallet; the truck is shared by everyone.
+func buy_truck_upgrade(peer: int,id: StringName) -> bool:
+    if not is_host() or not players.has(peer): return false
+    var reason: String=TruckUpgrades.blocker(truck_state,id)
+    if reason=="TRUCK_NEEDS":
+        tell(peer,"TRUCK_NEEDS",{"item_key":"TRUCK_UP_"+String(TruckUpgrades.requirement(id))})
+        return false
+    if not reason.is_empty():
+        tell(peer,reason)
+        return false
+    var inv: HunterInventory=players[peer].inventory
+    var cost: int=TruckUpgrades.next_cost(truck_state,id)
+    if inv.coins<cost:
+        tell(peer,"MISSING",{"n":cost-inv.coins})
+        return false
+    inv.coins-=cost
+    inv.changed.emit()
+    truck_state[String(id)]=TruckUpgrades.level(truck_state,id)+1
+    jeep.set_upgrades(truck_state)
+    tell(peer,"TRUCK_BOUGHT",{"item_key":"TRUCK_UP_"+String(id),"n":TruckUpgrades.level(truck_state,id)})
+    truck_changed.emit()
+    return true
 
 func _set_phase(value: String) -> void:
     if phase==value: return
@@ -814,7 +849,7 @@ func _shoot(peer: int, origin: Vector3, direction: Vector3) -> void:
         if not hit.is_empty():
             end=hit.position
             if hit.collider is WildlifeAnimal:
-                var amount:=maxi(1,p.inventory.weapon_damage(weapon.id)/weapon.pellets)
+                var amount:=damage_against(weapon,maxi(1,p.inventory.weapon_damage(weapon.id)/weapon.pellets),hit.collider)
                 if hit.collider.take_damage(amount,p.global_position,peer): damage+=amount
         endpoints.append(end)
     _shot_fx(peer,String(weapon.id),muzzle,endpoints,damage)
@@ -825,7 +860,27 @@ func _shoot(peer: int, origin: Vector3, direction: Vector3) -> void:
 func _shot_fx(peer: int, weapon: String, muzzle: Vector3, endpoints: Array, damage: int) -> void:
     if players.has(peer): players[peer].combat.present_shot(weapon,muzzle,endpoints,damage)
 
+## A weapon's damage to one animal: the harpoon does double to anything that swims.
+static func damage_against(weapon: WeaponDefinition,amount: int,animal) -> int:
+    if weapon.marine_bonus>0.0 and animal is WildlifeAnimal and animal.definition.swimmer: return maxi(1,roundi(float(amount)*(1.0+weapon.marine_bonus)))
+    return amount
+
 func _populate() -> void:
+    if world_id=="ocean":
+        # A crowded sea: schools of barracuda and eels about the reefs, sharks further out,
+        # nothing near the camp island, and a boss that wakes somewhere far off.
+        var placed: int=0
+        for attempt in 240:
+            if placed>=64: break
+            var angle: float=rng.randf()*TAU
+            var distance: float=rng.randf_range(170,1000)
+            var point:=Vector3(sin(angle)*distance,0,cos(angle)*distance)
+            var made=spawn_animal(AnimalCatalog.roll(rng,world_id).id,point)
+            if made and Vector2(made.global_position.x,made.global_position.z).length()<160.0: remove_animal(made.animal_id);made=null
+            if made: placed+=1
+        spawn_boss();spawn_boss()
+        boss_clock=rng.randf_range(120,200)
+        return
     if world_id=="swamp":
         for index in 4: spawn_animal(AnimalCatalog.SWAMP_ANIMALS[index].id,Vector3(62+index*12,0,-70-index*22))
         var guardian=spawn_animal(&"ancient_crocodile",Vector3(170,0,-330))
@@ -854,7 +909,14 @@ func _tick_bosses(delta: float) -> void:
 ## from the truck, and everyone hears about it.
 func spawn_boss():
     if not is_host() or phase!="hunt" or not is_instance_valid(forest) or living_bosses().size()>=MAX_BOSSES: return null
-    var entry: AnimalDefinition=AnimalCatalog.boss_for(world_id)
+    # Choose among the map's bosses, preferring one that is not already out there.
+    var options: Array[AnimalDefinition]=AnimalCatalog.bosses_for(world_id)
+    var entry: AnimalDefinition=options[rng.randi()%options.size()]
+    for candidate in options:
+        var alive: bool=false
+        for other in living_bosses():
+            if other.definition.id==candidate.id: alive=true
+        if not alive: entry=candidate;break
     var span: float=ForestMap.LIMIT-60
     for attempt in 40:
         var point:=Vector3(rng.randf_range(-span,span),0,rng.randf_range(-span,span))
@@ -898,12 +960,12 @@ func _spawn_near_player() -> void:
         var a=animals[id]
         var nearby:=false
         for hunter in players.values():
-            if a.global_position.distance_to(hunter.global_position)<280: nearby=true;break
+            if a.global_position.distance_to(hunter.global_position)<(900 if world_id=="ocean" else 280): nearby=true;break
         if not nearby and not a.dead and not a.get_meta("lair_guard",false) and not a.definition.boss: remove_animal(id)
     var living: int=0
     for animal in animals.values():
         if not animal.dead: living+=1
-    if living<40: spawn_animal(AnimalCatalog.roll(rng,world_id).id,point)
+    if living<(84 if world_id=="ocean" else 40): spawn_animal(AnimalCatalog.roll(rng,world_id).id,point)
 
 func spawn_animal(kind: StringName, point: Vector3):
     if not is_instance_valid(forest): return null
@@ -963,6 +1025,15 @@ func _loot_added(id: int, kind: String, point: Vector3, epoch: int) -> void:
 func _loot_removed(id: int,epoch: int) -> void:
     if epoch!=world_epoch: return
     _erase_loot(id)
+
+## The Loot Hoover: pulls a pickup into a hunter's pack from afar (host only).
+func vacuum_pickup(id: int,peer: int) -> bool:
+    var p=players.get(peer)
+    if not is_host() or not loot.has(id) or not p: return false
+    if not p.inventory.collect(loot[id].loot_definition): return false
+    _erase_loot(id)
+    if mode=="host": _broadcast(&"_loot_removed",[id,world_epoch])
+    return true
 
 func _erase_loot(id: int) -> void:
     if loot.has(id):

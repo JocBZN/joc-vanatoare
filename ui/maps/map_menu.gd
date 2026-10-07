@@ -16,7 +16,9 @@ var message: String=""
 var selected: String="forest"
 var picture: TextureRect
 var map_buttons: Dictionary={}
-const DESTINATIONS=["forest","swamp"]
+const DESTINATIONS=["forest","swamp","ocean"]
+const DESCRIPTIONS={"forest":"MAP_FOREST_DESC","swamp":"MAP_SWAMP_DESC","ocean":"MAP_OCEAN_DESC"}
+const ANIMALS={"forest":"MAP_ANIMALS","swamp":"MAP_SWAMP_ANIMALS","ocean":"MAP_OCEAN_ANIMALS"}
 
 func _ready() -> void:
     layer=15
@@ -46,8 +48,8 @@ func refresh() -> void:
     title.text=tr("MAP_TITLE")
     subtitle.text=tr("MAP_SUBTITLE")
     forest_title.text=tr(WorldCatalog.title_key(selected))
-    description.text=tr("MAP_SWAMP_DESC" if selected=="swamp" else "MAP_FOREST_DESC")
-    animal_list.text=tr("MAP_SWAMP_ANIMALS" if selected=="swamp" else "MAP_ANIMALS")
+    description.text=tr(DESCRIPTIONS[selected])
+    animal_list.text=tr(ANIMALS[selected])
     for id in map_buttons:
         map_buttons[id].text=tr(WorldCatalog.title_key(id))
         map_buttons[id].button_pressed=id==selected
@@ -62,7 +64,10 @@ func refresh() -> void:
     camp_button.text=tr("RETURN_LOBBY")
     camp_button.visible=NetworkSession.phase=="hunt" and NetworkSession.is_host()
     start_button.visible=NetworkSession.phase=="lobby" or not NetworkSession.is_host()
-    status.text=message if not message.is_empty() else tr("MAP_HOST_HINT" if NetworkSession.is_host() else "MAP_CLIENT_HINT")
+    # The ocean needs the boat kit: say so instead of letting the host find out by pressing Start.
+    var sealed: bool=selected=="ocean" and TruckUpgrades.level(NetworkSession.truck_state,&"boat")<1
+    if sealed: start_button.disabled=true
+    status.text=message if not message.is_empty() else tr("OCEAN_NEEDS_BOAT") if sealed else tr("MAP_HOST_HINT" if NetworkSession.is_host() else "MAP_CLIENT_HINT")
 
 func _build() -> void:
     root_control=Control.new();add_child(root_control)

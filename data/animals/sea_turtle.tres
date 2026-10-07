@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"sea_turtle"
+display_name = "ANIMAL_SEA_TURTLE"
+model_path = "res://actors/animals/models/sea_turtle.tscn"
+max_health = 120
+spawn_weight = 14
+aggressive = false
+attack_damage = 0
+walk_speed = 1.2
+run_speed = 3.2
+aggro_range = 15
+pursuit_range = 60
+aggro_memory = 15
+height = 0.5
+length = 1.3
+width = 1.1
+aquatic = true
+swimmer = true
+swim_depth = 4
+territory = 120
+leap_range = 0
+leap_cooldown = 2
+pack_radius = 0
+loot_id = &"sea_turtle_shell"
+harvest_strokes = 6
+harvest_period = 2.5
+harvest_window = 0.3
+harvest_quirks = PackedStringArray("shell")

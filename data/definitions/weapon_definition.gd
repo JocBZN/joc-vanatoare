@@ -18,3 +18,5 @@ extends Resource
 @export_enum("iron", "scope") var sight_type: String="iron"
 @export_range(15, 75) var ads_fov: float=62.0
 @export var effect_color: Color=Color(1.0,0.8,0.27,1.0)
+## Extra damage against sea creatures, as a fraction: 1.0 means +100%.
+@export var marine_bonus: float=0.0

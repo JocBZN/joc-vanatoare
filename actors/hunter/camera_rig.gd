@@ -42,8 +42,8 @@ func _unhandled_input(event: InputEvent) -> void:
         rotation.y -= event.relative.x * mouse_sensitivity
         rotation.x = clampf(
             rotation.x - event.relative.y * mouse_sensitivity,
-            deg_to_rad(-55.0),
-            deg_to_rad(25.0)
+            deg_to_rad(-80.0),
+            deg_to_rad(85.0)
         )
 
 

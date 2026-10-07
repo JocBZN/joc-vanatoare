@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"barracuda"
+display_name = "ANIMAL_BARRACUDA"
+model_path = "res://actors/animals/models/barracuda.tscn"
+max_health = 90
+spawn_weight = 38
+aggressive = true
+attack_damage = 9
+walk_speed = 3.2
+run_speed = 14
+aggro_range = 55
+pursuit_range = 140
+aggro_memory = 25
+height = 0.45
+length = 1.9
+width = 0.4
+aquatic = true
+swimmer = true
+swim_depth = 6
+territory = 90
+leap_range = 9
+leap_cooldown = 1.8
+pack_radius = 55
+loot_id = &"barracuda_skin"
+harvest_strokes = 4
+harvest_period = 2.3
+harvest_window = 0.3
+harvest_quirks = PackedStringArray("slippery")

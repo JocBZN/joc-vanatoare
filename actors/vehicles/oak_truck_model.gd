@@ -85,6 +85,7 @@ func build(target: RigidBody3D, wheels: Array, wheel_radius: float) -> Dictionar
     _terrace()
     _porch()
     _workshop()
+    _garage()
     _interactables()
     _collisions()
     _wheels(wheels,wheel_radius)
@@ -526,11 +527,42 @@ func _workshop() -> void:
     var lamp:=OmniLight3D.new();lamp.position=Vector3(.2,5.5,.8);lamp.light_color=Color("ffd59a")
     lamp.light_energy=1.3;lamp.omni_range=6.0;body.add_child(lamp)
 
+# --- Garage -----------------------------------------------------------------------
+
+## The tuning bench on the right flank, ahead of the cargo hatch: this is where the
+## truck is upgraded (speed, acceleration and the four builds).
+func _garage() -> void:
+    t.box(Vector3(1.78,.98,-2.72),Vector3(2.42,1.08,-1.18),PLANK_LIGHT)
+    t.box(Vector3(1.78,1.08,-2.72),Vector3(1.86,1.5,-1.18),PLANK_DARK)
+    for z in [-2.65,-1.25]:
+        for x in [1.85,2.35]: t.rod(Vector3(x,0.05,z),Vector3(x,.98,z),.045,PLANK_DARK,5)
+    t.box(Vector3(1.8,.42,-2.7),Vector3(2.4,.48,-1.2),PLANK_DARK)
+    # Anvil, a vice, a stack of spare tyres and a jerrycan on the bench and under it.
+    t.box(Vector3(2.0,1.08,-2.55),Vector3(2.3,1.2,-2.2),IRON)
+    t.box(Vector3(2.08,1.2,-2.5),Vector3(2.22,1.3,-2.25),Color("5a5a60"))
+    t.box(Vector3(2.0,1.08,-1.65),Vector3(2.12,1.3,-1.45),Color("d9a33a"))
+    for k in 3: t.cylinder(Vector3(2.15,.12+k*.2,-2.4),.34,.34,.18,TYRE,Vector3.ZERO,12)
+    t.box(Vector3(2.05,.52,-1.9),Vector3(2.35,.9,-1.5),Color("c9463a"))
+    # Tools hanging on the board behind the bench: spanners, a hammer and a gear.
+    for k in 4:
+        var z: float=-2.55+k*.34
+        t.rod(Vector3(1.88,1.45,z),Vector3(1.88,1.18+(k%2)*.1,z+.06),.022,CHROME,5)
+    t.cylinder(Vector3(1.9,1.42,-1.45),.14,.14,.04,BRASS,Vector3(0,0,PI*.5),10)
+    # Sign post with the bench name, lit by a small lantern.
+    t.rod(Vector3(2.38,1.08,-2.62),Vector3(2.38,2.15,-2.62),.04,PLANK_DARK,5)
+    t.box(Vector3(2.28,1.62,-2.7),Vector3(2.34,2.1,-1.2),PLANK_DARK)
+    t.box(Vector3(2.3,2.18,-2.1),Vector3(2.4,2.34,-2.0),IRON)
+    t.box(Vector3(2.32,2.2,-2.08),Vector3(2.38,2.32,-2.02),WARM,2.4)
+    _label("GarageTag",Vector3(2.4,1.86,-1.95),PI*.5,"garage",26,CREAM)
+    var lamp:=OmniLight3D.new();lamp.position=Vector3(2.7,1.6,-1.95);lamp.light_color=Color("ffcf8a")
+    lamp.light_energy=1.0;lamp.omni_range=3.4;body.add_child(lamp)
+
 # --- Interactables ----------------------------------------------------------------
 
 func _interactables() -> void:
     _use("jeep",Vector3(-2.35,0,-3.7),3.2)
     _use("trunk",Vector3(2.6,0,.8),3.2)
+    _use("garage",Vector3(2.85,0,-1.95),2.2)
     # Ladders: the rope ladder joins the ground and the porch (boarding goes
     # straight up to the terrace), the wooden one joins the porch and the terrace.
     _use("board",Vector3(2.65,0,5.0),3.0)
@@ -583,6 +615,7 @@ func _collisions() -> void:
     _shape(Vector3(-1.3,FLOOR_Y,-2.22),Vector3(1.3,FLOOR_Y+1.9,-.62))
     _shape(Vector3(-.95,FLOOR_Y,.9),Vector3(-.55,FLOOR_Y+1.1,2.4))
     for z in [.9,2.4]: _shape(Vector3(-1.75,FLOOR_Y,z-.04),Vector3(-.95,FLOOR_Y+1.1,z+.04))
+    _shape(Vector3(1.78,.0,-2.72),Vector3(2.42,1.08,-1.18))
 
 func _shape(a: Vector3, b: Vector3) -> CollisionShape3D:
     var low:=Vector3(minf(a.x,b.x),minf(a.y,b.y),minf(a.z,b.z));var high:=Vector3(maxf(a.x,b.x),maxf(a.y,b.y),maxf(a.z,b.z))

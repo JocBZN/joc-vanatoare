@@ -56,6 +56,18 @@ var _shown_local:=Vector3.ZERO
 var _shown_riding: bool=false
 var _arm_ignores_truck: bool=false
 
+## Ocean map: hunters swim in 3D, dive with the camera's pitch, and wear a diving
+## suit. `swimming` is the simulated state (host, and the local hunter); replicas
+## show the same pose from their replicated position.
+const DivingSuit:=preload("res://art/diving_suit.gd")
+const SWIM_ENTER: float=1.05
+const SWIM_EXIT: float=.55
+const SWIM_REST: float=-1.18
+const SWIM_SPEED: float=4.3
+const SWIM_FAST: float=6.6
+var swimming: bool=false
+var _swim_lean: float=0.0
+
 var _gravity: float = float(ProjectSettings.get_setting("physics/3d/default_gravity"))
 var _stride_time: float = 0.0
 
@@ -102,7 +114,7 @@ func sample_input() -> Dictionary:
     input_sequence+=1
     var active:=local_player and control_enabled and Input.mouse_mode==Input.MOUSE_MODE_CAPTURED and health>0 and not busy()
     var stick:=Input.get_vector("move_left","move_right","move_forward","move_backward") if active else Vector2.ZERO
-    var result={"direction":camera_rig.movement_direction(stick),"drive":stick,"sprint":active and Input.is_action_pressed("sprint"),"jump":jump_pending,"aim":camera_rig.aiming,"yaw":camera_rig.rotation.y,"pitch":camera_rig.rotation.x,"brake":active and Input.is_action_pressed("jump"),"seq":input_sequence,"first":camera_rig.is_first_person()}
+    var result={"direction":camera_rig.movement_direction(stick),"drive":stick,"sprint":active and Input.is_action_pressed("sprint"),"rotor":active and Input.is_action_pressed("rotor"),"jump":jump_pending,"aim":camera_rig.aiming,"yaw":camera_rig.rotation.y,"pitch":camera_rig.rotation.x,"brake":active and Input.is_action_pressed("jump"),"seq":input_sequence,"first":camera_rig.is_first_person()}
     revive_target=0
     if active and Input.is_action_pressed("interact") and NetworkSession.world.nearby and NetworkSession.world.nearby.interaction_kind=="revive":
         revive_target=NetworkSession.world.nearby.target_peer()
@@ -122,6 +134,7 @@ func _physics_process(delta: float) -> void:
         velocity=Vector3.ZERO
         riding=false;ride_target_valid=false
         return
+    _sync_costume()
     if local_player and not busy() and not Input.is_action_pressed("fire") and not Input.is_action_pressed("jump"):
         harvest_input_guard=false
     if local_player and control_enabled and not busy() and Input.is_action_just_pressed("reset_player"): NetworkSession.request_action("reset")
@@ -151,7 +164,10 @@ func _physics_process(delta: float) -> void:
     if busy():
         velocity.x=0;velocity.z=0;jump_pending=false;revive_target=0
         command["jump"]=false
-        velocity.y=0 if is_on_floor() else velocity.y-_gravity*delta
+        # Skinning something at sea: the diver hangs in the water instead of sinking.
+        var hovering: bool=NetworkSession.world_id=="ocean" and is_instance_valid(NetworkSession.forest) and NetworkSession.forest.water_submersion(global_position)>.55
+        if hovering: velocity.y=0
+        else: velocity.y=0 if is_on_floor() else velocity.y-_gravity*delta
         move_and_slide()
         _update_visual(delta,0)
         return
@@ -159,7 +175,8 @@ func _physics_process(delta: float) -> void:
     if local_player:
         var active:=control_enabled and Input.mouse_mode==Input.MOUSE_MODE_CAPTURED and revive_target==0
         var stick:=Input.get_vector("move_left","move_right","move_forward","move_backward") if active and revive_target==0 else Vector2.ZERO
-        data={"direction":camera_rig.movement_direction(stick),"sprint":active and Input.is_action_pressed("sprint"),"jump":active and not harvest_input_guard and Input.is_action_just_pressed("jump"),"aim":camera_rig.aiming,"yaw":camera_rig.rotation.y,"first":camera_rig.is_first_person()}
+        data={"direction":camera_rig.movement_direction(stick),"sprint":active and Input.is_action_pressed("sprint"),"jump":active and not harvest_input_guard and Input.is_action_just_pressed("jump"),"aim":camera_rig.aiming,"yaw":camera_rig.rotation.y,"first":camera_rig.is_first_person(),
+            "stick":stick,"pitch":camera_rig.rotation.x,"ascend":active and not harvest_input_guard and Input.is_action_pressed("jump")}
     var direction: Vector3=data.get("direction",Vector3.ZERO)
     var aiming: bool=bool(data.get("aim",false))
     var speed:=aim_speed if aiming else sprint_speed if data.get("sprint",false) else walk_speed
@@ -171,10 +188,14 @@ func _physics_process(delta: float) -> void:
         pace_factor=minf(pace_factor,lerpf(1,.52,NetworkSession.forest.mud_factor(global_position)))
     speed*=pace_factor
     var water_acceleration: float=acceleration*lerpf(1.0,.62,smoothstep(.08,1.15,contact_depth))
-    velocity.x=move_toward(velocity.x,direction.x*speed,water_acceleration*delta)
-    velocity.z=move_toward(velocity.z,direction.z*speed,water_acceleration*delta)
-    if not is_on_floor(): velocity.y-=_gravity*delta
-    elif data.get("jump",false): velocity.y=jump_speed*lerpf(1.0,.85,smoothstep(.15,1.15,contact_depth))
+    swimming=NetworkSession.world_id=="ocean" and not riding and (contact_depth>=SWIM_ENTER or (swimming and contact_depth>SWIM_EXIT))
+    if swimming:
+        _swim_move(delta,data)
+    else:
+        velocity.x=move_toward(velocity.x,direction.x*speed,water_acceleration*delta)
+        velocity.z=move_toward(velocity.z,direction.z*speed,water_acceleration*delta)
+        if not is_on_floor(): velocity.y-=_gravity*delta
+        elif data.get("jump",false): velocity.y=jump_speed*lerpf(1.0,.85,smoothstep(.15,1.15,contact_depth))
     command["jump"]=false
     move_and_slide()
     if not riding:
@@ -187,6 +208,57 @@ func _physics_process(delta: float) -> void:
     elif direction.length_squared()>.01: visual.rotation.y=lerp_angle(visual.rotation.y,atan2(-direction.x,-direction.z),1-exp(-turn_speed*delta))
     _update_visual(delta,direction.length())
     if NetworkSession.is_host() and global_position.y < -20: respawn()
+
+## Free 3D swimming: the stick moves you along the camera's view, so looking down
+## and pushing forward dives; Space rises; Shift kicks hard. Idle near the surface
+## you drift up and float with your head in the air; deeper down you hang neutral.
+func _swim_move(delta: float,data: Dictionary) -> void:
+    var stick: Vector2=data.get("stick",data.get("drive",Vector2.ZERO))
+    var yaw: float=float(data.get("yaw",0.0));var pitch: float=float(data.get("pitch",0.0))
+    var view:=Basis.from_euler(Vector3(pitch,yaw,0.0))
+    var wish: Vector3=view*Vector3(stick.x,0.0,stick.y)
+    if wish.length_squared()>1.0: wish=wish.normalized()
+    var target: Vector3=wish*(SWIM_FAST if bool(data.get("sprint",false)) else SWIM_SPEED)
+    var ascending: bool=bool(data.get("ascend",data.get("brake",false)))
+    if ascending: target.y=maxf(target.y,3.4)
+    elif wish.length_squared()<.04 and global_position.y>SWIM_REST-2.2: target.y=clampf((SWIM_REST-global_position.y)*1.1,-1.2,1.2)
+    velocity=velocity.move_toward(target,11.0*delta)
+    # Water swallows a plunge: a jump from the deck ends within a metre or so.
+    if velocity.y<target.y-2.0: velocity.y=move_toward(velocity.y,target.y-2.0,40.0*delta)
+    # The head stays in the air: you cannot swim up out of the sea.
+    if global_position.y>SWIM_REST+.12 and velocity.y>0.0: velocity.y=minf(velocity.y,(SWIM_REST-global_position.y)*3.0)
+
+## The diving suit goes on in the ocean and comes off everywhere else.
+func _sync_costume() -> void:
+    var want: bool=NetworkSession.world_id=="ocean" and NetworkSession.phase!="lobby"
+    if want!=DivingSuit.is_dressed(visual):
+        if want: DivingSuit.dress(visual,peer_id)
+        else: DivingSuit.undress(visual)
+    if want:
+        var depth: float=0.0
+        if is_instance_valid(NetworkSession.forest) and NetworkSession.forest.water_depth(global_position)>0.0: depth=-global_position.y
+        DivingSuit.update(visual,depth)
+
+## Prone, kicking, pivoting about the hips; upright treading water when still.
+func _update_swim_pose(delta: float) -> void:
+    var wet: bool=NetworkSession.world_id=="ocean" and health>0 and seat_index<0 and not riding and is_instance_valid(NetworkSession.forest) and NetworkSession.forest.water_submersion(global_position)>.7
+    var speed: float=velocity.length()
+    var target: float=0.0
+    if wet: target=-.14 if speed<.45 else clampf(-1.2+velocity.y*.16,-1.5,-.45)
+    _swim_lean=lerpf(_swim_lean,target,1.0-exp(-6.0*delta))
+    if not wet and absf(_swim_lean)<.02:
+        if _swim_lean!=0.0: _swim_lean=0.0;visual.rotation.x=0.0;visual.position.x=0.0;visual.position.z=0.0
+        return
+    visual.rotation.x=_swim_lean
+    var pivot:=Vector3(0,.95,0)
+    visual.position=pivot-visual.basis*pivot
+    var kick: float=sin(_stride_time*.62)*clampf(speed/3.0,0.0,1.0)*.75
+    $Visual/LeftLeg.rotation.x=kick+.12
+    $Visual/RightLeg.rotation.x=-kick+.12
+    $Visual/LeftLeg/Knee.rotation.x=maxf(0.0,-kick)*.5
+    $Visual/RightLeg/Knee.rotation.x=maxf(0.0,kick)*.5
+    $Visual/LeftArm.rotation.x=.25+sin(_stride_time*.31)*.12*clampf(speed/3.0,0.0,1.0)
+    if not camera_rig.aiming: $Visual/RightArm.rotation.x=.25-sin(_stride_time*.31)*.12*clampf(speed/3.0,0.0,1.0)
 
 ## Carries a rider by exactly the truck's motion since the last physics frame
 ## (translation and turn), before the hunter's own movement is applied.
@@ -325,6 +397,7 @@ func _update_visual(delta: float, movement_amount: float) -> void:
         var pitch := camera_rig.rotation.x if camera_rig.aiming else -0.25
         _weapon_visual.rotation.x = lerpf(_weapon_visual.rotation.x, pitch - combat.recoil, 1.0 - exp(-12.0 * delta))
     visual.position.y = absf(sin(_stride_time)) * movement_amount * 0.035
+    _update_swim_pose(delta)
 
 
 ## Steps off the truck (or anywhere) to a world point.

@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"megalodon"
+display_name = "ANIMAL_MEGALODON"
+model_path = "res://actors/animals/models/megalodon.tscn"
+max_health = 4200
+spawn_weight = 0
+aggressive = true
+attack_damage = 62
+walk_speed = 3
+run_speed = 12.5
+aggro_range = 100
+pursuit_range = 320
+aggro_memory = 60
+height = 3.6
+length = 16
+width = 4.2
+aquatic = true
+swimmer = true
+swim_depth = 14
+territory = 300
+leap_range = 22
+leap_cooldown = 3.4
+pack_radius = 0
+loot_id = &"megalodon_hide"
+boss = true
+trophies = Array[StringName]([&"megalodon_tooth", &"megalodon_tooth", &"megalodon_tooth", &"abyss_pearl", &"abyss_pearl", &"sunken_anchor"])
+harvest_strokes = 16
+harvest_period = 1.6
+harvest_window = 0.08
+harvest_quirks = PackedStringArray("thick", "chomp", "twitch")

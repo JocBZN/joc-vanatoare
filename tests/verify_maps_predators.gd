@@ -16,7 +16,7 @@ func run() -> void:
     session=root.get_node("NetworkSession");hunter=session.local_hunter()
     await frames(4)
     check(not scene.menu._return_lobby.visible,"pause menu has no lobby Start")
-    check(scene.map_menu.DESTINATIONS==["forest","swamp"],"Forest and Swamp available")
+    check(scene.map_menu.DESTINATIONS==["forest","swamp","ocean"],"Forest, Swamp and Ocean available")
     scene.menu.resume()
     hunter.global_position=Vector3(14,.5,14)
     session.request_action("start_hunt","forest")
@@ -75,7 +75,7 @@ func run() -> void:
         before=a.global_position.distance_to(hunter.global_position)
         await frames(40)
         check(a.global_position.distance_to(hunter.global_position)<before-2 and a.state=="Run",kind+" pursues shooter beyond detection range")
-        a.global_position=Vector3(0,30,-101.6);a.velocity=Vector3.ZERO;a.attack_clock=0
+        a.global_position=Vector3(0,30,-101.6);a.velocity=Vector3.ZERO;a.attack_clock=0;a.leaping=false;a.leap_windup=-1
         var health: int=hunter.health
         await frames(38)
         check(hunter.health==health-a.definition.attack_damage and a.state=="Attack",kind+" attacks at melee distance")

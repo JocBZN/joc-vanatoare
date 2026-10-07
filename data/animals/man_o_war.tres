@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+[ext_resource type="Script" path="res://data/definitions/animal_definition.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = &"man_o_war"
+display_name = "ANIMAL_MAN_O_WAR"
+model_path = "res://actors/animals/models/man_o_war.tscn"
+max_health = 80
+spawn_weight = 14
+aggressive = true
+attack_damage = 18
+walk_speed = 0.7
+run_speed = 1.8
+aggro_range = 6
+pursuit_range = 30
+aggro_memory = 15
+height = 0.6
+length = 1.2
+width = 0.6
+aquatic = true
+swimmer = true
+swim_depth = 0.6
+territory = 120
+leap_range = 0
+leap_cooldown = 2
+pack_radius = 0
+shock_radius = 7
+loot_id = &"man_o_war_bladder"
+harvest_strokes = 5
+harvest_period = 2.5
+harvest_window = 0.28
+harvest_quirks = PackedStringArray("wiggle")

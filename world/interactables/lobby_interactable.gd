@@ -1,7 +1,7 @@
 class_name LobbyInteractable
 extends Node3D
 
-@export_enum("weapons", "backpacks", "sell", "test_loot", "loot", "jeep", "trunk", "expedition", "revive", "harvest", "cleaner", "storage", "board", "alight", "ladder_up", "ladder_down") var interaction_kind: String = "weapons"
+@export_enum("weapons", "backpacks", "sell", "test_loot", "loot", "jeep", "trunk", "expedition", "revive", "harvest", "cleaner", "storage", "board", "alight", "ladder_up", "ladder_down", "garage", "tower_up", "tower_down", "deck_down", "deck_up", "board_deck", "sphere_down", "sphere_up") var interaction_kind: String = "weapons"
 @export var display_name: String = "Tarabă"
 @export var interaction_range: float = 3.0
 
